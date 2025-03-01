@@ -1,5 +1,8 @@
 backend/.venv
 backend/**/*__pycache__
+backend/db.json
+backend/games/*
+!backend/games/driver/
 
 frontend/node_modules
 frontend/dist

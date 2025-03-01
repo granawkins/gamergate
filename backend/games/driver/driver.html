@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City Drive</title>
+    <style>
+        body { margin: 0; }
+        #game { width: 100vw; height: 100vh; }
+    </style>
+</head>
+<body>
+    <div id="game"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('game').appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+
+        // Ground
+        const groundGeometry = new THREE.PlaneGeometry(100, 100);
+        const groundMaterial = new THREE.MeshPhongMaterial({ color: 0xaaaaaa });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        scene.add(ground);
+
+        // Procedurally generated buildings
+        const buildings = [];
+        for (let i = -10; i < 10; i++) {
+            for (let j = -10; j < 10; j++) {
+                const height = Math.random() * 8 + 2; // Height between 2 and 10
+                const geometry = new THREE.BoxGeometry(2, height, 2);
+                const color = new THREE.Color(Math.random(), Math.random(), Math.random());
+                const material = new THREE.MeshPhongMaterial({ color: color });
+                const building = new THREE.Mesh(geometry, material);
+                building.position.set(i * 4, height / 2, j * 4);
+                scene.add(building);
+                buildings.push(building);
+            }
+        }
+
+        // Car (simple rectangle)
+        const carGeometry = new THREE.BoxGeometry(1, 0.5, 2); // Width: 1, Height: 0.5, Length: 2
+        const carMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+        const car = new THREE.Mesh(carGeometry, carMaterial);
+        car.position.set(0, 0.25, 0); // Bottom of car rests on ground
+        scene.add(car);
+
+        // Keyboard controls
+        const keys = { w: false, a: false, s: false, d: false };
+        window.addEventListener('keydown', (event) => {
+            if (event.key === 'w') keys.w = true;
+            if (event.key === 'a') keys.a = true;
+            if (event.key === 's') keys.s = true;
+            if (event.key === 'd') keys.d = true;
+        });
+        window.addEventListener('keyup', (event) => {
+            if (event.key === 'w') keys.w = false;
+            if (event.key === 'a') keys.a = false;
+            if (event.key === 's') keys.s = false;
+            if (event.key === 'd') keys.d = false;
+        });
+
+        // Movement parameters
+        const clock = new THREE.Clock();
+        const speed = 5; // Units per second
+        const turnSpeed = Math.PI; // Radians per second
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+
+            // Car movement with W-A-S-D
+            if (keys.w) car.translateZ(speed * delta); // Forward
+            if (keys.s) car.translateZ(-speed * delta); // Backward
+            if (keys.a) car.rotateY(turnSpeed * delta); // Turn left
+            if (keys.d) car.rotateY(-turnSpeed * delta); // Turn right
+
+            // Third-person camera
+            const offset = new THREE.Vector3(0, 2, -5); // Up 2, behind 5
+            const cameraPosition = car.localToWorld(offset.clone());
+            camera.position.copy(cameraPosition);
+            camera.lookAt(car.position);
+
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>
