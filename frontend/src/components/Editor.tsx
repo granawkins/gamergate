@@ -1,23 +1,11 @@
 import { useParams, Navigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { GameFrame } from "./GameFrame";
-import { Game } from "../types";
+import { Game, Message, ApiResponse } from "../types";
 import { ConversationTab } from "./ConversationTab";
 import { GameInfoTab } from "./GameInfoTab";
 
-interface Message {
-  id: string;
-  text: string;
-  sender: "user" | "assistant";
-  timestamp: string;
-}
-
 type TabType = "conversation" | "info";
-
-interface ApiResponse {
-  messages: Message[];
-  gameInfo: Game;
-}
 
 export const Editor = () => {
   const { gameName } = useParams();
@@ -39,26 +27,8 @@ export const Editor = () => {
         }
 
         const data = await response.json();
-        
-        // Handle both formats: new format with gameInfo or old format with just messages
-        if (data.messages && data.gameInfo) {
-          setMessages(data.messages);
-          setGameInfo(data.gameInfo);
-        } else {
-          // Backward compatibility with old API format
-          setMessages(data);
-          
-          // Fetch game info separately if not included in the response
-          try {
-            const gameResponse = await fetch(`/api/games/${gameName}`);
-            if (gameResponse.ok) {
-              const gameData = await gameResponse.json();
-              setGameInfo(gameData);
-            }
-          } catch (error) {
-            console.error("Error fetching game info:", error);
-          }
-        }
+        setMessages(data.messages);
+        setGameInfo(data.gameInfo);
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -106,29 +76,16 @@ export const Editor = () => {
 
       const data = await response.json();
 
-      // Handle both formats: new format with gameInfo or old format with just message
-      if (data.message && data.gameInfo) {
-        // Add assistant response to the chat
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          text: data.message,
-          sender: "assistant",
-          timestamp: new Date().toISOString(),
-        };
+      // Add assistant response to the chat
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: data.message,
+        sender: "assistant",
+        timestamp: new Date().toISOString(),
+      };
 
-        setMessages((prevMessages) => [...prevMessages, assistantMessage]);
-        setGameInfo(data.gameInfo);
-      } else {
-        // Backward compatibility with old API format
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          text: data.message || "Echo: " + inputText, // Echo back if no response
-          sender: "assistant",
-          timestamp: new Date().toISOString(),
-        };
-
-        setMessages((prevMessages) => [...prevMessages, assistantMessage]);
-      }
+      setMessages((prevMessages) => [...prevMessages, assistantMessage]);
+      setGameInfo(data.gameInfo);
     } catch (error) {
       console.error("Error sending message:", error);
 

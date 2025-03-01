@@ -1,11 +1,5 @@
 import { useRef, useState } from "react";
-
-interface Message {
-  id: string;
-  text: string;
-  sender: "user" | "assistant";
-  timestamp: string;
-}
+import { Message } from "../types";
 
 interface ConversationTabProps {
   messages: Message[];

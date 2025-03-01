@@ -15,3 +15,15 @@ export interface Game {
   updated_at: string;
   plays: number;
 }
+
+export interface Message {
+  id: string;
+  text: string;
+  sender: "user" | "assistant";
+  timestamp: string;
+}
+
+export interface ApiResponse {
+  messages: Message[];
+  gameInfo: Game;
+}
