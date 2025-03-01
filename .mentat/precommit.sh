@@ -3,14 +3,21 @@ set -e
 
 # Backend checks
 cd backend
-source .venv/bin/activate
 
 # Format and fix backend code
-ruff format .
-ruff check --fix .
+if command -v ruff &> /dev/null; then
+    ruff format .
+    ruff check --fix .
+else
+    echo "Warning: ruff not found. Skipping backend formatting and linting."
+fi
 
 # Type check backend code
-pyright .
+if command -v pyright &> /dev/null; then
+    pyright .
+else
+    echo "Warning: pyright not found. Skipping backend type checking."
+fi
 
 # Frontend checks
 cd ../frontend

@@ -2,14 +2,15 @@
 
 # Setup backend
 cd backend
-# Try python3 first, fall back to python if python3 is not available
-if command -v python3 &> /dev/null; then
-    python3 -m venv .venv
+# Install Python dependencies directly without virtual environment
+if command -v pip3 &> /dev/null; then
+    pip3 install -r requirements.txt
+elif command -v pip &> /dev/null; then
+    pip install -r requirements.txt
 else
-    python -m venv .venv
+    echo "Error: Neither pip3 nor pip is available. Cannot install Python dependencies."
+    exit 1
 fi
-source .venv/bin/activate
-pip install -r requirements.txt
 
 # Setup frontend
 cd ../frontend
