@@ -94,7 +94,7 @@ async def get_chat_messages(
     game_name: str, current_user: User = Depends(get_current_user)
 ):
     """
-    Get all chat messages for a specific game.
+    Get all chat messages and game info for a specific game.
     """
     _db = await db.get()
     game_id = None
@@ -107,12 +107,16 @@ async def get_chat_messages(
                     status_code=403, detail="You are not the owner of this game"
                 )
             game_id = id
-            return game.get("messages", [])
+            # Return both messages and game info
+            return {
+                "messages": game.get("messages", []),
+                "gameInfo": game
+            }
 
     if game_id is None:
         raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
 
-    return []
+    return {"messages": [], "gameInfo": None}
 
 
 @app.post("/chat/{game_name}")
@@ -123,20 +127,22 @@ async def handle_chat(
 ):
     """
     Handle chat messages for the game editor.
-    Store the message and return a response.
+    Store the message and return a response with the game info.
     """
     # Check if the game exists
     _db = await db.get()
     game_id = None
+    game = None
 
     # Find the game by name
-    for id, game in _db["games"].items():
-        if game["name"] == game_name:
-            if current_user["id"] != game["owner_id"]:
+    for id, g in _db["games"].items():
+        if g["name"] == game_name:
+            if current_user["id"] != g["owner_id"]:
                 raise HTTPException(
                     status_code=403, detail="You are not the owner of this game"
                 )
             game_id = id
+            game = g
             break
 
     if game_id is None:
@@ -163,5 +169,8 @@ async def handle_chat(
     # Update the database
     await db.set(_db)
 
-    # Return the assistant message
-    return {"message": assistant_message["text"]}
+    # Return the assistant message and game info
+    return {
+        "message": assistant_message["text"],
+        "gameInfo": game
+    }
