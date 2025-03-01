@@ -2,6 +2,8 @@ import { useParams, Navigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { GameFrame } from "./GameFrame";
 import { Game } from "../types";
+import { ConversationTab } from "./ConversationTab";
+import { GameInfoTab } from "./GameInfoTab";
 
 interface Message {
   id: string;
@@ -12,61 +14,59 @@ interface Message {
 
 type TabType = "conversation" | "info";
 
+interface ApiResponse {
+  messages: Message[];
+  gameInfo: Game;
+}
+
 export const Editor = () => {
   const { gameName } = useParams();
   const [messages, setMessages] = useState<Message[]>([]);
-  const [inputText, setInputText] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>("conversation");
   const [gameInfo, setGameInfo] = useState<Game | null>(null);
-  const [isLoadingGameInfo, setIsLoadingGameInfo] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch existing messages when component mounts
+  // Fetch data when component mounts
   useEffect(() => {
-    const fetchMessages = async () => {
+    const fetchData = async () => {
       try {
         setIsLoading(true);
         const response = await fetch(`/api/chat/${gameName}`);
 
         if (!response.ok) {
-          throw new Error("Failed to fetch messages");
+          throw new Error("Failed to fetch data");
         }
 
         const data = await response.json();
-        setMessages(data);
+        
+        // Handle both formats: new format with gameInfo or old format with just messages
+        if (data.messages && data.gameInfo) {
+          setMessages(data.messages);
+          setGameInfo(data.gameInfo);
+        } else {
+          // Backward compatibility with old API format
+          setMessages(data);
+          
+          // Fetch game info separately if not included in the response
+          try {
+            const gameResponse = await fetch(`/api/games/${gameName}`);
+            if (gameResponse.ok) {
+              const gameData = await gameResponse.json();
+              setGameInfo(gameData);
+            }
+          } catch (error) {
+            console.error("Error fetching game info:", error);
+          }
+        }
       } catch (error) {
-        console.error("Error fetching messages:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchMessages();
-  }, [gameName]);
-
-  // Fetch game info when component mounts
-  useEffect(() => {
-    const fetchGameInfo = async () => {
-      try {
-        setIsLoadingGameInfo(true);
-        const response = await fetch(`/api/games/${gameName}`);
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch game info");
-        }
-
-        const data = await response.json();
-        setGameInfo(data);
-      } catch (error) {
-        console.error("Error fetching game info:", error);
-      } finally {
-        setIsLoadingGameInfo(false);
-      }
-    };
-
-    fetchGameInfo();
+    fetchData();
   }, [gameName]);
 
   // Scroll to bottom of messages when new messages are added
@@ -76,7 +76,7 @@ export const Editor = () => {
     }
   }, [messages]);
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (inputText: string) => {
     if (!inputText.trim()) return;
 
     // Create a new user message
@@ -89,9 +89,6 @@ export const Editor = () => {
 
     // Add user message to the chat
     setMessages((prevMessages) => [...prevMessages, userMessage]);
-
-    // Clear input field
-    setInputText("");
 
     try {
       // Send message to backend
@@ -109,15 +106,29 @@ export const Editor = () => {
 
       const data = await response.json();
 
-      // Add assistant response to the chat
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: data.message || "Echo: " + inputText, // Echo back if no response
-        sender: "assistant",
-        timestamp: new Date().toISOString(),
-      };
+      // Handle both formats: new format with gameInfo or old format with just message
+      if (data.message && data.gameInfo) {
+        // Add assistant response to the chat
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: data.message,
+          sender: "assistant",
+          timestamp: new Date().toISOString(),
+        };
 
-      setMessages((prevMessages) => [...prevMessages, assistantMessage]);
+        setMessages((prevMessages) => [...prevMessages, assistantMessage]);
+        setGameInfo(data.gameInfo);
+      } else {
+        // Backward compatibility with old API format
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: data.message || "Echo: " + inputText, // Echo back if no response
+          sender: "assistant",
+          timestamp: new Date().toISOString(),
+        };
+
+        setMessages((prevMessages) => [...prevMessages, assistantMessage]);
+      }
     } catch (error) {
       console.error("Error sending message:", error);
 
@@ -133,183 +144,10 @@ export const Editor = () => {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
   // Redirect to home if no gameName is provided
   if (!gameName) {
     return <Navigate to="/" replace />;
   }
-
-  // Render the tab content based on the active tab
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "conversation":
-        return (
-          <>
-            {/* Messages Container */}
-            <div
-              ref={chatContainerRef}
-              style={{
-                flex: 1,
-                overflowY: "auto",
-                padding: "1rem",
-                display: "flex",
-                flexDirection: "column",
-              }}
-            >
-              {isLoading ? (
-                <div
-                  style={{
-                    textAlign: "center",
-                    color: "#888",
-                    marginTop: "2rem",
-                  }}
-                >
-                  Loading messages...
-                </div>
-              ) : messages.length === 0 ? (
-                <div
-                  style={{
-                    textAlign: "center",
-                    color: "#888",
-                    marginTop: "2rem",
-                  }}
-                >
-                  Start a conversation to edit the game
-                </div>
-              ) : (
-                messages.map((message) => (
-                  <div
-                    key={message.id}
-                    style={{
-                      alignSelf:
-                        message.sender === "user" ? "flex-end" : "flex-start",
-                      backgroundColor:
-                        message.sender === "user" ? "#0084ff" : "#e5e5ea",
-                      color: message.sender === "user" ? "white" : "black",
-                      borderRadius: "18px",
-                      padding: "8px 16px",
-                      margin: "4px 0",
-                      maxWidth: "80%",
-                      wordBreak: "break-word",
-                    }}
-                  >
-                    {message.text}
-                  </div>
-                ))
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Input Area */}
-            <div
-              style={{
-                display: "flex",
-                borderTop: "1px solid #ccc",
-              }}
-            >
-              <textarea
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Type a message..."
-                style={{
-                  flex: 1,
-                  padding: "8px",
-                  border: "none",
-                  borderRight: "1px solid #ccc",
-                  resize: "none",
-                  minHeight: "40px",
-                  maxHeight: "120px",
-                  outline: "none",
-                }}
-                rows={1}
-              />
-              <button
-                onClick={handleSendMessage}
-                disabled={!inputText.trim()}
-                style={{
-                  padding: "0 16px",
-                  backgroundColor: "#0084ff",
-                  color: "white",
-                  border: "none",
-                  cursor: inputText.trim() ? "pointer" : "default",
-                  opacity: inputText.trim() ? 1 : 0.6,
-                }}
-              >
-                Send
-              </button>
-            </div>
-          </>
-        );
-      case "info":
-        return (
-          <div
-            style={{
-              flex: 1,
-              overflowY: "auto",
-              padding: "1rem",
-            }}
-          >
-            {isLoadingGameInfo ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  color: "#888",
-                  marginTop: "2rem",
-                }}
-              >
-                Loading game information...
-              </div>
-            ) : gameInfo ? (
-              <div>
-                <h2>Game Information</h2>
-                <div style={{ marginTop: "1rem" }}>
-                  {Object.entries(gameInfo).map(([key, value]) => (
-                    <div
-                      key={key}
-                      style={{
-                        display: "flex",
-                        padding: "0.5rem 0",
-                        borderBottom: "1px solid #eee",
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontWeight: "bold",
-                          width: "120px",
-                          flexShrink: 0,
-                        }}
-                      >
-                        {key}:
-                      </div>
-                      <div>{String(value)}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div
-                style={{
-                  textAlign: "center",
-                  color: "#888",
-                  marginTop: "2rem",
-                }}
-              >
-                Failed to load game information
-              </div>
-            )}
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
 
   return (
     <div
@@ -370,7 +208,19 @@ export const Editor = () => {
         </div>
 
         {/* Tab Content */}
-        {renderTabContent()}
+        {activeTab === "conversation" ? (
+          <ConversationTab
+            messages={messages}
+            isLoading={isLoading}
+            gameName={gameName}
+            onSendMessage={handleSendMessage}
+          />
+        ) : (
+          <GameInfoTab
+            gameInfo={gameInfo}
+            isLoading={isLoading}
+          />
+        )}
       </div>
 
       {/* Right Column - Game Preview */}

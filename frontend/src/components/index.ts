@@ -5,3 +5,5 @@ export * from "./Home";
 export * from "./Editor";
 export * from "./Play";
 export * from "./GameFrame";
+export * from "./ConversationTab";
+export * from "./GameInfoTab";
