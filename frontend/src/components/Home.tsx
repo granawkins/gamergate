@@ -3,40 +3,65 @@ import { useState, useEffect } from "react";
 import useAuth from "../auth/useAuth";
 import { Game } from "../types";
 
-export const Home = () => {
-  const { user } = useAuth();
-  const [games, setGames] = useState<Game[]>([]);
+// Reusable game card component
+const GameCard = ({ game, linkPrefix }: { game: Game; linkPrefix: string }) => (
+  <a
+    href={`${linkPrefix}/${game.name}`}
+    key={game.id}
+    style={{
+      height: "180px",
+      width: "180px",
+      border: "1px solid black",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+    }}
+  >
+    <h3>{game.name}</h3>
+  </a>
+);
 
-  const fetchGames = async () => {
+export const Home = () => {
+  const { user, games: userGames } = useAuth();
+  const [publicGames, setPublicGames] = useState<Game[]>([]);
+
+  const fetchPublicGames = async () => {
     const response = await fetch("/api/games");
     const data = await response.json();
-    setGames(data);
+    setPublicGames(data);
   };
 
   useEffect(() => {
-    fetchGames();
+    fetchPublicGames();
   }, []);
+
+  // Shared style for game grid
+  const gameGridStyle = {
+    display: "flex",
+    flexWrap: "wrap" as const,
+    gap: "1rem",
+    marginBottom: "2rem",
+  };
 
   return (
     <div>
-      {!user && <h2>Login to create games</h2>}
+      <h2>Create</h2>
+      {!user ? (
+        <p>Login to create games</p>
+      ) : userGames.length === 0 ? (
+        <p>You haven't created any games yet</p>
+      ) : (
+        <div style={gameGridStyle}>
+          {userGames.map((game) => (
+            <GameCard key={game.id} game={game} linkPrefix="/editor" />
+          ))}
+        </div>
+      )}
+
       <h2>Play</h2>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
-        {games.map((game) => (
-          <a
-            href={`/play/${game.name}`}
-            key={game.id}
-            style={{
-              height: "180px",
-              width: "180px",
-              border: "1px solid black",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <h3>{game.name}</h3>
-          </a>
+      <div style={gameGridStyle}>
+        {publicGames.map((game) => (
+          <GameCard key={game.id} game={game} linkPrefix="/play" />
         ))}
       </div>
     </div>
