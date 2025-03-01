@@ -5,7 +5,7 @@ import { GameFrame } from "./GameFrame";
 interface Message {
   id: string;
   text: string;
-  sender: "user" | "system";
+  sender: "user" | "assistant";
   timestamp: string;
 }
 
@@ -17,22 +17,17 @@ export const Editor = () => {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Redirect to home if no gameName is provided
-  if (!gameName) {
-    return <Navigate to="/" replace />;
-  }
-
   // Fetch existing messages when component mounts
   useEffect(() => {
     const fetchMessages = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`/api/games/${gameName}/chat`);
-        
+        const response = await fetch(`/api/chat/${gameName}`);
+
         if (!response.ok) {
           throw new Error("Failed to fetch messages");
         }
-        
+
         const data = await response.json();
         setMessages(data);
       } catch (error) {
@@ -41,7 +36,7 @@ export const Editor = () => {
         setIsLoading(false);
       }
     };
-    
+
     fetchMessages();
   }, [gameName]);
 
@@ -65,13 +60,13 @@ export const Editor = () => {
 
     // Add user message to the chat
     setMessages((prevMessages) => [...prevMessages, userMessage]);
-    
+
     // Clear input field
     setInputText("");
 
     try {
       // Send message to backend
-      const response = await fetch(`/api/games/${gameName}/chat`, {
+      const response = await fetch(`/api/chat/${gameName}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -85,26 +80,26 @@ export const Editor = () => {
 
       const data = await response.json();
 
-      // Add system response to the chat
-      const systemMessage: Message = {
+      // Add assistant response to the chat
+      const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: data.message || "Echo: " + inputText, // Echo back if no response
-        sender: "system",
+        sender: "assistant",
         timestamp: new Date().toISOString(),
       };
 
-      setMessages((prevMessages) => [...prevMessages, systemMessage]);
+      setMessages((prevMessages) => [...prevMessages, assistantMessage]);
     } catch (error) {
       console.error("Error sending message:", error);
-      
+
       // Add error message to chat
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: "Error: Could not send message. Please try again.",
-        sender: "system",
+        sender: "assistant",
         timestamp: new Date().toISOString(),
       };
-      
+
       setMessages((prevMessages) => [...prevMessages, errorMessage]);
     }
   };
@@ -116,12 +111,17 @@ export const Editor = () => {
     }
   };
 
+  // Redirect to home if no gameName is provided
+  if (!gameName) {
+    return <Navigate to="/" replace />;
+  }
+
   return (
     <div
       style={{
         display: "flex",
         width: "100%",
-        height: "calc(100vh - 60px)", // Adjust based on header height
+        height: "100%",
         overflow: "hidden",
       }}
     >
@@ -171,8 +171,10 @@ export const Editor = () => {
               <div
                 key={message.id}
                 style={{
-                  alignSelf: message.sender === "user" ? "flex-end" : "flex-start",
-                  backgroundColor: message.sender === "user" ? "#0084ff" : "#e5e5ea",
+                  alignSelf:
+                    message.sender === "user" ? "flex-end" : "flex-start",
+                  backgroundColor:
+                    message.sender === "user" ? "#0084ff" : "#e5e5ea",
                   color: message.sender === "user" ? "white" : "black",
                   borderRadius: "18px",
                   padding: "8px 16px",

@@ -2,7 +2,7 @@ import json
 from asyncio import Lock
 from datetime import datetime
 from pathlib import Path
-from typing import TypedDict, Optional, List
+from typing import TypedDict, Optional, List, Literal
 from uuid import UUID, uuid4
 
 
@@ -16,7 +16,7 @@ class User(TypedDict):
 class ChatMessage(TypedDict):
     id: str
     text: str
-    sender: str  # "user" or "system"
+    sender: Literal["user", "assistant"]
     timestamp: str
 
 
@@ -39,19 +39,30 @@ class Database(TypedDict):
 
 DB_PATH = Path(__file__).parent / "db.json"
 GAMES_PATH = Path(__file__).parent / "games"
+ADMIN_EMAIL = "granthawkins88@gmail.com"
 
 
 class DB:
     def __init__(self):
         if not DB_PATH.exists():
             _db = {"users": {}, "games": {}}
+
+            # Setup Admin user
+            admin_id = str(uuid4())
+            _db["users"][admin_id] = {
+                "id": admin_id,
+                "username": "admin",
+                "email": ADMIN_EMAIL,
+                "created_at": datetime.now().isoformat(),
+            }
+
             for dir in GAMES_PATH.iterdir():
                 id = str(uuid4())
                 _db["games"][id] = {
                     "id": id,
                     "name": dir.name,
                     "path": dir.name,
-                    "owner_id": None,
+                    "owner_id": admin_id,
                     "parent_id": None,
                     "created_at": datetime.now().isoformat(),
                     "updated_at": datetime.now().isoformat(),
@@ -60,27 +71,7 @@ class DB:
                 }
             with open(DB_PATH, "w") as f:
                 json.dump(_db, f, indent=4)
-        else:
-            # Ensure existing games have a messages field
-            self._ensure_messages_field()
         self.lock = Lock()
-
-    def _ensure_messages_field(self):
-        try:
-            with open(DB_PATH, "r") as f:
-                _db = json.load(f)
-            
-            updated = False
-            for game_id, game in _db.get("games", {}).items():
-                if "messages" not in game:
-                    game["messages"] = []
-                    updated = True
-            
-            if updated:
-                with open(DB_PATH, "w") as f:
-                    json.dump(_db, f, indent=4)
-        except Exception as e:
-            print(f"Error ensuring messages field: {e}")
 
     async def get(self) -> dict:
         async with self.lock:
