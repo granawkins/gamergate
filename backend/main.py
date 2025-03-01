@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from datetime import datetime
 from uuid import uuid4
@@ -57,6 +57,39 @@ async def serve_game(game_name: str):
         html_content = f.read()
 
     return HTMLResponse(content=html_content)
+
+
+@app.delete("/games/{game_name}")
+async def delete_game(
+    game_name: str, current_user: User = Depends(get_current_user)
+):
+    """
+    Delete a game by name. Only the owner can delete their game.
+    """
+    _db = await db.get()
+    game_id = None
+
+    # Find the game by name
+    for id, game in _db["games"].items():
+        if game["name"] == game_name:
+            if current_user["id"] != game["owner_id"]:
+                raise HTTPException(
+                    status_code=403, detail="You are not the owner of this game"
+                )
+            game_id = id
+            break
+
+    if game_id is None:
+        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+
+    # Delete the game from the database
+    del _db["games"][game_id]
+    await db.set(_db)
+
+    return JSONResponse(
+        status_code=200,
+        content={"message": f"Game '{game_name}' deleted successfully"}
+    )
 
 
 @app.get("/chat/{game_name}")
