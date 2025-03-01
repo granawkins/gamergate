@@ -1,25 +1,49 @@
 import { useParams, Navigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
+import { GameFrame } from "./GameFrame";
 
 interface Message {
   id: string;
   text: string;
   sender: "user" | "system";
-  timestamp: Date;
+  timestamp: string;
 }
 
 export const Editor = () => {
   const { gameName } = useParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Redirect to editor home if no gameName is provided
+  // Redirect to home if no gameName is provided
   if (!gameName) {
-    return <Navigate to="/editor" replace />;
+    return <Navigate to="/" replace />;
   }
+
+  // Fetch existing messages when component mounts
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/games/${gameName}/chat`);
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch messages");
+        }
+        
+        const data = await response.json();
+        setMessages(data);
+      } catch (error) {
+        console.error("Error fetching messages:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchMessages();
+  }, [gameName]);
 
   // Scroll to bottom of messages when new messages are added
   useEffect(() => {
@@ -27,37 +51,6 @@ export const Editor = () => {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
-
-  // Handle iframe resize
-  useEffect(() => {
-    if (iframeRef.current) {
-      iframeRef.current.focus();
-    }
-
-    // Handle window resize
-    const handleResize = () => {
-      if (iframeRef.current) {
-        // Trigger a resize event for the iframe content
-        const resizeEvent = new Event("resize");
-        window.dispatchEvent(resizeEvent);
-
-        // If the iframe content is accessible, propagate the resize event
-        try {
-          iframeRef.current.contentWindow?.dispatchEvent(resizeEvent);
-        } catch (e) {
-          // Ignore cross-origin frame access errors
-          console.error(e);
-        }
-      }
-    };
-
-    window.addEventListener("resize", handleResize);
-
-    // Clean up event listener on component unmount
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, [gameName]);
 
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
@@ -67,7 +60,7 @@ export const Editor = () => {
       id: Date.now().toString(),
       text: inputText,
       sender: "user",
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
 
     // Add user message to the chat
@@ -97,7 +90,7 @@ export const Editor = () => {
         id: (Date.now() + 1).toString(),
         text: data.message || "Echo: " + inputText, // Echo back if no response
         sender: "system",
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
       };
 
       setMessages((prevMessages) => [...prevMessages, systemMessage]);
@@ -109,7 +102,7 @@ export const Editor = () => {
         id: (Date.now() + 1).toString(),
         text: "Error: Could not send message. Please try again.",
         sender: "system",
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
       };
       
       setMessages((prevMessages) => [...prevMessages, errorMessage]);
@@ -142,15 +135,6 @@ export const Editor = () => {
           height: "100%",
         }}
       >
-        <div
-          style={{
-            padding: "1rem",
-            borderBottom: "1px solid #ccc",
-          }}
-        >
-          <h2>Chat with {gameName}</h2>
-        </div>
-
         {/* Messages Container */}
         <div
           ref={chatContainerRef}
@@ -162,7 +146,17 @@ export const Editor = () => {
             flexDirection: "column",
           }}
         >
-          {messages.length === 0 ? (
+          {isLoading ? (
+            <div
+              style={{
+                textAlign: "center",
+                color: "#888",
+                marginTop: "2rem",
+              }}
+            >
+              Loading messages...
+            </div>
+          ) : messages.length === 0 ? (
             <div
               style={{
                 textAlign: "center",
@@ -197,9 +191,8 @@ export const Editor = () => {
         {/* Input Area */}
         <div
           style={{
-            padding: "1rem",
-            borderTop: "1px solid #ccc",
             display: "flex",
+            borderTop: "1px solid #ccc",
           }}
         >
           <textarea
@@ -209,9 +202,9 @@ export const Editor = () => {
             placeholder="Type a message..."
             style={{
               flex: 1,
-              padding: "8px 12px",
-              borderRadius: "20px",
-              border: "1px solid #ccc",
+              padding: "8px",
+              border: "none",
+              borderRight: "1px solid #ccc",
               resize: "none",
               minHeight: "40px",
               maxHeight: "120px",
@@ -223,12 +216,10 @@ export const Editor = () => {
             onClick={handleSendMessage}
             disabled={!inputText.trim()}
             style={{
-              marginLeft: "8px",
-              padding: "8px 16px",
+              padding: "0 16px",
               backgroundColor: "#0084ff",
               color: "white",
               border: "none",
-              borderRadius: "20px",
               cursor: inputText.trim() ? "pointer" : "default",
               opacity: inputText.trim() ? 1 : 0.6,
             }}
@@ -243,27 +234,9 @@ export const Editor = () => {
         style={{
           width: "50%",
           height: "100%",
-          position: "relative",
         }}
       >
-        <iframe
-          ref={iframeRef}
-          src={`/api/games/${gameName}/play`}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            border: "none",
-            outline: "none",
-            overflow: "hidden",
-          }}
-          title={`${gameName} preview`}
-          allowFullScreen
-          allow="autoplay; fullscreen; gamepad; keyboard-map; xr-spatial-tracking"
-          scrolling="no"
-        />
+        <GameFrame gameName={gameName} />
       </div>
     </div>
   );

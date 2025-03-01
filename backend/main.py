@@ -2,8 +2,10 @@ from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
+from datetime import datetime
+from uuid import uuid4
 
-from db import db, GAMES_PATH
+from db import db, GAMES_PATH, ChatMessage as DbChatMessage
 from user import app as user_app
 
 app = FastAPI(root_path="/api")
@@ -19,7 +21,7 @@ app.add_middleware(
 )
 
 
-class ChatMessage(BaseModel):
+class ChatMessageRequest(BaseModel):
     message: str
 
 
@@ -57,23 +59,67 @@ async def serve_game(game_name: str):
     return HTMLResponse(content=html_content)
 
 
+@app.get("/games/{game_name}/chat")
+async def get_chat_messages(game_name: str):
+    """
+    Get all chat messages for a specific game.
+    """
+    _db = await db.get()
+    game_id = None
+    
+    # Find the game by name
+    for id, game in _db["games"].items():
+        if game["name"] == game_name:
+            game_id = id
+            return game.get("messages", [])
+    
+    if game_id is None:
+        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+    
+    return []
+
+
 @app.post("/games/{game_name}/chat")
-async def handle_chat(game_name: str, chat_message: ChatMessage):
+async def handle_chat(game_name: str, chat_message: ChatMessageRequest):
     """
     Handle chat messages for the game editor.
-    For now, just echo back the message.
+    Store the message and return a response.
     """
     # Check if the game exists
     _db = await db.get()
-    game_exists = False
+    game_id = None
     
-    for game in _db["games"].values():
+    # Find the game by name
+    for id, game in _db["games"].items():
         if game["name"] == game_name:
-            game_exists = True
+            game_id = id
             break
     
-    if not game_exists:
+    if game_id is None:
         raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
     
-    # For now, just echo back the message
-    return {"message": f"Echo: {chat_message.message}"}
+    # Create user message
+    user_message: DbChatMessage = {
+        "id": str(uuid4()),
+        "text": chat_message.message,
+        "sender": "user",
+        "timestamp": datetime.now().isoformat(),
+    }
+    
+    # Create system response
+    system_message: DbChatMessage = {
+        "id": str(uuid4()),
+        "text": f"Echo: {chat_message.message}",
+        "sender": "system",
+        "timestamp": datetime.now().isoformat(),
+    }
+    
+    # Add messages to the game
+    _db["games"][game_id]["messages"].append(user_message)
+    _db["games"][game_id]["messages"].append(system_message)
+    
+    # Update the database
+    await db.set(_db)
+    
+    # Return the system message
+    return {"message": system_message["text"]}
