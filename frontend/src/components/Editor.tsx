@@ -3,5 +3,5 @@ export const Editor = () => {
     <div>
       <h1>Editor</h1>
     </div>
-  )
-}
+  );
+};

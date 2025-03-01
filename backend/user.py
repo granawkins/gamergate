@@ -15,14 +15,15 @@ from db import db, User
 load_dotenv()
 
 
-SECRET_KEY = os.getenv("SALT")
+SECRET_KEY = os.getenv("SALT", "gamergate-salt")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
 
 app = FastAPI()
 
-cookie_scheme = APIKeyCookie(name="session_token", auto_error=False)\
+cookie_scheme = APIKeyCookie(name="session_token", auto_error=False)
+
 
 class AuthError(Exception):
     pass
@@ -76,7 +77,9 @@ async def user_me(current_user: User = Depends(get_current_user)):
     _db = await db.get()
     return {
         "user": current_user,
-        "games": [g for g in _db["games"].values() if g["owner_id"] == current_user["id"]],
+        "games": [
+            g for g in _db["games"].values() if g["owner_id"] == current_user["id"]
+        ],
     }
 
 

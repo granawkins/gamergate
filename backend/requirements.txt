@@ -1,4 +1,6 @@
 fastapi
-python-dotenv
-ruff
+PyJWT
 pyright
+python-dotenv
+requests
+ruff
