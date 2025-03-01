@@ -30,20 +30,100 @@ async def get_games():
     return list(_db["games"].values())
 
 
+from fastapi.responses import HTMLResponse
+import re
+
 @app.get("/games/{game_name}/play")
 async def serve_game(game_name: str):
-    """Serve the HTML file for a specific game."""
+    """Serve the HTML file for a specific game with added resize handling."""
     game_dir = GAMES_PATH / game_name
     
     # First check if there's a file named after the game
     game_file = game_dir / f"{game_name}.html"
-    if game_file.exists():
-        return FileResponse(game_file)
+    if not game_file.exists():
+        # If not, look for any HTML file in the directory
+        html_files = list(game_dir.glob("*.html"))
+        if html_files:
+            game_file = html_files[0]
+        else:
+            # If no HTML file is found, return 404
+            raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
     
-    # If not, look for any HTML file in the directory
-    html_files = list(game_dir.glob("*.html"))
-    if html_files:
-        return FileResponse(html_files[0])
+    # Read the HTML content
+    with open(game_file, "r") as f:
+        html_content = f.read()
     
-    # If no HTML file is found, return 404
-    raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+    # Add resize event listener to update canvas size
+    # This injects a script that handles window resize events and updates the canvas size
+    resize_script = """
+    <script>
+    // Handle window resize events
+    window.addEventListener('resize', function() {
+        // Find all canvas elements
+        const canvases = document.querySelectorAll('canvas');
+        canvases.forEach(canvas => {
+            // Update canvas size to match parent container
+            const container = canvas.parentElement;
+            if (container) {
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+            }
+        });
+        
+        // Dispatch a custom resize event for game engines to handle
+        window.dispatchEvent(new Event('game-resize'));
+    });
+    
+    // Handle messages from parent frame
+    window.addEventListener('message', function(event) {
+        if (event.data === 'resize') {
+            // Trigger resize event
+            window.dispatchEvent(new Event('resize'));
+            window.dispatchEvent(new Event('game-resize'));
+        }
+    });
+    
+    // Initial resize after load
+    window.addEventListener('load', function() {
+        setTimeout(function() {
+            window.dispatchEvent(new Event('resize'));
+        }, 100);
+    });
+    </script>
+    """
+    
+    # Insert the resize script before the closing </body> tag
+    if "</body>" in html_content:
+        html_content = html_content.replace("</body>", f"{resize_script}</body>")
+    else:
+        html_content += resize_script
+    
+    # Add viewport meta tag if not present
+    if "<meta name=\"viewport\"" not in html_content and "<head>" in html_content:
+        viewport_meta = '<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">'
+        html_content = html_content.replace("<head>", f"<head>\n    {viewport_meta}")
+    
+    # Add CSS to ensure full-size content without scrollbars
+    style_tag = """
+    <style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+    }
+    #game, canvas {
+        width: 100% !important;
+        height: 100% !important;
+        display: block;
+    }
+    </style>
+    """
+    
+    if "<head>" in html_content:
+        html_content = html_content.replace("<head>", f"<head>\n    {style_tag}")
+    else:
+        html_content = f"{style_tag}\n{html_content}"
+    
+    return HTMLResponse(content=html_content)
