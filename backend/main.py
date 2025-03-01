@@ -1,7 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from pathlib import Path
 
-from db import db
+from db import db, GAMES_PATH
 from user import app as user_app
 
 app = FastAPI(root_path="/api")
@@ -26,3 +28,29 @@ async def root():
 async def get_games():
     _db = await db.get()
     return list(_db["games"].values())
+
+
+from fastapi.responses import HTMLResponse
+import re
+
+@app.get("/games/{game_name}/play")
+async def serve_game(game_name: str):
+    """Serve the HTML file for a specific game with added resize handling."""
+    game_dir = GAMES_PATH / game_name
+    
+    # First check if there's a file named after the game
+    game_file = game_dir / f"{game_name}.html"
+    if not game_file.exists():
+        # If not, look for any HTML file in the directory
+        html_files = list(game_dir.glob("*.html"))
+        if html_files:
+            game_file = html_files[0]
+        else:
+            # If no HTML file is found, return 404
+            raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+    
+    # Read the HTML content
+    with open(game_file, "r") as f:
+        html_content = f.read()
+    
+    return HTMLResponse(content=html_content)
