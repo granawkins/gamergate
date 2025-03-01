@@ -1,6 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 
 from db import db, GAMES_PATH
 from user import app as user_app
@@ -16,6 +17,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class ChatMessage(BaseModel):
+    message: str
 
 
 @app.get("/")
@@ -50,3 +55,25 @@ async def serve_game(game_name: str):
         html_content = f.read()
 
     return HTMLResponse(content=html_content)
+
+
+@app.post("/games/{game_name}/chat")
+async def handle_chat(game_name: str, chat_message: ChatMessage):
+    """
+    Handle chat messages for the game editor.
+    For now, just echo back the message.
+    """
+    # Check if the game exists
+    _db = await db.get()
+    game_exists = False
+    
+    for game in _db["games"].values():
+        if game["name"] == game_name:
+            game_exists = True
+            break
+    
+    if not game_exists:
+        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+    
+    # For now, just echo back the message
+    return {"message": f"Echo: {chat_message.message}"}
