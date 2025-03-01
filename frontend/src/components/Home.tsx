@@ -1,21 +1,41 @@
+import { useState, useEffect } from 'react'
+
+import useAuth from '../useAuth'
+import { Game } from '../types'
+
 export const Home = () => {
+    const { user } = useAuth();
+    const [games, setGames] = useState<Game[]>([]);
+
+    const fetchGames = async () => {
+      const response = await fetch('/api/games');
+      const data = await response.json();
+      setGames(data);
+    }
+
+    useEffect(() => {
+      fetchGames();
+    }, []);
+
     return (
       <div>
-        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '2rem' }}>
-          <a href="/editor" style={{ 
-            padding: '1rem 2rem',
-            backgroundColor: '#4CAF50',
-            color: 'white',
-            textDecoration: 'none',
-            borderRadius: '4px'
-          }}>Editor</a>
-          <a href="/play" style={{ 
-            padding: '1rem 2rem',
-            backgroundColor: '#4CAF50',
-            color: 'white',
-            textDecoration: 'none',
-            borderRadius: '4px'
-          }}>Play</a>
+        <h2>Play</h2>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+          {games.map((game) => (
+            <a 
+              href={`/play/${game.name}`}
+              key={game.id} 
+              style={{ 
+                height: '180px', 
+                width: '180px', 
+                border: '1px solid black',
+                display: 'flex',
+                justifyContent: 'center', alignItems: 'center' 
+              }}
+            >
+              <h3>{game.name}</h3>
+            </a>
+          ))}
         </div>
       </div>
     )
