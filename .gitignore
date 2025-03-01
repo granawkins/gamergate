@@ -7,3 +7,6 @@ backend/games/*
 
 frontend/node_modules
 frontend/dist
+
+# Mentat logs
+.mentat/logs/
