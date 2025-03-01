@@ -1,26 +1,29 @@
 #!/bin/bash
-
-# Run the existing setup.sh script but skip the service startup part
-# Extract the setup portion from the original script
+set -e
 
 # Setup backend
 cd backend
+echo "Installing backend dependencies..."
+
+# Try to create and use virtual environment, but fall back to direct install if it fails
 if command -v python3 &> /dev/null; then
-    python3 -m venv .venv || {
+    # Try to create virtual environment
+    if python3 -m venv .venv 2>/dev/null; then
+        echo "Virtual environment created successfully."
+        source .venv/bin/activate
+        pip install -r requirements.txt
+    else
         echo "Warning: Failed to create virtual environment. Installing dependencies directly."
         pip3 install -r requirements.txt
-    }
-    if [ -d ".venv" ]; then
-        source .venv/bin/activate
-        pip install -r requirements.txt
     fi
 elif command -v python &> /dev/null; then
-    python -m venv .venv || {
-        echo "Warning: Failed to create virtual environment. Installing dependencies directly."
-        pip install -r requirements.txt
-    }
-    if [ -d ".venv" ]; then
+    # Try to create virtual environment
+    if python -m venv .venv 2>/dev/null; then
+        echo "Virtual environment created successfully."
         source .venv/bin/activate
+        pip install -r requirements.txt
+    else
+        echo "Warning: Failed to create virtual environment. Installing dependencies directly."
         pip install -r requirements.txt
     fi
 else
@@ -30,6 +33,7 @@ fi
 
 # Setup frontend
 cd ../frontend
+echo "Installing frontend dependencies..."
 npm install
 
 # Return to root directory
