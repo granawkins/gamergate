@@ -4,13 +4,13 @@ import useAuth from "../auth/useAuth";
 import { Game } from "../types";
 
 // Reusable game card component
-const GameCard = ({ 
-  game, 
-  linkPrefix, 
+const GameCard = ({
+  game,
+  linkPrefix,
   showDeleteButton = false,
-  onDelete
-}: { 
-  game: Game; 
+  onDelete,
+}: {
+  game: Game;
   linkPrefix: string;
   showDeleteButton?: boolean;
   onDelete?: (game: Game) => void;
@@ -85,9 +85,9 @@ export const Home = () => {
   const handleDeleteGame = async (game: Game) => {
     // Show confirmation dialog
     const confirmed = window.confirm(
-      `Are you sure you want to delete "${game.name}"? This action is irreversible.`
+      `Are you sure you want to delete "${game.name}"? This action is irreversible.`,
     );
-    
+
     if (!confirmed) return;
 
     try {
@@ -118,10 +118,10 @@ export const Home = () => {
       ) : (
         <div style={gameGridStyle}>
           {userGames.map((game) => (
-            <GameCard 
-              key={game.id} 
-              game={game} 
-              linkPrefix="/editor" 
+            <GameCard
+              key={game.id}
+              game={game}
+              linkPrefix="/editor"
               showDeleteButton={true}
               onDelete={handleDeleteGame}
             />

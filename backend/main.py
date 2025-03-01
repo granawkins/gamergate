@@ -60,9 +60,7 @@ async def serve_game(game_name: str):
 
 
 @app.delete("/games/{game_name}")
-async def delete_game(
-    game_name: str, current_user: User = Depends(get_current_user)
-):
+async def delete_game(game_name: str, current_user: User = Depends(get_current_user)):
     """
     Delete a game by name. Only the owner can delete their game.
     """
@@ -87,8 +85,7 @@ async def delete_game(
     await db.set(_db)
 
     return JSONResponse(
-        status_code=200,
-        content={"message": f"Game '{game_name}' deleted successfully"}
+        status_code=200, content={"message": f"Game '{game_name}' deleted successfully"}
     )
 
 
