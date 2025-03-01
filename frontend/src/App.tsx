@@ -14,6 +14,7 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/editor" element={<Editor />} />
               <Route path="/play" element={<Play />} />
+              <Route path="/play/:gameName" element={<Play />} />
               <Route path="/user" element={<User />} />
             </Routes>
           </main>
