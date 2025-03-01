@@ -58,36 +58,70 @@ async def serve_game(game_name: str):
     resize_script = """
     <script>
     // Handle window resize events
-    window.addEventListener('resize', function() {
+    function handleResize() {
+        // Update window dimensions
+        window.innerWidth = window.parent.innerWidth;
+        window.innerHeight = window.parent.innerHeight;
+        
         // Find all canvas elements
         const canvases = document.querySelectorAll('canvas');
         canvases.forEach(canvas => {
             // Update canvas size to match parent container
             const container = canvas.parentElement;
             if (container) {
-                canvas.width = container.clientWidth;
-                canvas.height = container.clientHeight;
+                canvas.width = container.clientWidth || window.innerWidth;
+                canvas.height = container.clientHeight || window.innerHeight;
             }
         });
         
+        // Handle Three.js specific resize
+        if (window.renderer && window.camera) {
+            console.log('Resizing Three.js renderer');
+            window.renderer.setSize(window.innerWidth, window.innerHeight);
+            if (window.camera.aspect) {
+                window.camera.aspect = window.innerWidth / window.innerHeight;
+                window.camera.updateProjectionMatrix();
+            }
+        }
+        
         // Dispatch a custom resize event for game engines to handle
         window.dispatchEvent(new Event('game-resize'));
-    });
+    }
+    
+    // Override the original renderer setup to capture the renderer instance
+    if (typeof THREE !== 'undefined') {
+        const originalWebGLRenderer = THREE.WebGLRenderer;
+        THREE.WebGLRenderer = function(...args) {
+            const renderer = new originalWebGLRenderer(...args);
+            window.renderer = renderer;
+            return renderer;
+        };
+        
+        // Also try to capture the camera
+        const originalPerspectiveCamera = THREE.PerspectiveCamera;
+        THREE.PerspectiveCamera = function(...args) {
+            const camera = new originalPerspectiveCamera(...args);
+            window.camera = camera;
+            return camera;
+        };
+    }
+    
+    // Add window resize listener
+    window.addEventListener('resize', handleResize);
     
     // Handle messages from parent frame
     window.addEventListener('message', function(event) {
         if (event.data === 'resize') {
-            // Trigger resize event
-            window.dispatchEvent(new Event('resize'));
-            window.dispatchEvent(new Event('game-resize'));
+            console.log('Received resize message from parent');
+            handleResize();
         }
     });
     
     // Initial resize after load
     window.addEventListener('load', function() {
-        setTimeout(function() {
-            window.dispatchEvent(new Event('resize'));
-        }, 100);
+        console.log('Game loaded, initializing resize');
+        // Give a bit of time for Three.js to initialize
+        setTimeout(handleResize, 200);
     });
     </script>
     """
