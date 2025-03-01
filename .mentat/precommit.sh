@@ -10,13 +10,18 @@ cd backend
 if [ -d ".venv" ] && [ -f ".venv/bin/activate" ]; then
     echo "Activating virtual environment..."
     source .venv/bin/activate
+    PYTHON_PREFIX=''
 else
     echo "Virtual environment not found, running checks directly..."
+    # Use python -m to run modules if not in a virtual environment
+    PYTHON_PREFIX='python -m '
 fi
 
 echo "Running ruff format on backend..."
 if command -v ruff &> /dev/null; then
     ruff format .
+elif command -v python &> /dev/null; then
+    ${PYTHON_PREFIX}ruff format .
 else
     echo "Warning: ruff not found. Skipping backend formatting."
 fi
@@ -24,6 +29,8 @@ fi
 echo "Running ruff check --fix on backend..."
 if command -v ruff &> /dev/null; then
     ruff check --fix .
+elif command -v python &> /dev/null; then
+    ${PYTHON_PREFIX}ruff check --fix .
 else
     echo "Warning: ruff not found. Skipping backend linting."
 fi
@@ -31,6 +38,8 @@ fi
 echo "Running pyright on backend..."
 if command -v pyright &> /dev/null; then
     pyright .
+elif command -v python &> /dev/null && pip show pyright &> /dev/null; then
+    ${PYTHON_PREFIX}pyright .
 else
     echo "Warning: pyright not found. Skipping backend type checking."
 fi
@@ -42,7 +51,7 @@ echo "Running prettier on frontend..."
 npm run format
 
 echo "Running eslint on frontend..."
-npm run lint
+npm run lint --fix
 
 # Return to root directory
 cd ..

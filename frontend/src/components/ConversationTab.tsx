@@ -4,14 +4,12 @@ import { Message } from "../types";
 interface ConversationTabProps {
   messages: Message[];
   isLoading: boolean;
-  gameName: string;
   onSendMessage: (message: string) => Promise<void>;
 }
 
 export const ConversationTab = ({
   messages,
   isLoading,
-  gameName,
   onSendMessage,
 }: ConversationTabProps) => {
   const [inputText, setInputText] = useState("");
@@ -20,7 +18,7 @@ export const ConversationTab = ({
 
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
-    
+
     await onSendMessage(inputText);
     setInputText("");
   };

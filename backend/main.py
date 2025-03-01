@@ -108,10 +108,7 @@ async def get_chat_messages(
                 )
             game_id = id
             # Return both messages and game info
-            return {
-                "messages": game.get("messages", []),
-                "gameInfo": game
-            }
+            return {"messages": game.get("messages", []), "gameInfo": game}
 
     if game_id is None:
         raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
@@ -170,7 +167,4 @@ async def handle_chat(
     await db.set(_db)
 
     # Return the assistant message and game info
-    return {
-        "message": assistant_message["text"],
-        "gameInfo": game
-    }
+    return {"message": assistant_message["text"], "gameInfo": game}

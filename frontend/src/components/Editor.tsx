@@ -1,7 +1,7 @@
 import { useParams, Navigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { GameFrame } from "./GameFrame";
-import { Game, Message, ApiResponse } from "../types";
+import { Game, Message } from "../types";
 import { ConversationTab } from "./ConversationTab";
 import { GameInfoTab } from "./GameInfoTab";
 
@@ -169,14 +169,10 @@ export const Editor = () => {
           <ConversationTab
             messages={messages}
             isLoading={isLoading}
-            gameName={gameName}
             onSendMessage={handleSendMessage}
           />
         ) : (
-          <GameInfoTab
-            gameInfo={gameInfo}
-            isLoading={isLoading}
-          />
+          <GameInfoTab gameInfo={gameInfo} isLoading={isLoading} />
         )}
       </div>
 
