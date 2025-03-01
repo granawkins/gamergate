@@ -1,2 +1,6 @@
 fastapi
+PyJWT
+pyright
 python-dotenv
+requests
+ruff

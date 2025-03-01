@@ -1,18 +1,7 @@
-import React, { createContext, useState, ReactNode, useEffect } from 'react';
+import { useState, useEffect, ReactNode } from "react";
 
-import { User, Game } from './types';
-
-interface AuthContextType {
-  loading: boolean;
-  user: User | null;
-  setUser: React.Dispatch<React.SetStateAction<User | null>>;
-  games: Game[];
-  setGames: React.Dispatch<React.SetStateAction<Game[]>>;
-}
-
-export const AuthContext = createContext<AuthContextType | undefined>(
-  undefined
-);
+import { AuthContext } from "./AuthContext";
+import { User, Game } from "../types";
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
@@ -22,12 +11,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [games, setGames] = useState<Game[]>([]);
 
   const fetchUser = () => {
-    fetch('/api/user/me', {
-      credentials: 'include',
+    fetch("/api/user/me", {
+      credentials: "include",
     })
       .then((response) => {
         if (!response.ok) {
-          throw new Error('Invalid token');
+          throw new Error("Invalid token");
         }
         return response.json();
       })
@@ -37,7 +26,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         setLoading(false);
       })
       .catch((error) => {
-        console.error('Error validating token:', error);
+        console.error("Error validating token:", error);
         setLoading(false);
       });
   };

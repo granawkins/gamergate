@@ -57,11 +57,11 @@ class DB:
         async with self.lock:
             with open(DB_PATH, "r") as f:
                 return json.load(f)
-            
+
     async def set(self, data: dict) -> None:
         async with self.lock:
             with open(DB_PATH, "w") as f:
-                json.dump(data, f, indent=4)    
+                json.dump(data, f, indent=4)
 
 
 db = DB()

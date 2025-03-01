@@ -3,5 +3,5 @@ export const Play = () => {
     <div>
       <h1>Play</h1>
     </div>
-  )
-}
+  );
+};
