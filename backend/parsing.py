@@ -112,7 +112,7 @@ def generate_git_diff(original_code: str, modified_code: str) -> str:
 
 
 def parse_response(
-    response: str, game_path: str = None, code: str = None
+    response: str, game_path: str | None = None, code: str | None = None
 ) -> ParsedResponse:
     """
     Parse the XML response from the AI assistant.
