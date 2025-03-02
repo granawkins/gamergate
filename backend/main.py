@@ -97,23 +97,16 @@ async def get_chat_messages(
     Get all chat messages and game info for a specific game.
     """
     _db = await db.get()
-    game_id = None
-
-    # Find the game by name
-    for id, game in _db["games"].items():
+    for game in _db["games"].values():
         if game["name"] == game_name:
             if current_user["id"] != game["owner_id"]:
                 raise HTTPException(
                     status_code=403, detail="You are not the owner of this game"
                 )
-            game_id = id
             # Return both messages and game info
             return {"messages": game.get("messages", []), "gameInfo": game}
 
-    if game_id is None:
-        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
-
-    return {"messages": [], "gameInfo": None}
+    raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
 
 
 @app.post("/chat/{game_name}")
@@ -154,7 +147,6 @@ async def handle_chat(
     }
     _db["games"][game_id]["messages"].append(user_message)
 
-    # Create assistant response
     assistant_message: ChatMessage = {
         "id": str(uuid4()),
         "text": f"Echo: {chat_message.message}",
@@ -163,8 +155,6 @@ async def handle_chat(
     }
     _db["games"][game_id]["messages"].append(assistant_message)
 
-    # Update the database
-    await db.set(_db)
-
     # Return the assistant message and game info
-    return {"message": assistant_message["text"], "gameInfo": game}
+    await db.set(_db)
+    return {"message": assistant_message, "gameInfo": game}

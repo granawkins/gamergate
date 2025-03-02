@@ -75,16 +75,7 @@ export const Editor = () => {
       }
 
       const data = await response.json();
-
-      // Add assistant response to the chat
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: data.message,
-        sender: "assistant",
-        timestamp: new Date().toISOString(),
-      };
-
-      setMessages((prevMessages) => [...prevMessages, assistantMessage]);
+      setMessages((prevMessages) => [...prevMessages, data.message]);
       setGameInfo(data.gameInfo);
     } catch (error) {
       console.error("Error sending message:", error);
@@ -110,6 +101,7 @@ export const Editor = () => {
     <div
       style={{
         display: "flex",
+        flexDirection: "row",
         width: "100%",
         height: "100%",
         overflow: "hidden",
@@ -119,6 +111,7 @@ export const Editor = () => {
       <div
         style={{
           width: "50%",
+          maxWidth: "400px",
           display: "flex",
           flexDirection: "column",
           borderRight: "1px solid #ccc",
@@ -179,7 +172,7 @@ export const Editor = () => {
       {/* Right Column - Game Preview */}
       <div
         style={{
-          width: "50%",
+          flexGrow: 1,
           height: "100%",
         }}
       >
