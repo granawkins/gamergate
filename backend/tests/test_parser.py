@@ -9,7 +9,8 @@ from parsing import (
     parse_response,
     extract_message,
     extract_find_replace_pairs,
-    generate_diff,
+    generate_git_diff,
+    apply_changes,
 )
 
 
@@ -170,72 +171,67 @@ def test_extract_find_replace_pairs_with_mismatched_pairs():
     assert len(pairs) == 0
 
 
-def test_generate_diff_with_one_pair():
-    """Test generating a diff with one find/replace pair."""
-    pairs = [
-        ("function test() {\n    return 1;\n}", "function test() {\n    return 2;\n}")
-    ]
+def test_generate_git_diff():
+    """Test generating a diff using git diff."""
+    original_code = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Test</title>
+    </head>
+    <body>
+        <h1>Hello World</h1>
+        <script>
+            function test() {
+                return 1;
+            }
+        </script>
+    </body>
+    </html>
+    """
 
-    diff = generate_diff(pairs)
+    modified_code = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Test</title>
+    </head>
+    <body>
+        <h1>Hello World</h1>
+        <script>
+            function test() {
+                return 2;
+            }
+        </script>
+    </body>
+    </html>
+    """
 
-    expected_diff = "--- Find Block 1\n"
-    expected_diff += "+++ Replace Block 1\n"
-    expected_diff += "@@ -1,3 +1,3 @@\n"
-    expected_diff += "- function test() {\n"
-    expected_diff += "-     return 1;\n"
-    expected_diff += "- }\n"
-    expected_diff += "+ function test() {\n"
-    expected_diff += "+     return 2;\n"
-    expected_diff += "+ }\n"
-    expected_diff += "\n"
+    diff = generate_git_diff(original_code, modified_code)
 
-    assert diff == expected_diff
-
-
-def test_generate_diff_with_multiple_pairs():
-    """Test generating a diff with multiple find/replace pairs."""
-    pairs = [
-        (
-            "function test1() {\n    return 1;\n}",
-            "function test1() {\n    return 2;\n}",
-        ),
-        (
-            "function test2() {\n    return 3;\n}",
-            "function test2() {\n    return 4;\n}",
-        ),
-    ]
-
-    diff = generate_diff(pairs)
-
-    expected_diff = "--- Find Block 1\n"
-    expected_diff += "+++ Replace Block 1\n"
-    expected_diff += "@@ -1,3 +1,3 @@\n"
-    expected_diff += "- function test1() {\n"
-    expected_diff += "-     return 1;\n"
-    expected_diff += "- }\n"
-    expected_diff += "+ function test1() {\n"
-    expected_diff += "+     return 2;\n"
-    expected_diff += "+ }\n"
-    expected_diff += "\n"
-    expected_diff += "--- Find Block 2\n"
-    expected_diff += "+++ Replace Block 2\n"
-    expected_diff += "@@ -1,3 +1,3 @@\n"
-    expected_diff += "- function test2() {\n"
-    expected_diff += "-     return 3;\n"
-    expected_diff += "- }\n"
-    expected_diff += "+ function test2() {\n"
-    expected_diff += "+     return 4;\n"
-    expected_diff += "+ }\n"
-    expected_diff += "\n"
-
-    assert diff == expected_diff
+    # Check that the diff contains the expected changes
+    assert "return 1" in diff
+    assert "return 2" in diff
+    assert diff.startswith("diff --git")
+    assert "--- a/index.html" in diff
+    assert "+++ b/index.html" in diff
 
 
-def test_generate_diff_with_no_pairs():
-    """Test generating a diff with no find/replace pairs."""
-    pairs = []
+def test_generate_git_diff_with_no_changes():
+    """Test generating a diff when there are no changes."""
+    code = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Test</title>
+    </head>
+    <body>
+        <h1>Hello World</h1>
+    </body>
+    </html>
+    """
 
-    diff = generate_diff(pairs)
+    diff = generate_git_diff(code, code)
 
     assert diff == ""
 
@@ -257,23 +253,43 @@ def test_parse_response_with_message_only():
 
 def test_parse_response_with_message_and_one_pair():
     """Test parsing a response with a message and one find/replace pair."""
-    response = """
+    # Create a sample code that contains the find text
+    code = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Test</title>
+    </head>
+    <body>
+        <script>
+            function test() {
+                return 1;
+            }
+        </script>
+    </body>
+    </html>
+    """
+
+    # Extract the exact function text from the code to use in the find/replace pair
+    function_text = (
+        "            function test() {\n                return 1;\n            }"
+    )
+
+    response = f"""
     <gg_message>
     This is a test message.
     </gg_message>
     <gg_find>
-    function test() {
-        return 1;
-    }
+{function_text}
     </gg_find>
     <gg_replace>
-    function test() {
-        return 2;
-    }
+            function test() {{
+                return 2;
+            }}
     </gg_replace>
     """
 
-    parsed = parse_response(response)
+    parsed = parse_response(response, code=code)
 
     assert parsed["text"] == "This is a test message."
     assert "function test()" in parsed["diff"]
@@ -284,33 +300,58 @@ def test_parse_response_with_message_and_one_pair():
 
 def test_parse_response_with_message_and_multiple_pairs():
     """Test parsing a response with a message and multiple find/replace pairs."""
-    response = """
+    # Create a sample code that contains both find texts
+    code = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Test</title>
+    </head>
+    <body>
+        <script>
+            function test1() {
+                return 1;
+            }
+            
+            function test2() {
+                return 3;
+            }
+        </script>
+    </body>
+    </html>
+    """
+
+    # Extract the exact function texts from the code to use in the find/replace pairs
+    function1_text = (
+        "            function test1() {\n                return 1;\n            }"
+    )
+    function2_text = (
+        "            function test2() {\n                return 3;\n            }"
+    )
+
+    response = f"""
     <gg_message>
     This is a test message.
     </gg_message>
     <gg_find>
-    function test1() {
-        return 1;
-    }
+{function1_text}
     </gg_find>
     <gg_replace>
-    function test1() {
-        return 2;
-    }
+            function test1() {{
+                return 2;
+            }}
     </gg_replace>
     <gg_find>
-    function test2() {
-        return 3;
-    }
+{function2_text}
     </gg_find>
     <gg_replace>
-    function test2() {
-        return 4;
-    }
+            function test2() {{
+                return 4;
+            }}
     </gg_replace>
     """
 
-    parsed = parse_response(response)
+    parsed = parse_response(response, code=code)
 
     assert parsed["text"] == "This is a test message."
     assert "function test1()" in parsed["diff"]
@@ -393,3 +434,34 @@ def test_parse_response_with_exception():
     finally:
         # Restore the original function
         parsing.extract_message = original_extract_message
+
+
+def test_apply_changes():
+    """Test applying changes to code."""
+    code = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Test</title>
+    </head>
+    <body>
+        <script>
+            function test() {
+                return 1;
+            }
+        </script>
+    </body>
+    </html>
+    """
+
+    find_replace_pairs = [
+        (
+            "function test() {\n                return 1;\n            }",
+            "function test() {\n                return 2;\n            }",
+        )
+    ]
+
+    modified_code = apply_changes(code, find_replace_pairs)
+
+    assert "return 1" not in modified_code
+    assert "return 2" in modified_code
