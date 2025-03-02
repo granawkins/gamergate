@@ -1,26 +1,22 @@
 import { useRef, useState } from "react";
 import { Message } from "../types";
 
-interface ConversationTabProps {
-  messages: Message[];
-  isLoading: boolean;
-  gameName: string;
-  onSendMessage: (message: string) => Promise<void>;
-}
-
 export const ConversationTab = ({
   messages,
   isLoading,
-  gameName,
   onSendMessage,
-}: ConversationTabProps) => {
+}: {
+  messages: Message[];
+  isLoading: boolean;
+  onSendMessage: (message: string) => Promise<void>;
+}) => {
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
-    
+
     await onSendMessage(inputText);
     setInputText("");
   };

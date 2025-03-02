@@ -1,7 +1,7 @@
 import { useParams, Navigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { GameFrame } from "./GameFrame";
-import { Game, Message, ApiResponse } from "../types";
+import { Game, Message } from "../types";
 import { ConversationTab } from "./ConversationTab";
 import { GameInfoTab } from "./GameInfoTab";
 
@@ -75,16 +75,7 @@ export const Editor = () => {
       }
 
       const data = await response.json();
-
-      // Add assistant response to the chat
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: data.message,
-        sender: "assistant",
-        timestamp: new Date().toISOString(),
-      };
-
-      setMessages((prevMessages) => [...prevMessages, assistantMessage]);
+      setMessages((prevMessages) => [...prevMessages, data.message]);
       setGameInfo(data.gameInfo);
     } catch (error) {
       console.error("Error sending message:", error);
@@ -110,6 +101,7 @@ export const Editor = () => {
     <div
       style={{
         display: "flex",
+        flexDirection: "row",
         width: "100%",
         height: "100%",
         overflow: "hidden",
@@ -119,6 +111,7 @@ export const Editor = () => {
       <div
         style={{
           width: "50%",
+          maxWidth: "400px",
           display: "flex",
           flexDirection: "column",
           borderRight: "1px solid #ccc",
@@ -169,21 +162,17 @@ export const Editor = () => {
           <ConversationTab
             messages={messages}
             isLoading={isLoading}
-            gameName={gameName}
             onSendMessage={handleSendMessage}
           />
         ) : (
-          <GameInfoTab
-            gameInfo={gameInfo}
-            isLoading={isLoading}
-          />
+          <GameInfoTab gameInfo={gameInfo} isLoading={isLoading} />
         )}
       </div>
 
       {/* Right Column - Game Preview */}
       <div
         style={{
-          width: "50%",
+          flexGrow: 1,
           height: "100%",
         }}
       >

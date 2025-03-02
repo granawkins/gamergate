@@ -18,6 +18,7 @@ export const Header = () => {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
+        padding: "0 1rem",
       }}
     >
       <a

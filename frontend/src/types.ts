@@ -22,8 +22,3 @@ export interface Message {
   sender: "user" | "assistant";
   timestamp: string;
 }
-
-export interface ApiResponse {
-  messages: Message[];
-  gameInfo: Game;
-}
