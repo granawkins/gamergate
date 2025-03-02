@@ -40,7 +40,6 @@ function App() {
                 }
               />
               <Route path="/editor/:gameName" element={<Editor />} />
-              <Route path="/play" element={<Play />} />
               <Route path="/play/:gameName" element={<Play />} />
               <Route
                 path="/user"

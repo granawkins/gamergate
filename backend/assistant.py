@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 from anthropic import Anthropic
@@ -69,3 +70,16 @@ async def generate_completion(game_id: str):
     # Update the message in the database
     _db["games"][game_id]["messages"][-1] = last_message
     await db.set(_db)
+
+
+# Run up to 10 completions concurrently
+completion_semaphore = asyncio.Semaphore(10)
+
+
+async def run_completion_with_semaphore(game_id: str):
+    async with completion_semaphore:
+        await generate_completion(game_id)
+
+
+def get_completion_background(game_id: str):
+    asyncio.create_task(run_completion_with_semaphore(game_id))

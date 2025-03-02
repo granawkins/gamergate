@@ -1,5 +1,5 @@
 import { useParams, Navigate } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { GameFrame } from "./GameFrame";
 import { Game, Message } from "../types";
 import { ConversationTab } from "./ConversationTab";
@@ -9,139 +9,91 @@ type TabType = "conversation" | "info";
 
 export const Editor = () => {
   const { gameName } = useParams();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>("conversation");
+
+  // Conversation State
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
   const [gameInfo, setGameInfo] = useState<Game | null>(null);
-  const [isPolling, setIsPolling] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const pollingIntervalRef = useRef<number | null>(null);
 
-  // Fetch data when component mounts
   useEffect(() => {
-    const fetchData = async () => {
+    const initializeConversation = async () => {
       try {
-        setIsLoading(true);
         const response = await fetch(`/api/chat/${gameName}`);
-
         if (!response.ok) {
           throw new Error("Failed to fetch data");
         }
-
         const data = await response.json();
         setMessages(data.messages);
         setGameInfo(data.gameInfo);
       } catch (error) {
-        console.error("Error fetching data:", error);
+        setError(error as string);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchData();
+    initializeConversation();
   }, [gameName]);
 
-  // Scroll to bottom of messages when new messages are added
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages]);
+  // Completion Polling
+  const [isPolling, setIsPolling] = useState(false);
+  const pollingIntervalRef = useRef<number | null>(null);
+  const pollMessage = useCallback(
+    async (message_id: string) => {
+      try {
+        const response = await fetch(
+          `/api/chat/${gameName}/message/${message_id}`,
+        );
 
-  // Poll for message updates if the last message is from the assistant and is processing
-  useEffect(() => {
-    // Clear any existing polling interval when component unmounts or dependencies change
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
+        if (!response.ok) {
+          throw new Error("Failed to fetch message update");
+        }
+
+        const data = await response.json();
+        const updatedMessage = data.message;
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg.id === updatedMessage.id ? updatedMessage : msg,
+          ),
+        );
+      } catch (error) {
+        setError(error as string);
       }
-    };
-  }, []);
+    },
+    [gameName],
+  );
 
   // Start or stop polling based on the last message
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
-
-    // If there's no last message or it's not from the assistant or not processing, don't poll
     if (
-      !lastMessage ||
-      lastMessage.role !== "assistant" ||
-      lastMessage.status !== "processing"
+      lastMessage &&
+      lastMessage.role === "assistant" &&
+      lastMessage.status === "processing"
     ) {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-        setIsPolling(false);
-      }
-      return;
-    }
-
-    // Start polling if we have a processing assistant message
-    if (!pollingIntervalRef.current) {
       setIsPolling(true);
-
-      const pollMessage = async () => {
-        try {
-          const response = await fetch(
-            `/api/chat/${gameName}/message/${lastMessage.id}`,
-          );
-
-          if (!response.ok) {
-            throw new Error("Failed to fetch message update");
-          }
-
-          const data = await response.json();
-          const updatedMessage = data.message;
-
-          // If the message is no longer processing, update it and stop polling
-          if (updatedMessage.status !== "processing") {
-            setMessages((prevMessages) =>
-              prevMessages.map((msg) =>
-                msg.id === updatedMessage.id ? updatedMessage : msg,
-              ),
-            );
-
-            clearInterval(pollingIntervalRef.current!);
-            pollingIntervalRef.current = null;
-            setIsPolling(false);
-          }
-        } catch (error) {
-          console.error("Error polling for message update:", error);
-        }
-      };
-
-      // Poll every second
       pollingIntervalRef.current = window.setInterval(pollMessage, 1000);
-
-      // Initial poll
-      pollMessage();
+    } else if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+      setIsPolling(false);
     }
-
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-    };
-  }, [messages, gameName]);
+  }, [messages, pollMessage]);
 
   const handleSendMessage = async (inputText: string) => {
     if (!inputText.trim()) return;
 
-    // Create a new user message
     const userMessage: Message = {
       id: Date.now().toString(),
       text: inputText,
       role: "user",
       timestamp: new Date().toISOString(),
     };
-
-    // Add user message to the chat
     setMessages((prevMessages) => [...prevMessages, userMessage]);
 
     try {
-      // Send message to backend
       const response = await fetch(`/api/chat/${gameName}`, {
         method: "POST",
         headers: {
@@ -158,18 +110,7 @@ export const Editor = () => {
       setMessages((prevMessages) => [...prevMessages, data.message]);
       setGameInfo(data.gameInfo);
     } catch (error) {
-      console.error("Error sending message:", error);
-
-      // Add error message to chat
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: "Error: Could not send message. Please try again.",
-        role: "assistant",
-        timestamp: new Date().toISOString(),
-        status: "error",
-      };
-
-      setMessages((prevMessages) => [...prevMessages, errorMessage]);
+      setError(error as string);
     }
   };
 
@@ -244,6 +185,7 @@ export const Editor = () => {
             messages={messages}
             isLoading={isLoading}
             isPolling={isPolling}
+            error={error}
             onSendMessage={handleSendMessage}
           />
         ) : (

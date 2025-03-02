@@ -1,11 +1,12 @@
 import { useEffect, useRef } from "react";
 
-interface GameFrameProps {
+export const GameFrame = ({
+  gameName,
+  title,
+}: {
   gameName: string;
   title?: string;
-}
-
-export const GameFrame = ({ gameName, title }: GameFrameProps) => {
+}) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
@@ -16,12 +17,9 @@ export const GameFrame = ({ gameName, title }: GameFrameProps) => {
     // Handle window resize
     const handleResize = () => {
       if (iframeRef.current) {
-        // Trigger a resize event for the iframe content
-        const resizeEvent = new Event("resize");
-        window.dispatchEvent(resizeEvent);
-
-        // If the iframe content is accessible, propagate the resize event
+        // Propagate the resize event to the iframe content
         try {
+          const resizeEvent = new Event("resize");
           iframeRef.current.contentWindow?.dispatchEvent(resizeEvent);
         } catch (e) {
           // Ignore cross-origin frame access errors

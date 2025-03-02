@@ -1,14 +1,13 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from datetime import datetime
 from uuid import uuid4
-import asyncio
 
 from db import db, GAMES_PATH, Message, User
 from user import app as user_app, get_current_user
-from assistant import generate_completion
+from assistant import get_completion_background
 
 app = FastAPI(root_path="/api")
 
@@ -21,10 +20,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Create a semaphore to limit concurrent API calls
-# Adjust the value based on your expected load and API rate limits
-completion_semaphore = asyncio.Semaphore(10)
 
 
 class MessageRequest(BaseModel):
@@ -114,19 +109,10 @@ async def get_chat_messages(
     raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
 
 
-async def run_completion_with_semaphore(game_id: str):
-    """
-    Run the completion with a semaphore to limit concurrent API calls.
-    This function is designed to be run as a background task.
-    """
-    async with completion_semaphore:
-        await generate_completion(game_id)
-
-
 @app.post("/chat/{game_name}")
 async def handle_chat(
     game_name: str,
-    chat_message: MessageRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -138,6 +124,8 @@ async def handle_chat(
     _db = await db.get()
     game_id = None
     game = None
+    body = await request.json()
+    user_message_text = body["message"]
 
     # Find the game by name
     for id, g in _db["games"].items():
@@ -156,7 +144,7 @@ async def handle_chat(
     # Create user message
     user_message: Message = {
         "id": str(uuid4()),
-        "text": chat_message.message,
+        "text": user_message_text,
         "role": "user",
         "timestamp": datetime.now().isoformat(),
         "cost": 0,
@@ -174,9 +162,8 @@ async def handle_chat(
     _db["games"][game_id]["messages"].append(assistant_message)
     await db.set(_db)
 
-    # Start the completion in the background using asyncio
-    # This doesn't block the current request
-    asyncio.create_task(run_completion_with_semaphore(game_id))
+    # Start the completion in the background
+    get_completion_background(game_id)
 
     # Return the empty assistant message and game info immediately
     return {"message": assistant_message, "gameInfo": game}

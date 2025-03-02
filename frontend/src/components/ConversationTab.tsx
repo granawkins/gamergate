@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Message as MessageType } from "../types";
 
 // Message component for rendering individual messages
@@ -17,27 +17,41 @@ const Message = ({ message }: { message: MessageType }) => {
         margin: "4px 0",
         maxWidth: "80%",
         wordBreak: "break-word",
+        whiteSpace: "pre-wrap",
       }}
     >
-      {message.text || (isProcessing ? "Thinking..." : "")}
+      {message.text || (isProcessing ? "..." : "")}
     </div>
   );
 };
+
+const InfoMessage = ({ text }: { text: string }) => (
+  <div
+    style={{
+      textAlign: "center",
+      color: "#888",
+      marginTop: "2rem",
+    }}
+  >
+    {text}
+  </div>
+);
 
 export const ConversationTab = ({
   messages,
   isLoading,
   isPolling,
+  error,
   onSendMessage,
 }: {
   messages: MessageType[];
   isLoading: boolean;
   isPolling?: boolean;
+  error?: string;
   onSendMessage: (message: string) => Promise<void>;
 }) => {
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
@@ -53,11 +67,19 @@ export const ConversationTab = ({
     }
   };
 
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
+  const textDisabled = isLoading || isPolling || !!error;
+  const sendDisabled = !inputText.trim() || textDisabled;
+
   return (
     <>
       {/* Messages Container */}
       <div
-        ref={chatContainerRef}
         style={{
           flex: 1,
           overflowY: "auto",
@@ -67,29 +89,16 @@ export const ConversationTab = ({
         }}
       >
         {isLoading ? (
-          <div
-            style={{
-              textAlign: "center",
-              color: "#888",
-              marginTop: "2rem",
-            }}
-          >
-            Loading messages...
-          </div>
+          <InfoMessage text="Loading messages..." />
         ) : messages.length === 0 ? (
-          <div
-            style={{
-              textAlign: "center",
-              color: "#888",
-              marginTop: "2rem",
-            }}
-          >
-            Start a conversation to edit the game
-          </div>
+          <InfoMessage text="Start a conversation to edit the game" />
         ) : (
           messages.map((message) => (
             <Message key={message.id} message={message} />
           ))
+        )}
+        {error && (
+          <InfoMessage text={`${error}. Please refresh or try again later.`} />
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -115,20 +124,21 @@ export const ConversationTab = ({
             minHeight: "40px",
             maxHeight: "120px",
             outline: "none",
+            opacity: textDisabled ? 0.6 : 1,
           }}
           rows={1}
-          disabled={isPolling} // Disable input while waiting for response
+          disabled={textDisabled} // Disable input while waiting for response
         />
         <button
           onClick={handleSendMessage}
-          disabled={!inputText.trim() || isPolling}
+          disabled={sendDisabled}
           style={{
             padding: "0 16px",
             backgroundColor: "#0084ff",
             color: "white",
             border: "none",
-            cursor: inputText.trim() && !isPolling ? "pointer" : "default",
-            opacity: inputText.trim() && !isPolling ? 1 : 0.6,
+            cursor: sendDisabled ? "default" : "pointer",
+            opacity: sendDisabled ? 0.6 : 1,
           }}
         >
           Send
