@@ -366,6 +366,7 @@ def test_parse_response_with_malformed_xml():
 
 def test_parse_response_with_exception():
     """Test parsing a response that would cause an exception."""
+    import parsing
 
     # Mock the extract_message function to raise an exception
     def mock_extract_message(response):
@@ -376,8 +377,6 @@ def test_parse_response_with_exception():
 
     try:
         # Replace the function with our mock
-        import parsing
-
         parsing.extract_message = mock_extract_message
 
         response = """
