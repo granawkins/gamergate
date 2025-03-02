@@ -31,6 +31,10 @@ def get_cost(model: str, usage: Usage) -> float:
 
 
 async def generate_completion(game_id: str):
+    """
+    Generate a completion for the last assistant message in the game.
+    Updates the message with the completion text, cost, and status.
+    """
     _db = await db.get()
     game = _db["games"].get(game_id)
     if game is None:
@@ -43,18 +47,28 @@ async def generate_completion(game_id: str):
     if last_message["text"]:
         raise ValueError("Last message must be empty")
 
-    response = client.messages.create(
-        max_tokens=1000,
-        model=MODEL,
-        system=SYSTEM_PROMPT,
-        messages=[
-            {"role": message["role"], "content": message["text"]}
-            for message in messages[:-1]
-        ],
-    )
+    try:
+        response = client.messages.create(
+            max_tokens=1000,
+            model=MODEL,
+            system=SYSTEM_PROMPT,
+            messages=[
+                {"role": message["role"], "content": message["text"]}
+                for message in messages[:-1]
+            ],
+        )
 
-    text_block = next((b for b in response.content if isinstance(b, TextBlock)), None)
-    last_message["text"] = text_block.text if text_block else "Missing text block"
-    last_message["cost"] = get_cost(MODEL, response.usage)
+        text_block = next(
+            (b for b in response.content if isinstance(b, TextBlock)), None
+        )
+        last_message["text"] = text_block.text if text_block else "Missing text block"
+        last_message["cost"] = get_cost(MODEL, response.usage)
+        last_message["status"] = "completed"  # Update status to completed
+    except Exception as e:
+        # Handle any errors during completion generation
+        last_message["text"] = f"Error generating response: {str(e)}"
+        last_message["status"] = "error"  # Update status to error
+
+    # Update the message in the database
     _db["games"][game_id]["messages"][-1] = last_message
     await db.set(_db)

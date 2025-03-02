@@ -4,6 +4,8 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from datetime import datetime
 from uuid import uuid4
+import threading
+import asyncio
 
 from db import db, GAMES_PATH, Message, User
 from user import app as user_app, get_current_user
@@ -109,6 +111,17 @@ async def get_chat_messages(
     raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
 
 
+def run_completion_in_thread(game_id: str):
+    """Run the completion in a separate thread."""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    try:
+        loop.run_until_complete(generate_completion(game_id))
+    finally:
+        loop.close()
+
+
 @app.post("/chat/{game_name}")
 async def handle_chat(
     game_name: str,
@@ -117,7 +130,8 @@ async def handle_chat(
 ):
     """
     Handle chat messages for the game editor.
-    Store the message and return a response with the game info.
+    Store the message and return a response with the game info immediately,
+    then run the completion in a separate thread.
     """
     # Check if the game exists
     _db = await db.get()
@@ -154,13 +168,43 @@ async def handle_chat(
         "role": "assistant",
         "timestamp": datetime.now().isoformat(),
         "cost": 0,
+        "status": "processing",  # Add status to track completion progress
     }
     _db["games"][game_id]["messages"].append(assistant_message)
     await db.set(_db)
 
-    await generate_completion(game_id)
+    # Start the completion in a separate thread
+    threading.Thread(target=run_completion_in_thread, args=(game_id,)).start()
 
-    # Return the assistant message and game info
-    _db = await db.get()
-    assistant_message = _db["games"][game_id]["messages"][-1]
+    # Return the empty assistant message and game info immediately
     return {"message": assistant_message, "gameInfo": game}
+
+
+@app.get("/chat/{game_name}/message/{message_id}")
+async def get_message(
+    game_name: str, message_id: str, current_user: User = Depends(get_current_user)
+):
+    """
+    Get a specific message by ID.
+    Used for polling the status of an assistant message.
+    """
+    _db = await db.get()
+
+    # Find the game by name
+    for game in _db["games"].values():
+        if game["name"] == game_name:
+            if current_user["id"] != game["owner_id"]:
+                raise HTTPException(
+                    status_code=403, detail="You are not the owner of this game"
+                )
+
+            # Find the message by ID
+            for message in game.get("messages", []):
+                if message["id"] == message_id:
+                    return {"message": message}
+
+            raise HTTPException(
+                status_code=404, detail=f"Message '{message_id}' not found"
+            )
+
+    raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")

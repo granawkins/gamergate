@@ -13,7 +13,9 @@ export const Editor = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>("conversation");
   const [gameInfo, setGameInfo] = useState<Game | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pollingIntervalRef = useRef<number | null>(null);
 
   // Fetch data when component mounts
   useEffect(() => {
@@ -45,6 +47,78 @@ export const Editor = () => {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
+
+  // Poll for message updates if the last message is from the assistant and is processing
+  useEffect(() => {
+    // Clear any existing polling interval when component unmounts or dependencies change
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, []);
+
+  // Start or stop polling based on the last message
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+    
+    // If there's no last message or it's not from the assistant or not processing, don't poll
+    if (!lastMessage || lastMessage.role !== "assistant" || lastMessage.status !== "processing") {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+        setIsPolling(false);
+      }
+      return;
+    }
+
+    // Start polling if we have a processing assistant message
+    if (!pollingIntervalRef.current) {
+      setIsPolling(true);
+      
+      const pollMessage = async () => {
+        try {
+          const response = await fetch(`/api/chat/${gameName}/message/${lastMessage.id}`);
+          
+          if (!response.ok) {
+            throw new Error("Failed to fetch message update");
+          }
+          
+          const data = await response.json();
+          const updatedMessage = data.message;
+          
+          // If the message is no longer processing, update it and stop polling
+          if (updatedMessage.status !== "processing") {
+            setMessages(prevMessages => 
+              prevMessages.map(msg => 
+                msg.id === updatedMessage.id ? updatedMessage : msg
+              )
+            );
+            
+            clearInterval(pollingIntervalRef.current!);
+            pollingIntervalRef.current = null;
+            setIsPolling(false);
+          }
+        } catch (error) {
+          console.error("Error polling for message update:", error);
+        }
+      };
+      
+      // Poll every second
+      pollingIntervalRef.current = window.setInterval(pollMessage, 1000);
+      
+      // Initial poll
+      pollMessage();
+    }
+    
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [messages, gameName]);
 
   const handleSendMessage = async (inputText: string) => {
     if (!inputText.trim()) return;
@@ -86,6 +160,7 @@ export const Editor = () => {
         text: "Error: Could not send message. Please try again.",
         role: "assistant",
         timestamp: new Date().toISOString(),
+        status: "error",
       };
 
       setMessages((prevMessages) => [...prevMessages, errorMessage]);
@@ -162,6 +237,7 @@ export const Editor = () => {
           <ConversationTab
             messages={messages}
             isLoading={isLoading}
+            isPolling={isPolling}
             onSendMessage={handleSendMessage}
           />
         ) : (
