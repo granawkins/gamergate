@@ -23,4 +23,6 @@ export interface Message {
   completed?: boolean;
   role: "user" | "assistant";
   timestamp: string;
+  status?: "processing" | "completed" | "error";
+  cost?: number;
 }

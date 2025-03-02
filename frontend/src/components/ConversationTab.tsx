@@ -1,13 +1,38 @@
 import { useRef, useState } from "react";
-import { Message } from "../types";
+import { Message as MessageType } from "../types";
+
+// Message component for rendering individual messages
+const Message = ({ message }: { message: MessageType }) => {
+  const isProcessing =
+    message.role === "assistant" && message.status === "processing";
+
+  return (
+    <div
+      style={{
+        alignSelf: message.role === "user" ? "flex-end" : "flex-start",
+        backgroundColor: message.role === "user" ? "#0084ff" : "#e5e5ea",
+        color: message.role === "user" ? "white" : "black",
+        borderRadius: "18px",
+        padding: "8px 16px",
+        margin: "4px 0",
+        maxWidth: "80%",
+        wordBreak: "break-word",
+      }}
+    >
+      {message.text || (isProcessing ? "Thinking..." : "")}
+    </div>
+  );
+};
 
 export const ConversationTab = ({
   messages,
   isLoading,
+  isPolling,
   onSendMessage,
 }: {
-  messages: Message[];
+  messages: MessageType[];
   isLoading: boolean;
+  isPolling?: boolean;
   onSendMessage: (message: string) => Promise<void>;
 }) => {
   const [inputText, setInputText] = useState("");
@@ -63,22 +88,7 @@ export const ConversationTab = ({
           </div>
         ) : (
           messages.map((message) => (
-            <div
-              key={message.id}
-              style={{
-                alignSelf: message.role === "user" ? "flex-end" : "flex-start",
-                backgroundColor:
-                  message.role === "user" ? "#0084ff" : "#e5e5ea",
-                color: message.role === "user" ? "white" : "black",
-                borderRadius: "18px",
-                padding: "8px 16px",
-                margin: "4px 0",
-                maxWidth: "80%",
-                wordBreak: "break-word",
-              }}
-            >
-              {message.text}
-            </div>
+            <Message key={message.id} message={message} />
           ))
         )}
         <div ref={messagesEndRef} />
@@ -107,17 +117,18 @@ export const ConversationTab = ({
             outline: "none",
           }}
           rows={1}
+          disabled={isPolling} // Disable input while waiting for response
         />
         <button
           onClick={handleSendMessage}
-          disabled={!inputText.trim()}
+          disabled={!inputText.trim() || isPolling}
           style={{
             padding: "0 16px",
             backgroundColor: "#0084ff",
             color: "white",
             border: "none",
-            cursor: inputText.trim() ? "pointer" : "default",
-            opacity: inputText.trim() ? 1 : 0.6,
+            cursor: inputText.trim() && !isPolling ? "pointer" : "default",
+            opacity: inputText.trim() && !isPolling ? 1 : 0.6,
           }}
         >
           Send

@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from datetime import datetime
 from uuid import uuid4
+import asyncio
 
 from db import db, GAMES_PATH, Message, User
 from user import app as user_app, get_current_user
@@ -20,6 +21,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Create a semaphore to limit concurrent API calls
+# Adjust the value based on your expected load and API rate limits
+completion_semaphore = asyncio.Semaphore(10)
 
 
 class MessageRequest(BaseModel):
@@ -109,6 +114,15 @@ async def get_chat_messages(
     raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
 
 
+async def run_completion_with_semaphore(game_id: str):
+    """
+    Run the completion with a semaphore to limit concurrent API calls.
+    This function is designed to be run as a background task.
+    """
+    async with completion_semaphore:
+        await generate_completion(game_id)
+
+
 @app.post("/chat/{game_name}")
 async def handle_chat(
     game_name: str,
@@ -117,7 +131,8 @@ async def handle_chat(
 ):
     """
     Handle chat messages for the game editor.
-    Store the message and return a response with the game info.
+    Store the message and return a response with the game info immediately,
+    then run the completion in the background with a semaphore.
     """
     # Check if the game exists
     _db = await db.get()
@@ -154,13 +169,44 @@ async def handle_chat(
         "role": "assistant",
         "timestamp": datetime.now().isoformat(),
         "cost": 0,
+        "status": "processing",  # Add status to track completion progress
     }
     _db["games"][game_id]["messages"].append(assistant_message)
     await db.set(_db)
 
-    await generate_completion(game_id)
+    # Start the completion in the background using asyncio
+    # This doesn't block the current request
+    asyncio.create_task(run_completion_with_semaphore(game_id))
 
-    # Return the assistant message and game info
-    _db = await db.get()
-    assistant_message = _db["games"][game_id]["messages"][-1]
+    # Return the empty assistant message and game info immediately
     return {"message": assistant_message, "gameInfo": game}
+
+
+@app.get("/chat/{game_name}/message/{message_id}")
+async def get_message(
+    game_name: str, message_id: str, current_user: User = Depends(get_current_user)
+):
+    """
+    Get a specific message by ID.
+    Used for polling the status of an assistant message.
+    """
+    _db = await db.get()
+
+    # Find the game by name
+    for game in _db["games"].values():
+        if game["name"] == game_name:
+            if current_user["id"] != game["owner_id"]:
+                raise HTTPException(
+                    status_code=403, detail="You are not the owner of this game"
+                )
+
+            # Find the message by ID
+            for message in game.get("messages", []):
+                if message["id"] == message_id:
+                    return {"message": message}
+
+            raise HTTPException(
+                status_code=404, detail=f"Message '{message_id}' not found"
+            )
+
+    raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
