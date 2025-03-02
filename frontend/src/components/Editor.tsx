@@ -62,9 +62,13 @@ export const Editor = () => {
   // Start or stop polling based on the last message
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
-    
+
     // If there's no last message or it's not from the assistant or not processing, don't poll
-    if (!lastMessage || lastMessage.role !== "assistant" || lastMessage.status !== "processing") {
+    if (
+      !lastMessage ||
+      lastMessage.role !== "assistant" ||
+      lastMessage.status !== "processing"
+    ) {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
@@ -76,26 +80,28 @@ export const Editor = () => {
     // Start polling if we have a processing assistant message
     if (!pollingIntervalRef.current) {
       setIsPolling(true);
-      
+
       const pollMessage = async () => {
         try {
-          const response = await fetch(`/api/chat/${gameName}/message/${lastMessage.id}`);
-          
+          const response = await fetch(
+            `/api/chat/${gameName}/message/${lastMessage.id}`,
+          );
+
           if (!response.ok) {
             throw new Error("Failed to fetch message update");
           }
-          
+
           const data = await response.json();
           const updatedMessage = data.message;
-          
+
           // If the message is no longer processing, update it and stop polling
           if (updatedMessage.status !== "processing") {
-            setMessages(prevMessages => 
-              prevMessages.map(msg => 
-                msg.id === updatedMessage.id ? updatedMessage : msg
-              )
+            setMessages((prevMessages) =>
+              prevMessages.map((msg) =>
+                msg.id === updatedMessage.id ? updatedMessage : msg,
+              ),
             );
-            
+
             clearInterval(pollingIntervalRef.current!);
             pollingIntervalRef.current = null;
             setIsPolling(false);
@@ -104,14 +110,14 @@ export const Editor = () => {
           console.error("Error polling for message update:", error);
         }
       };
-      
+
       // Poll every second
       pollingIntervalRef.current = window.setInterval(pollMessage, 1000);
-      
+
       // Initial poll
       pollMessage();
     }
-    
+
     return () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);

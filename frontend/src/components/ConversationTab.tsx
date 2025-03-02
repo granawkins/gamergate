@@ -32,15 +32,15 @@ export const ConversationTab = ({
 
   // Function to render a message with appropriate styling
   const renderMessage = (message: Message) => {
-    const isProcessing = message.role === "assistant" && message.status === "processing";
-    
+    const isProcessing =
+      message.role === "assistant" && message.status === "processing";
+
     return (
       <div
         key={message.id}
         style={{
           alignSelf: message.role === "user" ? "flex-end" : "flex-start",
-          backgroundColor:
-            message.role === "user" ? "#0084ff" : "#e5e5ea",
+          backgroundColor: message.role === "user" ? "#0084ff" : "#e5e5ea",
           color: message.role === "user" ? "white" : "black",
           borderRadius: "18px",
           padding: "8px 16px",
@@ -51,7 +51,7 @@ export const ConversationTab = ({
         }}
       >
         {message.text || (isProcessing ? "Thinking..." : "")}
-        
+
         {/* Show loading indicator for processing messages */}
         {isProcessing && (
           <div

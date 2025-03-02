@@ -13,12 +13,13 @@ class User(TypedDict):
     created_at: datetime
 
 
-class Message(TypedDict):
+class Message(TypedDict, total=False):
     id: str
     text: str
     role: Literal["user", "assistant"]
     timestamp: str
     cost: Optional[float]
+    status: Optional[Literal["processing", "completed", "error"]]
 
 
 class Game(TypedDict):
