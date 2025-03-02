@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from datetime import datetime
 from uuid import uuid4
 
-from db import db, GAMES_PATH, Message, User
+from db import db, GAMES_PATH, Message, User, MessageStatus
 from user import app as user_app, get_current_user
 from assistant import get_completion_background
 
@@ -157,7 +157,7 @@ async def handle_chat(
         "role": "assistant",
         "timestamp": datetime.now().isoformat(),
         "cost": 0,
-        "status": "processing",  # Add status to track completion progress
+        "status": MessageStatus.PROCESSING,
     }
     _db["games"][game_id]["messages"].append(assistant_message)
     await db.set(_db)
