@@ -3,7 +3,6 @@ fastapi
 PyJWT
 pyright
 pytest
-pytest-asyncio
 python-dotenv
 requests
 ruff

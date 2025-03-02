@@ -1,5 +1,6 @@
 import asyncio
 import os
+import subprocess
 from typing import List, Tuple
 
 from anthropic import Anthropic
@@ -73,47 +74,15 @@ def apply_edits(code: str, edits: List[Tuple[str, str]]) -> str:
     return result
 
 
-async def apply_edits_to_game(game_id: str, edits: List[Tuple[str, str]]) -> bool:
-    """
-    Apply edits to a game's code file.
-
-    Args:
-        game_id: The ID of the game
-        edits: A list of (find, replace) tuples
-
-    Returns:
-        True if successful, False otherwise
-    """
-    try:
-        _db = await db.get()
-        game = _db["games"].get(game_id)
-        if game is None:
-            return False
-
-        game_path = GAMES_PATH / game["path"]
-        file_path = game_path / "index.html"
-
-        # Read the current code
-        with open(file_path, "r") as f:
-            code = f.read()
-
-        # Apply the edits
-        modified_code = apply_edits(code, edits)
-
-        # Write the modified code back to the file
-        with open(file_path, "w") as f:
-            f.write(modified_code)
-
-        return True
-    except Exception:
-        return False
-
-
 async def generate_completion(game_id: str):
     """
     Generate a completion for the last assistant message in the game.
-    Updates the message with the completion text, cost, and status.
+    Parses response into text and edits.
+    Applies edits to the codebase.
+    Updates the message with the completion text, diff, commit sha, cost, and status.
     """
+
+    # Build messages
     _db = await db.get()
     game = _db["games"].get(game_id)
     if game is None:
@@ -132,6 +101,8 @@ async def generate_completion(game_id: str):
         response_format_prompt=response_format_prompt, code=code
     )
 
+    # Generate completion
+    edits = []
     try:
         response = client.messages.create(
             max_tokens=1000,
@@ -142,24 +113,49 @@ async def generate_completion(game_id: str):
                 for message in messages[-11:-1]
             ],
         )
-
         text_block = next((b for b in response.content if hasattr(b, "text")), None)
         ai_response = text_block.text if text_block else "Missing text block"  # type: ignore
 
         # Parse the response to extract message text and edits
         parsed = parse_response(ai_response)
-
-        # Update the message with the parsed text and edits
         last_message["text"] = parsed["text"]
-        last_message["edits"] = parsed["edits"]
         last_message["cost"] = get_cost(MODEL, response.usage)
         last_message["status"] = "completed"
+        edits = parsed["edits"]
 
     except Exception as e:
-        # Handle any errors during completion generation
         last_message["text"] = f"Error generating response: {str(e)}"
         last_message["edits"] = []
         last_message["status"] = "error"
+
+    # Apply edits, extract diff and commit
+    if len(edits) > 0:
+        try:
+            file_path = GAMES_PATH / game["path"] / "index.html"
+            with open(file_path, "r") as f:
+                code = f.read()
+            modified_code = apply_edits(code, edits)
+            with open(file_path, "w") as f:
+                f.write(modified_code)
+
+            diff = subprocess.run(
+                ["git", "diff", "--cached"],
+                cwd=GAMES_PATH / game["path"],
+                capture_output=True,
+                text=True,
+            )
+            last_message["diff"] = diff.stdout
+
+            subprocess.run(["git", "add", "."], cwd=GAMES_PATH / game["path"])
+            commit_result = subprocess.run(
+                ["git", "commit", "-m", f"message {last_message['id']}", "--format=%H"],
+                cwd=GAMES_PATH / game["path"],
+                capture_output=True,
+                text=True,
+            )
+            last_message["commit_sha"] = commit_result.stdout.strip()
+        except Exception as e:
+            last_message["text"] += f"\nError applying edits: {str(e)}"
 
     # Update the message in the database
     _db["games"][game_id]["messages"][-1] = last_message

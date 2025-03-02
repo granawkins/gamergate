@@ -2,7 +2,6 @@ import json
 import subprocess
 from asyncio import Lock
 from datetime import datetime
-from enum import Enum
 from pathlib import Path
 from typing import TypedDict, Optional, List, Literal
 from uuid import UUID, uuid4
@@ -15,19 +14,15 @@ class User(TypedDict):
     created_at: datetime
 
 
-class MessageStatus(Enum):
-    PROCESSING = "processing"
-    COMPLETED = "completed"
-    ERROR = "error"
-
-
 class Message(TypedDict, total=False):
     id: str
     text: str
     role: Literal["user", "assistant"]
     timestamp: str
     cost: Optional[float]
-    status: Optional[MessageStatus]
+    status: Literal["processing", "completed", "error"]
+    diff: Optional[str]
+    commit_sha: Optional[str]
 
 
 class Game(TypedDict):
