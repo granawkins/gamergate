@@ -1,5 +1,28 @@
 import { useRef, useState } from "react";
-import { Message } from "../types";
+import { Message as MessageType } from "../types";
+
+// Message component for rendering individual messages
+const Message = ({ message }: { message: MessageType }) => {
+  const isProcessing =
+    message.role === "assistant" && message.status === "processing";
+
+  return (
+    <div
+      style={{
+        alignSelf: message.role === "user" ? "flex-end" : "flex-start",
+        backgroundColor: message.role === "user" ? "#0084ff" : "#e5e5ea",
+        color: message.role === "user" ? "white" : "black",
+        borderRadius: "18px",
+        padding: "8px 16px",
+        margin: "4px 0",
+        maxWidth: "80%",
+        wordBreak: "break-word",
+      }}
+    >
+      {message.text || (isProcessing ? "Thinking..." : "")}
+    </div>
+  );
+};
 
 export const ConversationTab = ({
   messages,
@@ -7,7 +30,7 @@ export const ConversationTab = ({
   isPolling,
   onSendMessage,
 }: {
-  messages: Message[];
+  messages: MessageType[];
   isLoading: boolean;
   isPolling?: boolean;
   onSendMessage: (message: string) => Promise<void>;
@@ -28,68 +51,6 @@ export const ConversationTab = ({
       e.preventDefault();
       handleSendMessage();
     }
-  };
-
-  // Function to render a message with appropriate styling
-  const renderMessage = (message: Message) => {
-    const isProcessing =
-      message.role === "assistant" && message.status === "processing";
-
-    return (
-      <div
-        key={message.id}
-        style={{
-          alignSelf: message.role === "user" ? "flex-end" : "flex-start",
-          backgroundColor: message.role === "user" ? "#0084ff" : "#e5e5ea",
-          color: message.role === "user" ? "white" : "black",
-          borderRadius: "18px",
-          padding: "8px 16px",
-          margin: "4px 0",
-          maxWidth: "80%",
-          wordBreak: "break-word",
-          position: "relative",
-        }}
-      >
-        {message.text || (isProcessing ? "Thinking..." : "")}
-
-        {/* Show loading indicator for processing messages */}
-        {isProcessing && (
-          <div
-            style={{
-              position: "absolute",
-              bottom: "-20px",
-              left: "8px",
-              fontSize: "12px",
-              color: "#888",
-              display: "flex",
-              alignItems: "center",
-            }}
-          >
-            <div
-              style={{
-                display: "inline-block",
-                width: "8px",
-                height: "8px",
-                borderRadius: "50%",
-                backgroundColor: "#888",
-                marginRight: "4px",
-                animation: "pulse 1s infinite ease-in-out",
-              }}
-            />
-            <style>
-              {`
-                @keyframes pulse {
-                  0% { opacity: 0.4; }
-                  50% { opacity: 1; }
-                  100% { opacity: 0.4; }
-                }
-              `}
-            </style>
-            Generating response...
-          </div>
-        )}
-      </div>
-    );
   };
 
   return (
@@ -126,7 +87,9 @@ export const ConversationTab = ({
             Start a conversation to edit the game
           </div>
         ) : (
-          messages.map(renderMessage)
+          messages.map((message) => (
+            <Message key={message.id} message={message} />
+          ))
         )}
         <div ref={messagesEndRef} />
       </div>
