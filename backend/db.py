@@ -1,4 +1,5 @@
 import json
+import subprocess
 from asyncio import Lock
 from datetime import datetime
 from enum import Enum
@@ -78,6 +79,12 @@ class DB:
                     "plays": 0,
                     "messages": [],
                 }
+                # Initialize a git repo for the game
+                subprocess.run(["git", "init"], cwd=GAMES_PATH / dir.name)
+                subprocess.run(["git", "add", "."], cwd=GAMES_PATH / dir.name)
+                subprocess.run(
+                    ["git", "commit", "-m", "Initial commit"], cwd=GAMES_PATH / dir.name
+                )
             with open(DB_PATH, "w") as f:
                 json.dump(_db, f, indent=4)
         self.lock = Lock()
