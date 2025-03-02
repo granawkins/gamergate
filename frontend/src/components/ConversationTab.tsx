@@ -1,17 +1,18 @@
-import { useRef, useState } from "react";
+import { useRef, useState, RefObject } from "react";
 import { Message } from "../types";
 
 export const ConversationTab = ({
   messages,
   isLoading,
   onSendMessage,
+  messagesEndRef,
 }: {
   messages: Message[];
   isLoading: boolean;
   onSendMessage: (message: string) => Promise<void>;
+  messagesEndRef: RefObject<HTMLDivElement>;
 }) => {
   const [inputText, setInputText] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const handleSendMessage = async () => {

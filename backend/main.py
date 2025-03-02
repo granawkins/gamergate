@@ -4,11 +4,27 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from datetime import datetime
 from uuid import uuid4
+import socketio
+import asyncio
+import time
 
 from db import db, GAMES_PATH, ChatMessage, User
 from user import app as user_app, get_current_user
 
+# Create a Socket.IO server
+sio = socketio.AsyncServer(
+    async_mode="asgi",
+    cors_allowed_origins=["http://localhost:5173"]  # Default Vite dev server port
+)
+
+# Create FastAPI app
 app = FastAPI(root_path="/api")
+
+# Create an ASGI app from the Socket.IO server
+socket_app = socketio.ASGIApp(sio)
+
+# Mount the Socket.IO app to the FastAPI app
+app.mount("/ws", socket_app)
 
 app.mount("/user", user_app)
 
@@ -19,6 +35,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Socket.IO event handlers
+@sio.event
+async def connect(sid, environ):
+    print(f"Client connected: {sid}")
+
+@sio.event
+async def disconnect(sid):
+    print(f"Client disconnected: {sid}")
 
 
 class ChatMessageRequest(BaseModel):
@@ -117,6 +142,7 @@ async def handle_chat(
     """
     Handle chat messages for the game editor.
     Store the message and return a response with the game info.
+    Stream the assistant message character by character using Socket.IO.
     """
     # Check if the game exists
     _db = await db.get()
@@ -146,14 +172,61 @@ async def handle_chat(
     }
     _db["games"][game_id]["messages"].append(user_message)
 
+    # Create assistant message with empty text initially
+    message_id = str(uuid4())
     assistant_message: ChatMessage = {
-        "id": str(uuid4()),
-        "text": f"Echo: {chat_message.message}",
+        "id": message_id,
+        "text": "",  # Start with empty text, will be filled character by character
         "sender": "assistant",
         "timestamp": datetime.now().isoformat(),
     }
     _db["games"][game_id]["messages"].append(assistant_message)
-
-    # Return the assistant message and game info
+    
+    # Save the initial state to the database
     await db.set(_db)
+    
+    # Prepare the full response text
+    full_response = f"Echo: {chat_message.message}"
+    
+    # Start a background task to stream the response
+    asyncio.create_task(
+        stream_response(game_id, message_id, full_response, game)
+    )
+    
+    # Return immediately with the initial empty message and game info
     return {"message": assistant_message, "gameInfo": game}
+
+async def stream_response(game_id: str, message_id: str, full_response: str, game):
+    """
+    Stream the assistant response character by character.
+    Updates both the database and sends updates via Socket.IO.
+    """
+    current_text = ""
+    
+    # Stream at approximately 20 characters per second
+    delay = 0.05  # 50ms delay between characters
+    
+    for char in full_response:
+        current_text += char
+        
+        # Update the message in the database
+        _db = await db.get()
+        for msg in _db["games"][game_id]["messages"]:
+            if msg["id"] == message_id:
+                msg["text"] = current_text
+                break
+        
+        await db.set(_db)
+        
+        # Emit the updated message via Socket.IO
+        await sio.emit(
+            "message_update", 
+            {
+                "message_id": message_id,
+                "text": current_text,
+                "game_name": game["name"]
+            }
+        )
+        
+        # Wait before sending the next character
+        await asyncio.sleep(delay)

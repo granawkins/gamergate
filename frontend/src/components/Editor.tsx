@@ -4,6 +4,7 @@ import { GameFrame } from "./GameFrame";
 import { Game, Message } from "../types";
 import { ConversationTab } from "./ConversationTab";
 import { GameInfoTab } from "./GameInfoTab";
+import { io, Socket } from "socket.io-client";
 
 type TabType = "conversation" | "info";
 
@@ -14,6 +15,42 @@ export const Editor = () => {
   const [activeTab, setActiveTab] = useState<TabType>("conversation");
   const [gameInfo, setGameInfo] = useState<Game | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const socketRef = useRef<Socket | null>(null);
+
+  // Initialize Socket.IO connection
+  useEffect(() => {
+    // Create Socket.IO connection
+    socketRef.current = io("/api/ws");
+
+    // Set up event listeners
+    socketRef.current.on("connect", () => {
+      console.log("Connected to Socket.IO server");
+    });
+
+    socketRef.current.on("disconnect", () => {
+      console.log("Disconnected from Socket.IO server");
+    });
+
+    socketRef.current.on("message_update", (data) => {
+      if (data.game_name === gameName) {
+        // Update the message with the streamed text
+        setMessages((prevMessages) => 
+          prevMessages.map((msg) => 
+            msg.id === data.message_id 
+              ? { ...msg, text: data.text } 
+              : msg
+          )
+        );
+      }
+    });
+
+    // Clean up on unmount
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, [gameName]);
 
   // Fetch data when component mounts
   useEffect(() => {
@@ -75,6 +112,9 @@ export const Editor = () => {
       }
 
       const data = await response.json();
+      
+      // Add the initial empty assistant message
+      // The actual content will be streamed via Socket.IO
       setMessages((prevMessages) => [...prevMessages, data.message]);
       setGameInfo(data.gameInfo);
     } catch (error) {
@@ -163,6 +203,7 @@ export const Editor = () => {
             messages={messages}
             isLoading={isLoading}
             onSendMessage={handleSendMessage}
+            messagesEndRef={messagesEndRef}
           />
         ) : (
           <GameInfoTab gameInfo={gameInfo} isLoading={isLoading} />

@@ -5,3 +5,5 @@ pyright
 python-dotenv
 requests
 ruff
+python-socketio
+uvicorn[standard]
