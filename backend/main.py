@@ -103,7 +103,6 @@ async def get_chat_messages(
                 raise HTTPException(
                     status_code=403, detail="You are not the owner of this game"
                 )
-            # Return both messages and game info
             return {"messages": game.get("messages", []), "gameInfo": game}
 
     raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
