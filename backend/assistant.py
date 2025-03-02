@@ -1,11 +1,12 @@
 import asyncio
 import os
+from typing import List, Tuple
 
 from anthropic import Anthropic
 from anthropic.types import Usage
 
 from db import db, GAMES_PATH
-from parsing import response_format_prompt
+from parsing import response_format_prompt, parse_response
 
 
 client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
@@ -55,6 +56,59 @@ def get_cost(model: str, usage: Usage) -> float:
     )
 
 
+def apply_edits(code: str, edits: List[Tuple[str, str]]) -> str:
+    """
+    Apply a list of edits (find/replace pairs) to the code.
+
+    Args:
+        code: The original code
+        edits: A list of (find, replace) tuples
+
+    Returns:
+        The modified code
+    """
+    result = code
+    for find, replace in edits:
+        result = result.replace(find, replace)
+    return result
+
+
+async def apply_edits_to_game(game_id: str, edits: List[Tuple[str, str]]) -> bool:
+    """
+    Apply edits to a game's code file.
+
+    Args:
+        game_id: The ID of the game
+        edits: A list of (find, replace) tuples
+
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        _db = await db.get()
+        game = _db["games"].get(game_id)
+        if game is None:
+            return False
+
+        game_path = GAMES_PATH / game["path"]
+        file_path = game_path / "index.html"
+
+        # Read the current code
+        with open(file_path, "r") as f:
+            code = f.read()
+
+        # Apply the edits
+        modified_code = apply_edits(code, edits)
+
+        # Write the modified code back to the file
+        with open(file_path, "w") as f:
+            f.write(modified_code)
+
+        return True
+    except Exception:
+        return False
+
+
 async def generate_completion(game_id: str):
     """
     Generate a completion for the last assistant message in the game.
@@ -90,13 +144,22 @@ async def generate_completion(game_id: str):
         )
 
         text_block = next((b for b in response.content if hasattr(b, "text")), None)
-        last_message["text"] = text_block.text if text_block else "Missing text block"  # type: ignore
+        ai_response = text_block.text if text_block else "Missing text block"  # type: ignore
+
+        # Parse the response to extract message text and edits
+        parsed = parse_response(ai_response)
+
+        # Update the message with the parsed text and edits
+        last_message["text"] = parsed["text"]
+        last_message["edits"] = parsed["edits"]
         last_message["cost"] = get_cost(MODEL, response.usage)
-        last_message["status"] = "completed"  # Update status to completed
+        last_message["status"] = "completed"
+
     except Exception as e:
         # Handle any errors during completion generation
         last_message["text"] = f"Error generating response: {str(e)}"
-        last_message["status"] = "error"  # Update status to error
+        last_message["edits"] = []
+        last_message["status"] = "error"
 
     # Update the message in the database
     _db["games"][game_id]["messages"][-1] = last_message
