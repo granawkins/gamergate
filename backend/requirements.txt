@@ -2,6 +2,7 @@ anthropic
 fastapi
 PyJWT
 pyright
+pytest
 python-dotenv
 requests
 ruff
