@@ -53,7 +53,7 @@ export const Editor = () => {
     const userMessage: Message = {
       id: Date.now().toString(),
       text: inputText,
-      sender: "user",
+      role: "user",
       timestamp: new Date().toISOString(),
     };
 
@@ -84,7 +84,7 @@ export const Editor = () => {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: "Error: Could not send message. Please try again.",
-        sender: "assistant",
+        role: "assistant",
         timestamp: new Date().toISOString(),
       };
 

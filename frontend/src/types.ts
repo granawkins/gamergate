@@ -19,6 +19,8 @@ export interface Game {
 export interface Message {
   id: string;
   text: string;
-  sender: "user" | "assistant";
+  diff?: string;
+  completed?: boolean;
+  role: "user" | "assistant";
   timestamp: string;
 }

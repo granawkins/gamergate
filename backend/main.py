@@ -5,8 +5,9 @@ from pydantic import BaseModel
 from datetime import datetime
 from uuid import uuid4
 
-from db import db, GAMES_PATH, ChatMessage, User
+from db import db, GAMES_PATH, Message, User
 from user import app as user_app, get_current_user
+from assistant import generate_completion
 
 app = FastAPI(root_path="/api")
 
@@ -21,7 +22,7 @@ app.add_middleware(
 )
 
 
-class ChatMessageRequest(BaseModel):
+class MessageRequest(BaseModel):
     message: str
 
 
@@ -111,7 +112,7 @@ async def get_chat_messages(
 @app.post("/chat/{game_name}")
 async def handle_chat(
     game_name: str,
-    chat_message: ChatMessageRequest,
+    chat_message: MessageRequest,
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -138,22 +139,28 @@ async def handle_chat(
         raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
 
     # Create user message
-    user_message: ChatMessage = {
+    user_message: Message = {
         "id": str(uuid4()),
         "text": chat_message.message,
-        "sender": "user",
+        "role": "user",
         "timestamp": datetime.now().isoformat(),
+        "cost": 0,
     }
     _db["games"][game_id]["messages"].append(user_message)
 
-    assistant_message: ChatMessage = {
+    assistant_message: Message = {
         "id": str(uuid4()),
-        "text": f"Echo: {chat_message.message}",
-        "sender": "assistant",
+        "text": "",
+        "role": "assistant",
         "timestamp": datetime.now().isoformat(),
+        "cost": 0,
     }
     _db["games"][game_id]["messages"].append(assistant_message)
+    await db.set(_db)
+
+    await generate_completion(game_id)
 
     # Return the assistant message and game info
-    await db.set(_db)
+    _db = await db.get()
+    assistant_message = _db["games"][game_id]["messages"][-1]
     return {"message": assistant_message, "gameInfo": game}

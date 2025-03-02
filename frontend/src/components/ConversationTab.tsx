@@ -66,11 +66,10 @@ export const ConversationTab = ({
             <div
               key={message.id}
               style={{
-                alignSelf:
-                  message.sender === "user" ? "flex-end" : "flex-start",
+                alignSelf: message.role === "user" ? "flex-end" : "flex-start",
                 backgroundColor:
-                  message.sender === "user" ? "#0084ff" : "#e5e5ea",
-                color: message.sender === "user" ? "white" : "black",
+                  message.role === "user" ? "#0084ff" : "#e5e5ea",
+                color: message.role === "user" ? "white" : "black",
                 borderRadius: "18px",
                 padding: "8px 16px",
                 margin: "4px 0",

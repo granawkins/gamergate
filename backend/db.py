@@ -13,11 +13,12 @@ class User(TypedDict):
     created_at: datetime
 
 
-class ChatMessage(TypedDict):
+class Message(TypedDict):
     id: str
     text: str
-    sender: Literal["user", "assistant"]
+    role: Literal["user", "assistant"]
     timestamp: str
+    cost: Optional[float]
 
 
 class Game(TypedDict):
@@ -29,7 +30,7 @@ class Game(TypedDict):
     created_at: datetime
     updated_at: datetime
     plays: int
-    messages: List[ChatMessage]
+    messages: List[Message]
 
 
 class Database(TypedDict):
