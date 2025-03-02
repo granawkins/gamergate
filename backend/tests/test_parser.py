@@ -1,5 +1,11 @@
 import re
-from backend.parsing import (
+import sys
+import os
+
+# Add the parent directory to the path so we can import modules from the backend package
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from parsing import (
     parse_response,
     extract_message,
     extract_find_replace_pairs,
@@ -370,9 +376,9 @@ def test_parse_response_with_exception():
 
     try:
         # Replace the function with our mock
-        import backend.parsing
+        import parsing
 
-        backend.parsing.extract_message = mock_extract_message
+        parsing.extract_message = mock_extract_message
 
         response = """
         <gg_message>
@@ -387,4 +393,4 @@ def test_parse_response_with_exception():
         assert parsed["status"].value == "error"
     finally:
         # Restore the original function
-        backend.parsing.extract_message = original_extract_message
+        parsing.extract_message = original_extract_message
