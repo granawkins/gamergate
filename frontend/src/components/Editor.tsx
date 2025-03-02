@@ -31,6 +31,7 @@ export const Editor = () => {
       console.log("Disconnected from Socket.IO server");
     });
 
+    // Listen for message updates (streaming)
     socketRef.current.on("message_update", (data) => {
       if (data.game_name === gameName) {
         // Update the message with the streamed text
@@ -44,9 +45,30 @@ export const Editor = () => {
       }
     });
 
+    // Listen for general errors
+    socketRef.current.on("error", (error) => {
+      console.error("Socket error:", error);
+      // Only show an error message if it's not handled elsewhere
+      if (!error.handled) {
+        const errorMessage: Message = {
+          id: `error-${Date.now()}`,
+          text: `Error: ${error.message || "An unknown error occurred"}`,
+          sender: "assistant",
+          timestamp: new Date().toISOString(),
+        };
+        setMessages((prevMessages) => [...prevMessages, errorMessage]);
+      }
+    });
+
     // Clean up on unmount
     return () => {
       if (socketRef.current) {
+        // Remove all listeners to avoid memory leaks
+        socketRef.current.off("connect");
+        socketRef.current.off("disconnect");
+        socketRef.current.off("message_update");
+        socketRef.current.off("error");
+        socketRef.current.off("message_received");
         socketRef.current.disconnect();
       }
     };
@@ -86,44 +108,66 @@ export const Editor = () => {
   const handleSendMessage = async (inputText: string) => {
     if (!inputText.trim()) return;
 
-    // Create a new user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
+    // Create a new user message with a temporary ID
+    const tempUserMessage: Message = {
+      id: `temp-${Date.now()}`,
       text: inputText,
       sender: "user",
       timestamp: new Date().toISOString(),
     };
 
-    // Add user message to the chat
-    setMessages((prevMessages) => [...prevMessages, userMessage]);
+    // Add user message to the chat immediately for UI responsiveness
+    setMessages((prevMessages) => [...prevMessages, tempUserMessage]);
 
     try {
-      // Send message to backend
-      const response = await fetch(`/api/chat/${gameName}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ message: inputText }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to send message");
+      if (!socketRef.current || !socketRef.current.connected) {
+        throw new Error("Socket not connected");
       }
 
-      const data = await response.json();
+      // Get the current user ID (assuming it's available in the gameInfo)
+      const userId = gameInfo?.owner_id;
       
-      // Add the initial empty assistant message
-      // The actual content will be streamed via Socket.IO
-      setMessages((prevMessages) => [...prevMessages, data.message]);
-      setGameInfo(data.gameInfo);
+      if (!userId) {
+        throw new Error("User ID not available");
+      }
+
+      // Send message via Socket.IO
+      socketRef.current.emit('send_message', {
+        game_name: gameName,
+        message: inputText,
+        user_id: userId
+      });
+
+      // Set up a one-time listener for the response
+      socketRef.current.once('message_received', (data) => {
+        // Replace the temporary user message with the actual one from the server
+        setMessages((prevMessages) => 
+          prevMessages.map((msg) => 
+            msg.id === tempUserMessage.id ? data.user_message : msg
+          )
+        );
+        
+        // Add the initial empty assistant message
+        // The actual content will be streamed via Socket.IO
+        setMessages((prevMessages) => [...prevMessages, data.assistant_message]);
+        
+        // Update game info
+        setGameInfo(data.game_info);
+      });
+
+      // Set up a one-time listener for errors
+      socketRef.current.once('error', (error) => {
+        console.error("Socket error:", error);
+        throw new Error(error.message || "Failed to send message");
+      });
+      
     } catch (error) {
       console.error("Error sending message:", error);
 
       // Add error message to chat
       const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: "Error: Could not send message. Please try again.",
+        id: `error-${Date.now()}`,
+        text: `Error: ${error instanceof Error ? error.message : "Could not send message. Please try again."}`,
         sender: "assistant",
         timestamp: new Date().toISOString(),
       };

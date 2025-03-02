@@ -45,6 +45,83 @@ async def connect(sid, environ):
 async def disconnect(sid):
     print(f"Client disconnected: {sid}")
 
+@sio.event
+async def send_message(sid, data):
+    """
+    Handle incoming messages from the client via Socket.IO.
+    Store the user message and stream back an assistant response.
+    """
+    try:
+        game_name = data.get('game_name')
+        message_text = data.get('message')
+        user_id = data.get('user_id')
+        
+        if not all([game_name, message_text, user_id]):
+            await sio.emit('error', {'message': 'Missing required fields'}, room=sid)
+            return
+            
+        # Check if the game exists
+        _db = await db.get()
+        game_id = None
+        game = None
+
+        # Find the game by name
+        for id, g in _db["games"].items():
+            if g["name"] == game_name:
+                if user_id != g["owner_id"]:
+                    await sio.emit('error', {'message': 'You are not the owner of this game'}, room=sid)
+                    return
+                game_id = id
+                game = g
+                break
+
+        if game_id is None:
+            await sio.emit('error', {'message': f"Game '{game_name}' not found"}, room=sid)
+            return
+
+        # Create user message
+        user_message_id = str(uuid4())
+        user_message: ChatMessage = {
+            "id": user_message_id,
+            "text": message_text,
+            "sender": "user",
+            "timestamp": datetime.now().isoformat(),
+        }
+        _db["games"][game_id]["messages"].append(user_message)
+
+        # Create assistant message with empty text initially
+        assistant_message_id = str(uuid4())
+        assistant_message: ChatMessage = {
+            "id": assistant_message_id,
+            "text": "",  # Start with empty text, will be filled character by character
+            "sender": "assistant",
+            "timestamp": datetime.now().isoformat(),
+        }
+        _db["games"][game_id]["messages"].append(assistant_message)
+        
+        # Save the initial state to the database
+        await db.set(_db)
+        
+        # Emit the user and initial assistant messages
+        await sio.emit('message_received', {
+            'user_message': user_message,
+            'assistant_message': assistant_message,
+            'game_info': game
+        }, room=sid)
+        
+        # Prepare the full response text
+        full_response = f"Echo: {message_text}"
+        
+        # Start a background task to stream the response
+        # Pass the sid to ensure the response is sent only to this client
+        asyncio.create_task(
+            stream_response(game_id, assistant_message_id, full_response, game, sid=sid)
+        )
+        
+    except Exception as e:
+        print(f"Error in send_message: {str(e)}")
+        await sio.emit('error', {'message': f"An error occurred: {str(e)}"}, room=sid)
+
 
 class ChatMessageRequest(BaseModel):
     message: str
@@ -140,7 +217,10 @@ async def handle_chat(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Handle chat messages for the game editor.
+    Handle chat messages for the game editor via HTTP POST.
+    This endpoint is kept for backward compatibility.
+    For new implementations, use the Socket.IO 'send_message' event.
+    
     Store the message and return a response with the game info.
     Stream the assistant message character by character using Socket.IO.
     """
@@ -196,10 +276,17 @@ async def handle_chat(
     # Return immediately with the initial empty message and game info
     return {"message": assistant_message, "gameInfo": game}
 
-async def stream_response(game_id: str, message_id: str, full_response: str, game):
+async def stream_response(game_id: str, message_id: str, full_response: str, game, sid=None):
     """
     Stream the assistant response character by character.
-    Updates both the database and sends updates via Socket.IO.
+    Updates the database and sends updates via Socket.IO.
+    
+    Args:
+        game_id: The ID of the game
+        message_id: The ID of the message to update
+        full_response: The complete response text to stream
+        game: The game object
+        sid: Optional Socket.IO session ID for directed messages
     """
     current_text = ""
     
@@ -218,15 +305,20 @@ async def stream_response(game_id: str, message_id: str, full_response: str, gam
         
         await db.set(_db)
         
+        # Prepare the update data
+        update_data = {
+            "message_id": message_id,
+            "text": current_text,
+            "game_name": game["name"]
+        }
+        
         # Emit the updated message via Socket.IO
-        await sio.emit(
-            "message_update", 
-            {
-                "message_id": message_id,
-                "text": current_text,
-                "game_name": game["name"]
-            }
-        )
+        if sid:
+            # If sid is provided, send only to that client
+            await sio.emit("message_update", update_data, room=sid)
+        else:
+            # Otherwise broadcast to all clients
+            await sio.emit("message_update", update_data)
         
         # Wait before sending the next character
         await asyncio.sleep(delay)
