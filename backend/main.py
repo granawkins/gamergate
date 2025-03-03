@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from db import db, GAMES_PATH, Message, User
 from user import app as user_app, get_current_user
-from assistant import get_completion_background
+from assistant import get_completion_background, extract_message
 
 app = FastAPI(root_path="/api")
 
@@ -104,7 +104,16 @@ async def get_chat_messages(
                 raise HTTPException(
                     status_code=403, detail="You are not the owner of this game"
                 )
-            return {"messages": game.get("messages", []), "gameInfo": game}
+            messages = game.get("messages")
+            for message in messages:
+                if (
+                    message.get("role") == "assistant"
+                    and message.get("status") != "error"
+                ):
+                    message["text"] = extract_message(
+                        message["text"], allow_incomplete=True
+                    )
+            return {"messages": messages, "gameInfo": game}
 
     raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
 
@@ -190,6 +199,13 @@ async def get_message(
             # Find the message by ID
             for message in game.get("messages", []):
                 if message["id"] == message_id:
+                    if (
+                        message.get("role") == "assistant"
+                        and message.get("status") != "error"
+                    ):
+                        message["text"] = extract_message(
+                            message["text"], allow_incomplete=True
+                        )
                     return {"message": message}
 
             raise HTTPException(

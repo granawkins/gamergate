@@ -21,7 +21,6 @@ class Message(TypedDict, total=False):
     timestamp: str
     cost: Optional[float]
     status: Literal["processing", "completed", "error"]
-    diff: Optional[str]
     commit_sha: Optional[str]
 
 

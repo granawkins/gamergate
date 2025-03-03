@@ -1,16 +1,42 @@
 import asyncio
 import os
+import re
 import subprocess
 from typing import List, Tuple
 
-from anthropic import Anthropic
-from anthropic.types import Usage
+from anthropic import AsyncAnthropic, AnthropicError
+from anthropic.types import MessageParam, Usage
 
 from db import db, GAMES_PATH
-from parsing import response_format_prompt, parse_response
 
 
-client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+
+MODEL = "claude-3-5-sonnet-20241022"
+RETRIES = 3
+
+
+model_costs = {
+    "claude-3-5-sonnet-20240620": {
+        "cache_creation_input_tokens": 0.00015,
+        "cache_read_input_tokens": 0.00001,
+        "input_tokens": 0.00015,
+        "output_tokens": 0.0006,
+    },
+    "claude-3-5-sonnet-20241022": {
+        "cache_creation_input_tokens": 0.00015,
+        "cache_read_input_tokens": 0.00001,
+        "input_tokens": 0.00015,
+        "output_tokens": 0.0006,
+    },
+}
+
+
+def get_cost(model: str, usage: Usage) -> float:
+    return sum(
+        model_costs[model][key] * getattr(usage, key, 0) for key in model_costs[model]
+    )
 
 
 SYSTEM_PROMPT = """\
@@ -29,49 +55,93 @@ When you write code:
 - Keep everything in a single html file, and make everything client-side.
 - You're in charge of the entire codebase. Don't hesitate to refactor or make major changes if you feel they're appropriate. Leave comments where useful.
 
-{response_format_prompt}
+Respond with an xml block with the following format:
+
+<gg_message>
+# The text to display to the user.
+</gg_message>
+<gg_find>
+# A snipped of original code (with spacing!) to be replaced. The parser will 
+# literally replace this text with the text in <gg_replace>.
+</gg_find>
+<gg_replace>
+# New code to replace the text in <gg_find>.
+</gg_replace>
+
+Follow these guidelines absolutely:
+- Only respond in the above format. Any text before or after the xml block, or xml tags other than those above, will be ignored.
+- You can provide no find/replace paris, one, or multiple.
+- Make sure each xml tag is on its own line with no spaces before/after the tag name.
+- Make sure the xml block is properly terminated.
+- Edits will be applied in the order they are given.
 
 Here is the current code:
 
 {code}
-
 """
 
 
-MODEL = "claude-3-5-sonnet-20240620"
+class BadRequestError(Exception):
+    pass
 
 
-model_costs = {
-    "claude-3-5-sonnet-20240620": {
-        "cache_creation_input_tokens": 0.00015,
-        "cache_read_input_tokens": 0.00001,
-        "input_tokens": 0.00015,
-        "output_tokens": 0.0006,
-    },
-}
+class BadResponseError(Exception):
+    pass
 
 
-def get_cost(model: str, usage: Usage) -> float:
-    return sum(
-        model_costs[model][key] * getattr(usage, key, 0) for key in model_costs[model]
+def extract_message(response: str, allow_incomplete: bool = False) -> str:
+    """Extract the message text from the response"""
+    message_match = re.search(
+        r"<gg_message>\s*(.*?)\s*</gg_message>", response, re.DOTALL
     )
 
+    if message_match:
+        if len(message_match.groups()) > 1:
+            raise BadResponseError("Multiple message tags found")
+        return message_match.group(1)
 
-def apply_edits(code: str, edits: List[Tuple[str, str]]) -> str:
-    """
-    Apply a list of edits (find/replace pairs) to the code.
+    if not allow_incomplete:
+        raise BadResponseError("No closing message tag found")
 
-    Args:
-        code: The original code
-        edits: A list of (find, replace) tuples
+    message_start = re.search(r"<gg_message>(.*)", response, re.DOTALL)
+    if message_start:
+        # Return everything after the opening tag, stripping whitespace
+        return message_start.group(1).strip()
 
-    Returns:
-        The modified code
-    """
-    result = code
-    for find, replace in edits:
-        result = result.replace(find, replace)
-    return result
+    return ""
+
+
+def extract_edits(
+    response: str, allow_incomplete: bool = False
+) -> List[Tuple[str, str]]:
+    """Extract find/replace pairs from the response"""
+    find_blocks = re.findall(r"<gg_find>\s*(.*?)\s*</gg_find>", response, re.DOTALL)
+    replace_blocks = re.findall(
+        r"<gg_replace>\s*(.*?)\s*</gg_replace>", response, re.DOTALL
+    )
+
+    if not allow_incomplete:
+        if len(find_blocks) != len(replace_blocks):
+            raise BadResponseError("Unequal number of find and replace tags")
+        if response.count("<gg_find>") != response.count("</gg_find>"):
+            raise BadResponseError("Unequal number of find tags")
+        if response.count("<gg_replace>") != response.count("</gg_replace>"):
+            raise BadResponseError("Unequal number of replace tags")
+
+    pairs = []
+    for i in range(min(len(find_blocks), len(replace_blocks))):
+        pairs.append((find_blocks[i], replace_blocks[i]))
+
+    return pairs
+
+
+def apply_edit(code: str, find: str, replace: str) -> str:
+    """Apply a single edit to the code"""
+    if code.count(find) == 0:
+        raise BadResponseError("Find text not found in code")
+    elif code.count(find) > 1:
+        raise BadResponseError("Find text found multiple times in code")
+    return code.replace(find, replace)
 
 
 async def generate_completion(game_id: str):
@@ -83,149 +153,101 @@ async def generate_completion(game_id: str):
     Updates the message with the completion text, diff, commit sha, cost, and status.
     """
 
-    # Build messages
     _db = await db.get()
     game = _db["games"].get(game_id)
     if game is None:
-        raise ValueError(f"Game {game_id} not found")
-    messages = game["messages"]
+        raise BadRequestError(f"Game {game_id} not found")
 
+    # Build system prompt
+    file_path = GAMES_PATH / game["path"] / "index.html"
+    if not file_path.exists():
+        raise BadRequestError("Game code not found")
+    with open(file_path, "r") as f:
+        code = f.read()
+    system_prompt = SYSTEM_PROMPT.format(code=code)
+
+    # Build messages
+    messages = game["messages"]
     last_message = messages[-1]
     if last_message["role"] != "assistant":
-        raise ValueError("Last message must be an assistant message")
+        raise BadRequestError("Last message must be an assistant message")
     if last_message["text"]:
-        raise ValueError("Last message must be empty")
+        raise BadRequestError("Last message must be empty")
+    messages = [
+        MessageParam(role=message["role"], content=message["text"])
+        for message in messages[
+            :-1
+        ]  # Last message is placeholder for assistant response
+    ]
 
-    # Initialize the message with empty text and processing status
-    last_message["text"] = ""
-    last_message["status"] = "processing"
-    _db["games"][game_id]["messages"][-1] = last_message
-    await db.set(_db)
-
-    edits = []
-    try:
-        # Read the code
-        with open(GAMES_PATH / game["path"] / "index.html", "r") as f:
-            code = f.read()
-        system_prompt = SYSTEM_PROMPT.format(
-            response_format_prompt=response_format_prompt, code=code
-        )
-
-        # Generate streaming completion
-        stream = client.messages.create(
-            max_tokens=1000,
-            model=MODEL,
-            system=system_prompt,
-            messages=[
-                {"role": message["role"], "content": message["text"]}
-                for message in messages[-11:-1]
-            ],
-            stream=True,
-        )
-
-        # Process the streaming response
+    for try_num in range(RETRIES):
         full_response = ""
-
-        # Process the stream in a synchronous manner
-        for event in stream:
-            # Try to extract text content from the event safely
-            text_content = ""
-            try:
-                # Use a generic approach to extract text from the event
-                # Convert the event to a string representation
-                event_str = str(event)
-
-                # Check if this is a content delta event with text
-                if "delta" in event_str and "text" in event_str:
-                    # Use getattr with a default value to safely access attributes
-                    delta = getattr(event, "delta", None)
-                    if delta is not None:
-                        # Use getattr again to safely access the text attribute
-                        text = getattr(delta, "text", "")
-                        if text:
-                            text_content = text
-            except Exception:
-                # If we encounter any error accessing attributes, just continue
-                pass
-
-            # If we found text content, update the response
-            if text_content:
-                # Append the new text to the full response
-                full_response += text_content
-
-                # Update the message in the database with the partial response
-                _db = await db.get()
-                game = _db["games"].get(game_id)
-                if game is None:
-                    raise ValueError(f"Game {game_id} not found")
-                last_message = game["messages"][-1]
-                last_message["text"] = full_response
-                _db["games"][game_id]["messages"][-1] = last_message
-                await db.set(_db)
-
-                # Add a 1-second delay to avoid excessive database access
-                await asyncio.sleep(1)
-
-        # Parse the complete response to extract message text and edits
-        parsed = parse_response(full_response)
-
-        # Get final database state
-        _db = await db.get()
-        game = _db["games"].get(game_id)
-        if game is None:
-            raise ValueError(f"Game {game_id} not found")
-        last_message = game["messages"][-1]
-
-        # Update with parsed content
-        last_message["text"] = parsed["text"]
-        edits = parsed["edits"]
-
-        # Set a fixed cost for now since we can't access usage directly
-        last_message["cost"] = 0.0  # Placeholder
-        last_message["status"] = "completed"
-
-    except Exception as e:
-        # Get current database state in case it changed during streaming
-        _db = await db.get()
-        game = _db["games"].get(game_id)
-        if game is None:
-            raise ValueError(f"Game {game_id} not found")
-        last_message = game["messages"][-1]
-
-        last_message["text"] = f"Error generating response: {str(e)}"
-        last_message["edits"] = []
-        last_message["status"] = "error"
-
-    # Apply edits, extract diff and commit
-    if len(edits) > 0:
         try:
-            file_path = GAMES_PATH / game["path"] / "index.html"
-            with open(file_path, "r") as f:
-                code = f.read()
-            modified_code = apply_edits(code, edits)
-            with open(file_path, "w") as f:
-                f.write(modified_code)
-
-            diff = subprocess.run(
-                ["git", "diff", "--cached"],
-                cwd=GAMES_PATH / game["path"],
-                capture_output=True,
-                text=True,
+            # Stream response directly into db
+            stream = await client.messages.create(
+                max_tokens=8192,
+                messages=messages,
+                model=MODEL,
+                stream=True,
+                system=system_prompt,
             )
-            last_message["diff"] = diff.stdout
+            async for event in stream:  # type: ignore
+                if (
+                    event.type == "content_block_delta"
+                    and event.delta.type == "text_delta"
+                ):
+                    full_response += event.delta.text
+                    last_message["text"] = full_response
+                    _db["games"][game_id]["messages"][-1] = last_message
+                    await db.set(_db)
 
-            subprocess.run(["git", "add", "."], cwd=GAMES_PATH / game["path"])
-            commit_result = subprocess.run(
-                ["git", "commit", "-m", f"message {last_message['id']}", "--format=%H"],
-                cwd=GAMES_PATH / game["path"],
-                capture_output=True,
-                text=True,
-            )
-            last_message["commit_sha"] = commit_result.stdout.strip()
+            # Check that message and edits are valid
+            extract_message(full_response)
+            edits = extract_edits(full_response)
+
+            # Apply edits
+            if len(edits) > 0:
+                modified_code = code
+                for find, replace in edits:
+                    modified_code = apply_edit(modified_code, find, replace)
+                with open(file_path, "w") as f:
+                    f.write(modified_code)
+
+                # Apply to codebase
+                subprocess.run(
+                    ["git", "add", "index.html"], cwd=GAMES_PATH / game["path"]
+                )
+                commit_result = subprocess.run(
+                    [
+                        "git",
+                        "commit",
+                        "-m",
+                        f"message {last_message['id']}",
+                        "--format=%H",
+                    ],
+                    cwd=GAMES_PATH / game["path"],
+                    capture_output=True,
+                )
+                last_message["commit_sha"] = commit_result.stdout.strip().decode(
+                    "utf-8"
+                )
+
+            # Success!
+            last_message["status"] = "completed"
+            break
+        except AnthropicError as e:
+            last_message["text"] += f"Error generating response: {str(e)}"
+            last_message["status"] = "error"
+            break
         except Exception as e:
-            last_message["text"] += f"\nError applying edits: {str(e)}"
+            print(f"Error generating response: {str(e)}")
+            if try_num < RETRIES - 1:
+                print("Retrying...")
+                last_message["text"] = ""  # Try again
+            else:
+                last_message["text"] += f"Error generating response: {str(e)}"
+                last_message["status"] = "error"
 
-    # Update the message in the database
     _db["games"][game_id]["messages"][-1] = last_message
     await db.set(_db)
 
