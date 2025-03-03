@@ -1,4 +1,5 @@
 import json
+import subprocess
 from asyncio import Lock
 from datetime import datetime
 from pathlib import Path
@@ -19,7 +20,9 @@ class Message(TypedDict, total=False):
     role: Literal["user", "assistant"]
     timestamp: str
     cost: Optional[float]
-    status: Optional[Literal["processing", "completed", "error"]]
+    status: Literal["processing", "completed", "error"]
+    diff: Optional[str]
+    commit_sha: Optional[str]
 
 
 class Game(TypedDict):
@@ -71,6 +74,12 @@ class DB:
                     "plays": 0,
                     "messages": [],
                 }
+                # Initialize a git repo for the game
+                subprocess.run(["git", "init"], cwd=GAMES_PATH / dir.name)
+                subprocess.run(["git", "add", "."], cwd=GAMES_PATH / dir.name)
+                subprocess.run(
+                    ["git", "commit", "-m", "Initial commit"], cwd=GAMES_PATH / dir.name
+                )
             with open(DB_PATH, "w") as f:
                 json.dump(_db, f, indent=4)
         self.lock = Lock()

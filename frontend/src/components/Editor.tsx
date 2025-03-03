@@ -74,7 +74,10 @@ export const Editor = () => {
       lastMessage.status === "processing"
     ) {
       setIsPolling(true);
-      pollingIntervalRef.current = window.setInterval(pollMessage, 1000);
+      pollingIntervalRef.current = window.setInterval(
+        () => pollMessage(lastMessage.id),
+        1000,
+      );
     } else if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;

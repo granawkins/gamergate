@@ -157,7 +157,7 @@ async def handle_chat(
         "role": "assistant",
         "timestamp": datetime.now().isoformat(),
         "cost": 0,
-        "status": "processing",  # Add status to track completion progress
+        "status": "processing",
     }
     _db["games"][game_id]["messages"].append(assistant_message)
     await db.set(_db)
