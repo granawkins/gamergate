@@ -53,7 +53,7 @@
         const carGeometry = new THREE.BoxGeometry(1, 0.5, 2); // Width: 1, Height: 0.5, Length: 2
         const carMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
         const car = new THREE.Mesh(carGeometry, carMaterial);
-        car.position.set(0, 0.25, 0); // Bottom of car rests on ground
+        car.position.set(5, 0.25, 5); // Start on the "road" between buildings
         scene.add(car);
 
         // Keyboard controls
@@ -73,19 +73,56 @@
 
         // Movement parameters
         const clock = new THREE.Clock();
-        const speed = 5; // Units per second
+        const maxSpeed = 10; // Maximum speed
+        const acceleration = 8; // Units per second squared
+        const deceleration = 4; // Natural slowdown
         const turnSpeed = Math.PI; // Radians per second
+        let velocity = 0; // Current velocity
 
         // Animation loop
         function animate() {
             requestAnimationFrame(animate);
             const delta = clock.getDelta();
 
-            // Car movement with W-A-S-D
-            if (keys.w) car.translateZ(speed * delta); // Forward
-            if (keys.s) car.translateZ(-speed * delta); // Backward
-            if (keys.a) car.rotateY(turnSpeed * delta); // Turn left
-            if (keys.d) car.rotateY(-turnSpeed * delta); // Turn right
+            // Car movement with W-A-S-D and collision detection
+            const carBox = new THREE.Box3().setFromObject(car);
+            const originalPosition = car.position.clone();
+            
+            // Apply acceleration/deceleration
+            if (keys.w) {
+                velocity = Math.min(velocity + acceleration * delta, maxSpeed);
+            } else if (keys.s) {
+                velocity = Math.max(velocity - acceleration * delta, -maxSpeed/2);
+            } else {
+                // Natural slowdown when no keys are pressed
+                if (velocity > 0) {
+                    velocity = Math.max(0, velocity - deceleration * delta);
+                } else {
+                    velocity = Math.min(0, velocity + deceleration * delta);
+                }
+            }
+            
+            // Apply movement
+            car.translateZ(velocity * delta);
+            if (keys.a) car.rotateY(turnSpeed * delta * (velocity / maxSpeed));
+            if (keys.d) car.rotateY(-turnSpeed * delta * (velocity / maxSpeed));
+            
+            // Check for collisions after movement
+            const newCarBox = new THREE.Box3().setFromObject(car);
+            let collision = false;
+            
+            for (const building of buildings) {
+                const buildingBox = new THREE.Box3().setFromObject(building);
+                if (newCarBox.intersectsBox(buildingBox)) {
+                    collision = true;
+                    break;
+                }
+            }
+            
+            // If there's a collision, restore original position
+            if (collision) {
+                car.position.copy(originalPosition);
+            }
 
             // Third-person camera
             const offset = new THREE.Vector3(0, 2, -5); // Up 2, behind 5
