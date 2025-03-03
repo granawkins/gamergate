@@ -131,17 +131,19 @@ async def generate_completion(game_id: str):
             # Try to extract text content from the event safely
             text_content = ""
             try:
-                # Try to access content directly if available
-                if hasattr(event, "content") and event.content:
-                    text_content = event.content
-                # Try to access text directly if available
-                elif hasattr(event, "text") and event.text:
-                    text_content = event.text
-                # Try to access text via content blocks if available
-                elif hasattr(event, "content_blocks"):
-                    for block in event.content_blocks:
-                        if hasattr(block, "text") and block.text:
-                            text_content += block.text
+                # Use a generic approach to extract text from the event
+                # Convert the event to a string representation
+                event_str = str(event)
+
+                # Check if this is a content delta event with text
+                if "delta" in event_str and "text" in event_str:
+                    # Use getattr with a default value to safely access attributes
+                    delta = getattr(event, "delta", None)
+                    if delta is not None:
+                        # Use getattr again to safely access the text attribute
+                        text = getattr(delta, "text", "")
+                        if text:
+                            text_content = text
             except Exception:
                 # If we encounter any error accessing attributes, just continue
                 pass
