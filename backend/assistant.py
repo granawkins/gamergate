@@ -77,6 +77,7 @@ Follow these guidelines absolutely:
 - Make sure each xml tag is on its own line with no spaces before/after the tag name.
 - Make sure the xml block is properly terminated.
 - Edits will be applied in the order they are given.
+- Once again, you must match the spacing of the original code exactly in your find blocks.
 
 Here is the current code:
 

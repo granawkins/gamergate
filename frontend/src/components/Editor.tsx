@@ -17,6 +17,8 @@ export const Editor = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [gameInfo, setGameInfo] = useState<Game | null>(null);
 
+  const [frameKey, setFrameKey] = useState(0);
+
   useEffect(() => {
     const initializeConversation = async () => {
       try {
@@ -58,32 +60,31 @@ export const Editor = () => {
             msg.id === updatedMessage.id ? updatedMessage : msg,
           ),
         );
+        if (
+          updatedMessage.status !== "processing" &&
+          pollingIntervalRef.current
+        ) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+          setIsPolling(false);
+        }
+        if (
+          updatedMessage.status === "completed" &&
+          !!updatedMessage.commit_sha
+        ) {
+          setFrameKey((prev) => prev + 1);
+        }
       } catch (error) {
         setError(error as string);
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+          setIsPolling(false);
+        }
       }
     },
     [gameName],
   );
-
-  // Start or stop polling based on the last message
-  useEffect(() => {
-    const lastMessage = messages[messages.length - 1];
-    if (
-      lastMessage &&
-      lastMessage.role === "assistant" &&
-      lastMessage.status === "processing"
-    ) {
-      setIsPolling(true);
-      pollingIntervalRef.current = window.setInterval(
-        () => pollMessage(lastMessage.id),
-        1000,
-      );
-    } else if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-      setIsPolling(false);
-    }
-  }, [messages, pollMessage]);
 
   const handleSendMessage = async (inputText: string) => {
     if (!inputText.trim()) return;
@@ -112,6 +113,12 @@ export const Editor = () => {
       const data = await response.json();
       setMessages((prevMessages) => [...prevMessages, data.message]);
       setGameInfo(data.gameInfo);
+      const assistantMessageId = data.message.id;
+      pollingIntervalRef.current = window.setInterval(
+        () => pollMessage(assistantMessageId),
+        1000,
+      );
+      setIsPolling(true);
     } catch (error) {
       setError(error as string);
     }
@@ -203,7 +210,7 @@ export const Editor = () => {
           height: "100%",
         }}
       >
-        <GameFrame gameName={gameName} />
+        <GameFrame key={frameKey} gameName={gameName} />
       </div>
     </div>
   );

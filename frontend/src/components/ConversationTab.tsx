@@ -20,7 +20,9 @@ const Message = ({ message }: { message: MessageType }) => {
         whiteSpace: "pre-wrap",
       }}
     >
-      {message.text || (isProcessing ? "..." : "")}
+      {message.status === "error"
+        ? "Error, try again later"
+        : message.text || (isProcessing ? "..." : "")}
     </div>
   );
 };

@@ -19,10 +19,9 @@ export interface Game {
 export interface Message {
   id: string;
   text: string;
-  diff?: string;
-  completed?: boolean;
   role: "user" | "assistant";
   timestamp: string;
-  status?: "processing" | "completed" | "error";
   cost?: number;
+  status?: "processing" | "completed" | "error";
+  commit_sha?: string;
 }
