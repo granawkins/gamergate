@@ -125,10 +125,16 @@ async def generate_completion(game_id: str):
 
         # Process the streaming response
         full_response = ""
-        async for chunk in stream:
-            if chunk.delta.text:
+
+        # Process the stream in a synchronous manner
+        for event in stream:
+            if (
+                hasattr(event, "delta")
+                and hasattr(event.delta, "text")
+                and event.delta.text
+            ):
                 # Append the new text to the full response
-                full_response += chunk.delta.text
+                full_response += event.delta.text
 
                 # Update the message in the database with the partial response
                 _db = await db.get()
@@ -156,7 +162,9 @@ async def generate_completion(game_id: str):
         # Update with parsed content
         last_message["text"] = parsed["text"]
         edits = parsed["edits"]
-        last_message["cost"] = get_cost(MODEL, stream.usage)
+
+        # Set a fixed cost for now since we can't access usage directly
+        last_message["cost"] = 0.0  # Placeholder
         last_message["status"] = "completed"
 
     except Exception as e:
