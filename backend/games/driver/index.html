@@ -15,6 +15,14 @@
     <script>
         // Scene setup
         const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB); // Light blue sky
+        
+        // Add sun
+        const sunGeometry = new THREE.SphereGeometry(5, 32, 32);
+        const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 }); // Bright yellow
+        const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+        sun.position.set(50, 40, -60); // Position in sky
+        scene.add(sun);
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -56,6 +64,9 @@
         car.position.set(5, 0.25, 5); // Start on the "road" between buildings
         scene.add(car);
 
+        car.position.set(5, 0.25, 5); // Start position
+        scene.add(car);
+
         // Keyboard controls
         const keys = { w: false, a: false, s: false, d: false };
         window.addEventListener('keydown', (event) => {
@@ -73,7 +84,7 @@
 
         // Movement parameters
         const clock = new THREE.Clock();
-        const maxSpeed = 10; // Maximum speed
+        const maxSpeed = 20; // Maximum speed
         const acceleration = 8; // Units per second squared
         const deceleration = 4; // Natural slowdown
         const turnSpeed = Math.PI; // Radians per second
@@ -119,9 +130,10 @@
                 }
             }
             
-            // If there's a collision, restore original position
+            // If there's a collision, restore original position and stop the car
             if (collision) {
                 car.position.copy(originalPosition);
+                velocity = 0; // Reset speed to zero on collision
             }
 
             // Third-person camera

@@ -5,7 +5,7 @@ import subprocess
 from typing import List, Tuple
 
 from anthropic import AsyncAnthropic, AnthropicError
-from anthropic.types import MessageParam, Usage
+from anthropic.types import MessageParam
 
 from db import db, GAMES_PATH
 
@@ -15,6 +15,7 @@ client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 MODEL = "claude-3-5-sonnet-20241022"
 RETRIES = 3
+MOST_RECENT_N_MESSAGES = 5
 
 
 model_costs = {
@@ -33,10 +34,12 @@ model_costs = {
 }
 
 
-def get_cost(model: str, usage: Usage) -> float:
-    return sum(
-        model_costs[model][key] * getattr(usage, key, 0) for key in model_costs[model]
-    )
+def get_cost(model: str, usage: dict) -> float:
+    cost = 0.0
+    for key, value in model_costs[model].items():
+        if key in usage:
+            cost += value * usage.get(key, 0)
+    return cost
 
 
 SYSTEM_PROMPT = """\
@@ -176,7 +179,7 @@ async def generate_completion(game_id: str):
     messages = [
         MessageParam(role=message["role"], content=message["text"])
         for message in messages[
-            :-1
+            -(MOST_RECENT_N_MESSAGES + 1) : -1
         ]  # Last message is placeholder for assistant response
     ]
 
@@ -192,6 +195,21 @@ async def generate_completion(game_id: str):
                 system=system_prompt,
             )
             async for event in stream:  # type: ignore
+                # Update cost
+                chunk_dict = (
+                    event.model_dump() if hasattr(event, "model_dump") else dict(event)
+                )
+                usage = None
+                if "message" in chunk_dict and "usage" in chunk_dict["message"]:
+                    usage = chunk_dict["message"]["usage"]
+                elif "usage" in chunk_dict:
+                    usage = chunk_dict["usage"]
+                elif "delta" in chunk_dict and "usage" in chunk_dict["delta"]:
+                    usage = chunk_dict["delta"]["usage"]
+                if usage is not None:
+                    last_message["cost"] += get_cost(MODEL, usage)
+
+                # Get text
                 if (
                     event.type == "content_block_delta"
                     and event.delta.type == "text_delta"
@@ -217,14 +235,19 @@ async def generate_completion(game_id: str):
                 subprocess.run(
                     ["git", "add", "index.html"], cwd=GAMES_PATH / game["path"]
                 )
-                commit_result = subprocess.run(
+                # First make the commit
+                subprocess.run(
                     [
                         "git",
                         "commit",
                         "-m",
                         f"message {last_message['id']}",
-                        "--format=%H",
                     ],
+                    cwd=GAMES_PATH / game["path"],
+                )
+                # Then get the commit hash
+                commit_result = subprocess.run(
+                    ["git", "rev-parse", "HEAD"],
                     cwd=GAMES_PATH / game["path"],
                     capture_output=True,
                 )
