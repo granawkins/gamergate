@@ -123,6 +123,30 @@ export const Editor = () => {
       setError(error as string);
     }
   };
+  
+  const handleUndo = async (message: Message) => {
+    if (!message.commit_sha) return;
+    
+    try {
+      const response = await fetch(`/api/chat/${gameName}/undo`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to undo changes");
+      }
+
+      const data = await response.json();
+      setMessages(data.messages);
+      // Reload the iframe to show the changes
+      setFrameKey((prev) => prev + 1);
+    } catch (error) {
+      setError(error as string);
+    }
+  };
 
   // Redirect to home if no gameName is provided
   if (!gameName) {
@@ -197,6 +221,7 @@ export const Editor = () => {
             isPolling={isPolling}
             error={error}
             onSendMessage={handleSendMessage}
+            onUndo={handleUndo}
           />
         ) : (
           <GameInfoTab gameInfo={gameInfo} isLoading={isLoading} />

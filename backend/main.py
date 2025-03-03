@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from datetime import datetime
+import subprocess
 from uuid import uuid4
 
 from db import db, GAMES_PATH, Message, User
@@ -213,3 +214,62 @@ async def get_message(
             )
 
     raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+
+
+@app.post("/chat/{game_name}/undo")
+async def undo_last_commit(
+    game_name: str, current_user: User = Depends(get_current_user)
+):
+    """
+    Undo the last commit in the game's repo and delete the last two messages
+    (assistant message with diff and user message that prompted it).
+    """
+    _db = await db.get()
+    game_id = None
+    game = None
+
+    # Find the game by name
+    for id, g in _db["games"].items():
+        if g["name"] == game_name:
+            if current_user["id"] != g["owner_id"]:
+                raise HTTPException(
+                    status_code=403, detail="You are not the owner of this game"
+                )
+            game_id = id
+            game = g
+            break
+
+    if game_id is None:
+        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+
+    # Check if there are messages to undo
+    messages = game.get("messages", [])
+    if len(messages) < 2:
+        raise HTTPException(
+            status_code=400, detail="Not enough messages to perform undo operation"
+        )
+
+    # Check if the last message is from the assistant and has a commit_sha
+    last_message = messages[-1]
+    if last_message["role"] != "assistant" or not last_message.get("commit_sha"):
+        raise HTTPException(
+            status_code=400,
+            detail="Last message is not an assistant message with a commit",
+        )
+
+    # Undo the last commit in the game's repo
+    try:
+        subprocess.run(
+            ["git", "reset", "--hard", "HEAD~1"],
+            cwd=GAMES_PATH / game["path"],
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to undo commit: {str(e)}")
+
+    # Remove the last two messages (assistant message and user message)
+    if len(messages) >= 2:
+        _db["games"][game_id]["messages"] = messages[:-2]
+        await db.set(_db)
+
+    return {"success": True, "messages": _db["games"][game_id]["messages"]}

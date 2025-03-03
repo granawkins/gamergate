@@ -2,27 +2,62 @@ import { useEffect, useRef, useState } from "react";
 import { Message as MessageType } from "../types";
 
 // Message component for rendering individual messages
-const Message = ({ message }: { message: MessageType }) => {
+const Message = ({ 
+  message, 
+  onUndo 
+}: { 
+  message: MessageType;
+  onUndo?: (message: MessageType) => void;
+}) => {
   const isProcessing =
     message.role === "assistant" && message.status === "processing";
+  
+  const showUndoButton = 
+    message.role === "assistant" && 
+    message.status === "completed" && 
+    message.commit_sha;
 
   return (
-    <div
-      style={{
-        alignSelf: message.role === "user" ? "flex-end" : "flex-start",
-        backgroundColor: message.role === "user" ? "#0084ff" : "#e5e5ea",
-        color: message.role === "user" ? "white" : "black",
-        borderRadius: "18px",
-        padding: "8px 16px",
-        margin: "4px 0",
-        maxWidth: "80%",
-        wordBreak: "break-word",
-        whiteSpace: "pre-wrap",
-      }}
-    >
-      {message.status === "error"
-        ? "Error, try again later"
-        : message.text || (isProcessing ? "..." : "")}
+    <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+      <div
+        style={{
+          alignSelf: message.role === "user" ? "flex-end" : "flex-start",
+          backgroundColor: message.role === "user" ? "#0084ff" : "#e5e5ea",
+          color: message.role === "user" ? "white" : "black",
+          borderRadius: "18px",
+          padding: "8px 16px",
+          margin: "4px 0",
+          maxWidth: "80%",
+          wordBreak: "break-word",
+          whiteSpace: "pre-wrap",
+        }}
+      >
+        {message.status === "error"
+          ? "Error, try again later"
+          : message.text || (isProcessing ? "..." : "")}
+      </div>
+      
+      {showUndoButton && onUndo && (
+        <button
+          onClick={() => onUndo(message)}
+          style={{
+            marginLeft: "8px",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "18px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "4px",
+            borderRadius: "50%",
+            color: "#666",
+          }}
+          title="Undo this change"
+        >
+          ↩️
+        </button>
+      )}
     </div>
   );
 };
@@ -45,12 +80,14 @@ export const ConversationTab = ({
   isPolling,
   error,
   onSendMessage,
+  onUndo,
 }: {
   messages: MessageType[];
   isLoading: boolean;
   isPolling?: boolean;
   error?: string;
   onSendMessage: (message: string) => Promise<void>;
+  onUndo?: (message: MessageType) => Promise<void>;
 }) => {
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -96,7 +133,11 @@ export const ConversationTab = ({
           <InfoMessage text="Start a conversation to edit the game" />
         ) : (
           messages.map((message) => (
-            <Message key={message.id} message={message} />
+            <Message 
+              key={message.id} 
+              message={message} 
+              onUndo={onUndo}
+            />
           ))
         )}
         {error && (
