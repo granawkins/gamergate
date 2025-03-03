@@ -2,23 +2,25 @@ import { useEffect, useRef, useState } from "react";
 import { Message as MessageType } from "../types";
 
 // Message component for rendering individual messages
-const Message = ({ 
-  message, 
-  onUndo 
-}: { 
+const Message = ({
+  message,
+  onUndo,
+}: {
   message: MessageType;
   onUndo?: (message: MessageType) => void;
 }) => {
   const isProcessing =
     message.role === "assistant" && message.status === "processing";
-  
-  const showUndoButton = 
-    message.role === "assistant" && 
-    message.status === "completed" && 
+
+  const showUndoButton =
+    message.role === "assistant" &&
+    message.status === "completed" &&
     message.commit_sha;
 
   return (
-    <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+    <div
+      style={{ position: "relative", display: "flex", alignItems: "center" }}
+    >
       <div
         style={{
           alignSelf: message.role === "user" ? "flex-end" : "flex-start",
@@ -36,7 +38,7 @@ const Message = ({
           ? "Error, try again later"
           : message.text || (isProcessing ? "..." : "")}
       </div>
-      
+
       {showUndoButton && onUndo && (
         <button
           onClick={() => onUndo(message)}
@@ -133,11 +135,7 @@ export const ConversationTab = ({
           <InfoMessage text="Start a conversation to edit the game" />
         ) : (
           messages.map((message) => (
-            <Message 
-              key={message.id} 
-              message={message} 
-              onUndo={onUndo}
-            />
+            <Message key={message.id} message={message} onUndo={onUndo} />
           ))
         )}
         {error && (

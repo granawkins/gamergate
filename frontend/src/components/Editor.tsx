@@ -123,10 +123,10 @@ export const Editor = () => {
       setError(error as string);
     }
   };
-  
+
   const handleUndo = async (message: Message) => {
     if (!message.commit_sha) return;
-    
+
     try {
       const response = await fetch(`/api/chat/${gameName}/undo`, {
         method: "POST",

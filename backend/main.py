@@ -239,7 +239,7 @@ async def undo_last_commit(
             game = g
             break
 
-    if game_id is None:
+    if game_id is None or game is None:
         raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
 
     # Check if there are messages to undo
@@ -268,7 +268,7 @@ async def undo_last_commit(
         raise HTTPException(status_code=500, detail=f"Failed to undo commit: {str(e)}")
 
     # Remove the last two messages (assistant message and user message)
-    if len(messages) >= 2:
+    if len(messages) >= 2 and game_id is not None:
         _db["games"][game_id]["messages"] = messages[:-2]
         await db.set(_db)
 
