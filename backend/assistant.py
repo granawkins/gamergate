@@ -95,15 +95,16 @@ async def generate_completion(game_id: str):
     if last_message["text"]:
         raise ValueError("Last message must be empty")
 
-    with open(GAMES_PATH / game["path"] / "index.html", "r") as f:
-        code = f.read()
-    system_prompt = SYSTEM_PROMPT.format(
-        response_format_prompt=response_format_prompt, code=code
-    )
-
-    # Generate completion
     edits = []
     try:
+        # Read the code
+        with open(GAMES_PATH / game["path"] / "index.html", "r") as f:
+            code = f.read()
+        system_prompt = SYSTEM_PROMPT.format(
+            response_format_prompt=response_format_prompt, code=code
+        )
+
+        # Generate completion
         response = client.messages.create(
             max_tokens=1000,
             model=MODEL,
@@ -119,9 +120,9 @@ async def generate_completion(game_id: str):
         # Parse the response to extract message text and edits
         parsed = parse_response(ai_response)
         last_message["text"] = parsed["text"]
+        edits = parsed["edits"]
         last_message["cost"] = get_cost(MODEL, response.usage)
         last_message["status"] = "completed"
-        edits = parsed["edits"]
 
     except Exception as e:
         last_message["text"] = f"Error generating response: {str(e)}"

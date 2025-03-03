@@ -10,3 +10,4 @@ frontend/dist
 
 # Mentat logs
 .mentat/logs/
+.vscode/

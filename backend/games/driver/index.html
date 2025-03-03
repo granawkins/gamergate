@@ -28,7 +28,7 @@
         scene.add(directionalLight);
 
         // Ground
-        const groundGeometry = new THREE.PlaneGeometry(100, 100);
+        const groundGeometry = new THREE.PlaneGeometry(200, 200);
         const groundMaterial = new THREE.MeshPhongMaterial({ color: 0xaaaaaa });
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
@@ -36,14 +36,14 @@
 
         // Procedurally generated buildings
         const buildings = [];
-        for (let i = -10; i < 10; i++) {
-            for (let j = -10; j < 10; j++) {
+        for (let i = -5; i < 5; i++) {
+            for (let j = -5; j < 5; j++) {
                 const height = Math.random() * 8 + 2; // Height between 2 and 10
                 const geometry = new THREE.BoxGeometry(2, height, 2);
                 const color = new THREE.Color(Math.random(), Math.random(), Math.random());
                 const material = new THREE.MeshPhongMaterial({ color: color });
                 const building = new THREE.Mesh(geometry, material);
-                building.position.set(i * 4, height / 2, j * 4);
+                building.position.set(i * 10, height / 2, j * 10);
                 scene.add(building);
                 buildings.push(building);
             }
