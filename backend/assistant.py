@@ -112,7 +112,7 @@ async def generate_completion(game_id: str):
         )
 
         # Generate streaming completion
-        stream = await client.messages.create(
+        stream = client.messages.create(
             max_tokens=1000,
             model=MODEL,
             system=system_prompt,
