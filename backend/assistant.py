@@ -128,13 +128,28 @@ async def generate_completion(game_id: str):
 
         # Process the stream in a synchronous manner
         for event in stream:
-            if (
-                hasattr(event, "delta")
-                and hasattr(event.delta, "text")
-                and event.delta.text
-            ):
+            # Try to extract text content from the event safely
+            text_content = ""
+            try:
+                # Try to access content directly if available
+                if hasattr(event, "content") and event.content:
+                    text_content = event.content
+                # Try to access text directly if available
+                elif hasattr(event, "text") and event.text:
+                    text_content = event.text
+                # Try to access text via content blocks if available
+                elif hasattr(event, "content_blocks"):
+                    for block in event.content_blocks:
+                        if hasattr(block, "text") and block.text:
+                            text_content += block.text
+            except Exception:
+                # If we encounter any error accessing attributes, just continue
+                pass
+
+            # If we found text content, update the response
+            if text_content:
                 # Append the new text to the full response
-                full_response += event.delta.text
+                full_response += text_content
 
                 # Update the message in the database with the partial response
                 _db = await db.get()
