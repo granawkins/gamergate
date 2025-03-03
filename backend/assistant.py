@@ -77,6 +77,7 @@ def apply_edits(code: str, edits: List[Tuple[str, str]]) -> str:
 async def generate_completion(game_id: str):
     """
     Generate a completion for the last assistant message in the game.
+    Uses streaming API to incrementally update the response.
     Parses response into text and edits.
     Applies edits to the codebase.
     Updates the message with the completion text, diff, commit sha, cost, and status.
@@ -95,6 +96,12 @@ async def generate_completion(game_id: str):
     if last_message["text"]:
         raise ValueError("Last message must be empty")
 
+    # Initialize the message with empty text and processing status
+    last_message["text"] = ""
+    last_message["status"] = "processing"
+    _db["games"][game_id]["messages"][-1] = last_message
+    await db.set(_db)
+
     edits = []
     try:
         # Read the code
@@ -104,8 +111,8 @@ async def generate_completion(game_id: str):
             response_format_prompt=response_format_prompt, code=code
         )
 
-        # Generate completion
-        response = client.messages.create(
+        # Generate streaming completion
+        stream = await client.messages.create(
             max_tokens=1000,
             model=MODEL,
             system=system_prompt,
@@ -113,18 +120,53 @@ async def generate_completion(game_id: str):
                 {"role": message["role"], "content": message["text"]}
                 for message in messages[-11:-1]
             ],
+            stream=True,
         )
-        text_block = next((b for b in response.content if hasattr(b, "text")), None)
-        ai_response = text_block.text if text_block else "Missing text block"  # type: ignore
 
-        # Parse the response to extract message text and edits
-        parsed = parse_response(ai_response)
+        # Process the streaming response
+        full_response = ""
+        async for chunk in stream:
+            if chunk.delta.text:
+                # Append the new text to the full response
+                full_response += chunk.delta.text
+
+                # Update the message in the database with the partial response
+                _db = await db.get()
+                game = _db["games"].get(game_id)
+                if game is None:
+                    raise ValueError(f"Game {game_id} not found")
+                last_message = game["messages"][-1]
+                last_message["text"] = full_response
+                _db["games"][game_id]["messages"][-1] = last_message
+                await db.set(_db)
+
+                # Add a 1-second delay to avoid excessive database access
+                await asyncio.sleep(1)
+
+        # Parse the complete response to extract message text and edits
+        parsed = parse_response(full_response)
+
+        # Get final database state
+        _db = await db.get()
+        game = _db["games"].get(game_id)
+        if game is None:
+            raise ValueError(f"Game {game_id} not found")
+        last_message = game["messages"][-1]
+
+        # Update with parsed content
         last_message["text"] = parsed["text"]
         edits = parsed["edits"]
-        last_message["cost"] = get_cost(MODEL, response.usage)
+        last_message["cost"] = get_cost(MODEL, stream.usage)
         last_message["status"] = "completed"
 
     except Exception as e:
+        # Get current database state in case it changed during streaming
+        _db = await db.get()
+        game = _db["games"].get(game_id)
+        if game is None:
+            raise ValueError(f"Game {game_id} not found")
+        last_message = game["messages"][-1]
+
         last_message["text"] = f"Error generating response: {str(e)}"
         last_message["edits"] = []
         last_message["status"] = "error"
