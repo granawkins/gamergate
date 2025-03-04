@@ -5,14 +5,17 @@ import { Message as MessageType } from "../types";
 const Message = ({
   message,
   onUndo,
+  isLastAssistantMessage,
 }: {
   message: MessageType;
   onUndo?: (message: MessageType) => void;
+  isLastAssistantMessage?: boolean;
 }) => {
   const isProcessing =
     message.role === "assistant" && message.status === "processing";
 
   const showUndoButton =
+    isLastAssistantMessage &&
     message.role === "assistant" &&
     message.status === "completed" &&
     message.commit_sha;
@@ -134,9 +137,30 @@ export const ConversationTab = ({
         ) : messages.length === 0 ? (
           <InfoMessage text="Start a conversation to edit the game" />
         ) : (
-          messages.map((message) => (
-            <Message key={message.id} message={message} onUndo={onUndo} />
-          ))
+          messages.map((message, index) => {
+            // Find the last assistant message with a commit_sha
+            const lastAssistantMessageIndex = [...messages]
+              .reverse()
+              .findIndex(
+                (msg) =>
+                  msg.role === "assistant" &&
+                  msg.status === "completed" &&
+                  msg.commit_sha,
+              );
+
+            const isLastAssistantMessage =
+              lastAssistantMessageIndex !== -1 &&
+              index === messages.length - 1 - lastAssistantMessageIndex;
+
+            return (
+              <Message
+                key={message.id}
+                message={message}
+                onUndo={isLastAssistantMessage ? onUndo : undefined}
+                isLastAssistantMessage={isLastAssistantMessage}
+              />
+            );
+          })
         )}
         {error && (
           <InfoMessage text={`${error}. Please refresh or try again later.`} />

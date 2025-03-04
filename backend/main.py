@@ -268,8 +268,7 @@ async def undo_last_commit(
         raise HTTPException(status_code=500, detail=f"Failed to undo commit: {str(e)}")
 
     # Remove the last two messages (assistant message and user message)
-    if len(messages) >= 2 and game_id is not None:
-        _db["games"][game_id]["messages"] = messages[:-2]
-        await db.set(_db)
+    _db["games"][game_id]["messages"] = messages[:-2]
+    await db.set(_db)
 
     return {"success": True, "messages": _db["games"][game_id]["messages"]}
