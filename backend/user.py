@@ -117,26 +117,24 @@ async def user_google_callback(request: Request):
     user_id: str
 
     if not user:
-        # Create user with required and optional fields
+        # Create user with all fields
         user_id = str(uuid.uuid4())
         new_user: User = {
             "id": user_id,
             "username": email.split("@")[0],
             "email": email,
             "created_at": datetime.now().isoformat(),
+            "avatar_id": avatar_id if avatar_id else None,
         }
-
-        # Add avatar if available
-        if avatar_id:
-            new_user["avatar_id"] = avatar_id
 
         _db["users"][user_id] = new_user
         await db.set(_db)
     else:
         user_id = user["id"]
-        if avatar_id and user.get("avatar_id") != avatar_id:
-            # Update avatar if it has changed
-            user["avatar_id"] = avatar_id
+        # Ensure avatar_id is always present
+        if "avatar_id" not in user or user["avatar_id"] != avatar_id:
+            # Update avatar if it has changed or wasn't set
+            user["avatar_id"] = avatar_id if avatar_id else None
             _db["users"][user_id] = user
             await db.set(_db)
 

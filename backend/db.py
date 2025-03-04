@@ -7,16 +7,11 @@ from typing import TypedDict, Optional, List, Literal
 from uuid import UUID, uuid4
 
 
-# Define required fields for User
-class UserRequired(TypedDict):
+class User(TypedDict):
     id: str
     username: str
     email: str
     created_at: str  # ISO format string of datetime
-
-
-# Define User with both required and optional fields
-class User(UserRequired, total=False):
     avatar_id: Optional[str]
 
 
@@ -64,6 +59,7 @@ class DB:
                 "username": "admin",
                 "email": ADMIN_EMAIL,
                 "created_at": datetime.now().isoformat(),
+                "avatar_id": None,
             }
 
             for dir in GAMES_PATH.iterdir():
