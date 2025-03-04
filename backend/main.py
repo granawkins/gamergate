@@ -38,15 +38,6 @@ async def get_games():
     return list(_db["games"].values())
 
 
-@app.get("/games/{game_id}")
-async def get_game(game_id: str):
-    """Get a specific game by ID."""
-    _db = await db.get()
-    if game_id in _db["games"]:
-        return _db["games"][game_id]
-    raise HTTPException(status_code=404, detail=f"Game with ID '{game_id}' not found")
-
-
 @app.post("/games/check-name")
 async def check_game_name(request: Request):
     """
@@ -144,7 +135,7 @@ async def get_chat_messages(
                 raise HTTPException(
                     status_code=403, detail="You are not the owner of this game"
                 )
-            messages = game.get("messages")
+            messages = game.pop("messages")
             for message in messages:
                 if (
                     message.get("role") == "assistant"
@@ -153,6 +144,10 @@ async def get_chat_messages(
                     message["text"] = extract_message(
                         message["text"], allow_incomplete=True
                     )
+            parent_id = game.pop("parent_id")
+            game["parent_name"] = (
+                None if parent_id is None else _db["games"][parent_id].get("name", None)
+            )
             return {"messages": messages, "gameInfo": game}
 
     raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")

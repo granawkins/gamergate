@@ -176,38 +176,11 @@ const EditableName = ({
 };
 
 export const GameInfoTab = ({ gameInfo, isLoading }: GameInfoTabProps) => {
-  const [parentName, setParentName] = useState<string | null>(null);
-  const [isLoadingParent, setIsLoadingParent] = useState(false);
-
   // Format date to a more readable format
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString();
   };
-
-  // Fetch parent game name when parent_id changes
-  useEffect(() => {
-    const fetchParentName = async () => {
-      if (!gameInfo?.parent_id) return;
-
-      setIsLoadingParent(true);
-      try {
-        const response = await fetch(`/api/games/${gameInfo.parent_id}`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch parent game");
-        }
-        const data = await response.json();
-        setParentName(data.name);
-      } catch (error) {
-        console.error("Error fetching parent game:", error);
-        setParentName(null);
-      } finally {
-        setIsLoadingParent(false);
-      }
-    };
-
-    fetchParentName();
-  }, [gameInfo?.parent_id]);
 
   return (
     <div
@@ -269,20 +242,18 @@ export const GameInfoTab = ({ gameInfo, isLoading }: GameInfoTabProps) => {
                 Parent Game:
               </div>
               <div>
-                {isLoadingParent ? (
-                  "Loading parent..."
-                ) : parentName ? (
+                {gameInfo.parent_name ? (
                   <Link
-                    to={`/play/${parentName}`}
+                    to={`/play/${gameInfo.parent_name}`}
                     style={{
                       color: "#0084ff",
                       textDecoration: "none",
                     }}
                   >
-                    {parentName}
+                    {gameInfo.parent_name}
                   </Link>
                 ) : (
-                  gameInfo.parent_id || "None"
+                  "None"
                 )}
               </div>
             </div>
