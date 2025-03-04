@@ -39,19 +39,9 @@ async def get_games():
     return list(_db["games"].values())
 
 
-@app.post("/games/check-name")
-async def check_game_name(request: Request):
-    """
-    Check if a game name is unique in the database.
-    Returns true if the name is available, false if it's already taken.
-    If current_game_id is provided, it will exclude that game from the check.
-
-    Request body:
-    {
-        "name": str,
-        "current_game_id": Optional[str]
-    }
-    """
+@app.post("/games/update-name")
+async def update_game_name(request: Request):
+    """Update the name, if it's not a duplicate of another game."""
     data = await request.json()
     name = data.get("name")
     current_game_id = data.get("current_game_id")
@@ -64,18 +54,39 @@ async def check_game_name(request: Request):
     # Check if the name is already taken by another game
     for id, game in _db["games"].items():
         if game["name"] == name and id != current_game_id:
-            return {"available": False}
+            return {"successful": False}
 
+    # If current_game_id is provided, update the game's name
+    if current_game_id and current_game_id in _db["games"]:
+        _db["games"][current_game_id]["name"] = name
+        _db["games"][current_game_id]["updated_at"] = datetime.now().isoformat()
+        await db.set(_db)
+        return {"successful": True}
+
+    # For backward compatibility
     return {"available": True}
 
 
 @app.get("/games/{game_name}/play")
 async def serve_game(game_name: str):
     """Serve the HTML file for a specific game with added resize handling."""
-    game_dir = GAMES_PATH / game_name
+    # Find the game ID from the name in the database
+    _db = await db.get()
+    game_id = None
 
-    # First check if there's a file named after the game
-    game_file = game_dir / f"{game_name}.html"
+    for id, game in _db["games"].items():
+        if game["name"] == game_name:
+            game_id = id
+            break
+
+    if game_id is None:
+        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+
+    # Use the game ID to locate the game directory
+    game_dir = GAMES_PATH / game_id
+
+    # First check if there's a file named index.html (most common)
+    game_file = game_dir / "index.html"
     if not game_file.exists():
         # If not, look for any HTML file in the directory
         html_files = list(game_dir.glob("*.html"))
