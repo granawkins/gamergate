@@ -108,6 +108,7 @@ async def user_google_callback(request: Request):
     )
     user_data = user_response.json()
     email = user_data.get("email")
+    avatar_id = user_data.get("picture")  # Get avatar URL from Google
 
     _db = await db.get()
     user = next((u for u in _db["users"].values() if u["email"] == email), None)
@@ -116,8 +117,14 @@ async def user_google_callback(request: Request):
             "id": str(uuid.uuid4()),
             "username": email.split("@")[0],
             "email": email,
+            "avatar_id": avatar_id,
             "created_at": datetime.now().isoformat(),
         }
+        _db["users"][user["id"]] = user
+        await db.set(_db)
+    elif avatar_id and user.get("avatar_id") != avatar_id:
+        # Update avatar if it has changed
+        user["avatar_id"] = avatar_id
         _db["users"][user["id"]] = user
         await db.set(_db)
 

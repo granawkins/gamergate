@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Info } from "./Info";
+import { Avatar } from "./Avatar";
 import useAuth from "../auth/useAuth";
 
 export const Header = () => {
@@ -40,13 +41,26 @@ export const Header = () => {
         <h1>GAMERGATE</h1>
       </a>
       {user ? (
-        <a href="/user" style={{ fontSize: "1.5rem" }}>
-          User
+        <a 
+          href="/user" 
+          style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            textDecoration: "none" 
+          }}
+        >
+          <Avatar user={user} size={36} />
         </a>
       ) : loading ? (
         <p>Loading...</p>
       ) : (
-        <a onClick={loginWithGoogle} style={{ fontSize: "1.5rem" }}>
+        <a 
+          onClick={loginWithGoogle} 
+          style={{ 
+            fontSize: "1.5rem", 
+            cursor: "pointer" 
+          }}
+        >
           Login
         </a>
       )}
