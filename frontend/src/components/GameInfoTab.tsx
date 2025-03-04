@@ -12,6 +12,7 @@ export const GameInfoTab = ({ gameInfo, isLoading }: GameInfoTabProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [parentName, setParentName] = useState<string | null>(null);
   const [isLoadingParent, setIsLoadingParent] = useState(false);
+  const [isCheckingName, setIsCheckingName] = useState(false);
 
   // Format date to a more readable format
   const formatDate = (dateString: string) => {
@@ -54,9 +55,62 @@ export const GameInfoTab = ({ gameInfo, isLoading }: GameInfoTabProps) => {
     setIsEditing(true);
   };
 
-  const handleNameSave = () => {
-    // In the future, this will send the updated name to the backend
+  const handleNameCancel = () => {
+    // Reset to original name and exit edit mode
+    if (gameInfo) {
+      setEditableName(gameInfo.name);
+    }
     setIsEditing(false);
+  };
+
+  const handleNameSave = async () => {
+    if (!gameInfo) return;
+    
+    // Don't save if name is empty
+    if (!editableName.trim()) {
+      alert("Game name cannot be empty");
+      return;
+    }
+    
+    // Don't save if name hasn't changed
+    if (editableName === gameInfo.name) {
+      setIsEditing(false);
+      return;
+    }
+    
+    // Check if the name is unique
+    setIsCheckingName(true);
+    try {
+      const response = await fetch("/api/games/check-name", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: editableName,
+          current_game_id: gameInfo.id,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to check game name");
+      }
+      
+      const data = await response.json();
+      
+      if (!data.available) {
+        alert(`The name "${editableName}" is already taken. Please choose a different name.`);
+        return;
+      }
+      
+      // In the future, this will send the updated name to the backend
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Error checking game name:", error);
+      alert("Failed to check if the name is available. Please try again.");
+    } finally {
+      setIsCheckingName(false);
+    }
   };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -119,16 +173,33 @@ export const GameInfoTab = ({ gameInfo, isLoading }: GameInfoTabProps) => {
                     />
                     <button
                       onClick={handleNameSave}
+                      disabled={isCheckingName}
                       style={{
                         padding: "4px 8px",
                         backgroundColor: "#0084ff",
                         color: "white",
                         border: "none",
                         borderRadius: "4px",
-                        cursor: "pointer",
+                        cursor: isCheckingName ? "default" : "pointer",
+                        opacity: isCheckingName ? 0.7 : 1,
+                        marginRight: "8px",
                       }}
                     >
-                      Save
+                      {isCheckingName ? "Checking..." : "Save"}
+                    </button>
+                    <button
+                      onClick={handleNameCancel}
+                      disabled={isCheckingName}
+                      style={{
+                        padding: "4px 8px",
+                        backgroundColor: "#f0f0f0",
+                        border: "1px solid #ccc",
+                        borderRadius: "4px",
+                        cursor: isCheckingName ? "default" : "pointer",
+                        opacity: isCheckingName ? 0.7 : 1,
+                      }}
+                    >
+                      Cancel
                     </button>
                   </>
                 ) : (

@@ -27,6 +27,11 @@ class MessageRequest(BaseModel):
     message: str
 
 
+class GameNameCheckRequest(BaseModel):
+    name: str
+    current_game_id: str = None
+
+
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
@@ -36,6 +41,32 @@ async def root():
 async def get_games():
     _db = await db.get()
     return list(_db["games"].values())
+
+
+@app.get("/games/{game_id}")
+async def get_game(game_id: str):
+    """Get a specific game by ID."""
+    _db = await db.get()
+    if game_id in _db["games"]:
+        return _db["games"][game_id]
+    raise HTTPException(status_code=404, detail=f"Game with ID '{game_id}' not found")
+
+
+@app.post("/games/check-name")
+async def check_game_name(request: GameNameCheckRequest):
+    """
+    Check if a game name is unique in the database.
+    Returns true if the name is available, false if it's already taken.
+    If current_game_id is provided, it will exclude that game from the check.
+    """
+    _db = await db.get()
+
+    # Check if the name is already taken by another game
+    for id, game in _db["games"].items():
+        if game["name"] == request.name and id != request.current_game_id:
+            return {"available": False}
+
+    return {"available": True}
 
 
 @app.get("/games/{game_name}/play")
