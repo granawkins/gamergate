@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import html2canvas from "html2canvas";
 
 export const GameFrame = ({
   gameName,
@@ -45,33 +44,48 @@ export const GameFrame = ({
     setError(null);
 
     try {
-      if (!iframeRef.current) {
-        throw new Error("Cannot access iframe");
+      // Check if the browser supports getDisplayMedia
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        throw new Error("Screen capture is not supported in this browser");
       }
 
-      // Wait for iframe to load completely
-      if (iframeRef.current.contentDocument?.readyState !== "complete") {
-        await new Promise<void>((resolve) => {
-          const onLoad = () => {
-            iframeRef.current?.removeEventListener("load", onLoad);
-            resolve();
-          };
-          iframeRef.current.addEventListener("load", onLoad);
-        });
-      }
-
-      // Use html2canvas to capture the iframe
-      const canvas = await html2canvas(iframeRef.current, {
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        // Attempt to capture WebGL content
-        onclone: () => {
-          // This function runs before the screenshot is taken
-          // We can use it to prepare the cloned document
-          console.log("Preparing document for screenshot");
+      // Prompt user to select a screen area to capture
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          cursor: "always",
         },
+        audio: false,
       });
+
+      // Create a video element to capture a frame from the stream
+      const video = document.createElement("video");
+      video.srcObject = stream;
+
+      // Wait for the video to be loaded
+      await new Promise<void>((resolve) => {
+        video.onloadedmetadata = () => {
+          video.play();
+          resolve();
+        };
+      });
+
+      // Wait a small amount of time to ensure the video is playing
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Create a canvas to draw the video frame
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      // Draw the video frame to the canvas
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Could not get canvas context");
+      }
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Stop all tracks in the stream
+      stream.getTracks().forEach((track) => track.stop());
 
       // Convert canvas to data URL
       const dataUrl = canvas.toDataURL("image/png");
@@ -150,7 +164,7 @@ export const GameFrame = ({
             opacity: isCapturing ? 0.7 : 1,
           }}
         >
-          {isCapturing ? "Capturing..." : "Snapshot"}
+          {isCapturing ? "Selecting area..." : "Snapshot"}
         </button>
         {error && (
           <div
