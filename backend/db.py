@@ -74,10 +74,9 @@ class DB:
                     "plays": 0,
                     "messages": [],
                 }
+
                 # Create a new directory with the game_id and copy the contents
                 game_dir = GAMES_PATH / id
-
-                # Copy the contents from the original directory to the new one
                 shutil.copytree(GAMES_PATH / dir.name, game_dir)
 
                 # Initialize a git repo for the game
