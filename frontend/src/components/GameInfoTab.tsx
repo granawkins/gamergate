@@ -7,12 +7,157 @@ interface GameInfoTabProps {
   isLoading: boolean;
 }
 
-export const GameInfoTab = ({ gameInfo, isLoading }: GameInfoTabProps) => {
-  const [editableName, setEditableName] = useState("");
+// EditableName component for handling name editing functionality
+interface EditableNameProps {
+  initialName: string;
+  gameId: string;
+}
+
+const EditableName = ({ initialName, gameId }: EditableNameProps) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [name, setName] = useState(initialName);
+  const [isCheckingName, setIsCheckingName] = useState(false);
+
+  // Update name when initialName changes
+  useEffect(() => {
+    setName(initialName);
+  }, [initialName]);
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancel = () => {
+    // Reset to original name and exit edit mode
+    setName(initialName);
+    setIsEditing(false);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setName(e.target.value);
+  };
+
+  const handleSave = async () => {
+    // Don't save if name is empty
+    if (!name.trim()) {
+      alert("Game name cannot be empty");
+      return;
+    }
+
+    // Don't save if name hasn't changed
+    if (name === initialName) {
+      setIsEditing(false);
+      return;
+    }
+
+    // Check if the name is unique
+    setIsCheckingName(true);
+    try {
+      const response = await fetch("/api/games/check-name", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          current_game_id: gameId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to check game name");
+      }
+
+      const data = await response.json();
+
+      if (!data.available) {
+        alert(
+          `The name "${name}" is already taken. Please choose a different name.`,
+        );
+        return;
+      }
+
+      // In the future, this will send the updated name to the backend
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Error checking game name:", error);
+      alert("Failed to check if the name is available. Please try again.");
+    } finally {
+      setIsCheckingName(false);
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", flex: 1 }}>
+        <input
+          type="text"
+          value={name}
+          onChange={handleChange}
+          style={{
+            padding: "4px 8px",
+            border: "1px solid #ccc",
+            borderRadius: "4px",
+            marginRight: "8px",
+          }}
+          autoFocus
+        />
+        <button
+          onClick={handleSave}
+          disabled={isCheckingName}
+          style={{
+            padding: "4px 8px",
+            backgroundColor: "#0084ff",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: isCheckingName ? "default" : "pointer",
+            opacity: isCheckingName ? 0.7 : 1,
+            marginRight: "8px",
+          }}
+        >
+          {isCheckingName ? "Checking..." : "Save"}
+        </button>
+        <button
+          onClick={handleCancel}
+          disabled={isCheckingName}
+          style={{
+            padding: "4px 8px",
+            backgroundColor: "#f0f0f0",
+            border: "1px solid #ccc",
+            borderRadius: "4px",
+            cursor: isCheckingName ? "default" : "pointer",
+            opacity: isCheckingName ? 0.7 : 1,
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", flex: 1 }}>
+      <span style={{ marginRight: "8px" }}>{initialName}</span>
+      <button
+        onClick={handleEdit}
+        style={{
+          padding: "4px 8px",
+          backgroundColor: "#f0f0f0",
+          border: "1px solid #ccc",
+          borderRadius: "4px",
+          cursor: "pointer",
+        }}
+      >
+        Edit
+      </button>
+    </div>
+  );
+};
+
+export const GameInfoTab = ({ gameInfo, isLoading }: GameInfoTabProps) => {
   const [parentName, setParentName] = useState<string | null>(null);
   const [isLoadingParent, setIsLoadingParent] = useState(false);
-  const [isCheckingName, setIsCheckingName] = useState(false);
 
   // Format date to a more readable format
   const formatDate = (dateString: string) => {
@@ -43,81 +188,6 @@ export const GameInfoTab = ({ gameInfo, isLoading }: GameInfoTabProps) => {
 
     fetchParentName();
   }, [gameInfo?.parent_id]);
-
-  // Initialize editable name when gameInfo changes
-  useEffect(() => {
-    if (gameInfo) {
-      setEditableName(gameInfo.name);
-    }
-  }, [gameInfo]);
-
-  const handleNameEdit = () => {
-    setIsEditing(true);
-  };
-
-  const handleNameCancel = () => {
-    // Reset to original name and exit edit mode
-    if (gameInfo) {
-      setEditableName(gameInfo.name);
-    }
-    setIsEditing(false);
-  };
-
-  const handleNameSave = async () => {
-    if (!gameInfo) return;
-
-    // Don't save if name is empty
-    if (!editableName.trim()) {
-      alert("Game name cannot be empty");
-      return;
-    }
-
-    // Don't save if name hasn't changed
-    if (editableName === gameInfo.name) {
-      setIsEditing(false);
-      return;
-    }
-
-    // Check if the name is unique
-    setIsCheckingName(true);
-    try {
-      const response = await fetch("/api/games/check-name", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: editableName,
-          current_game_id: gameInfo.id,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to check game name");
-      }
-
-      const data = await response.json();
-
-      if (!data.available) {
-        alert(
-          `The name "${editableName}" is already taken. Please choose a different name.`,
-        );
-        return;
-      }
-
-      // In the future, this will send the updated name to the backend
-      setIsEditing(false);
-    } catch (error) {
-      console.error("Error checking game name:", error);
-      alert("Failed to check if the name is available. Please try again.");
-    } finally {
-      setIsCheckingName(false);
-    }
-  };
-
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditableName(e.target.value);
-  };
 
   return (
     <div
@@ -158,70 +228,7 @@ export const GameInfoTab = ({ gameInfo, isLoading }: GameInfoTabProps) => {
               >
                 Name:
               </div>
-              <div style={{ display: "flex", alignItems: "center", flex: 1 }}>
-                {isEditing ? (
-                  <>
-                    <input
-                      type="text"
-                      value={editableName}
-                      onChange={handleNameChange}
-                      style={{
-                        padding: "4px 8px",
-                        border: "1px solid #ccc",
-                        borderRadius: "4px",
-                        marginRight: "8px",
-                      }}
-                      autoFocus
-                    />
-                    <button
-                      onClick={handleNameSave}
-                      disabled={isCheckingName}
-                      style={{
-                        padding: "4px 8px",
-                        backgroundColor: "#0084ff",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "4px",
-                        cursor: isCheckingName ? "default" : "pointer",
-                        opacity: isCheckingName ? 0.7 : 1,
-                        marginRight: "8px",
-                      }}
-                    >
-                      {isCheckingName ? "Checking..." : "Save"}
-                    </button>
-                    <button
-                      onClick={handleNameCancel}
-                      disabled={isCheckingName}
-                      style={{
-                        padding: "4px 8px",
-                        backgroundColor: "#f0f0f0",
-                        border: "1px solid #ccc",
-                        borderRadius: "4px",
-                        cursor: isCheckingName ? "default" : "pointer",
-                        opacity: isCheckingName ? 0.7 : 1,
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span style={{ marginRight: "8px" }}>{gameInfo.name}</span>
-                    <button
-                      onClick={handleNameEdit}
-                      style={{
-                        padding: "4px 8px",
-                        backgroundColor: "#f0f0f0",
-                        border: "1px solid #ccc",
-                        borderRadius: "4px",
-                        cursor: "pointer",
-                      }}
-                    >
-                      Edit
-                    </button>
-                  </>
-                )}
-              </div>
+              <EditableName initialName={gameInfo.name} gameId={gameInfo.id} />
             </div>
 
             {/* Parent Game */}
