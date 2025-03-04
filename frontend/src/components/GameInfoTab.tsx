@@ -8,12 +8,13 @@ interface GameInfoTabProps {
 }
 
 // EditableName component for handling name editing functionality
-interface EditableNameProps {
+const EditableName = ({
+  initialName,
+  gameId,
+}: {
   initialName: string;
   gameId: string;
-}
-
-const EditableName = ({ initialName, gameId }: EditableNameProps) => {
+}) => {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(initialName);
   const [isCheckingName, setIsCheckingName] = useState(false);
@@ -89,7 +90,15 @@ const EditableName = ({ initialName, gameId }: EditableNameProps) => {
 
   if (isEditing) {
     return (
-      <div style={{ display: "flex", alignItems: "center", flex: 1 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          flex: 1,
+          flexWrap: "wrap", // Allow wrapping on mobile
+          gap: "8px", // Add spacing between wrapped items
+        }}
+      >
         <input
           type="text"
           value={name}
@@ -98,46 +107,57 @@ const EditableName = ({ initialName, gameId }: EditableNameProps) => {
             padding: "4px 8px",
             border: "1px solid #ccc",
             borderRadius: "4px",
+            flexGrow: 1,
+            minWidth: "120px", // Ensure input has reasonable minimum width
             marginRight: "8px",
           }}
           autoFocus
         />
-        <button
-          onClick={handleSave}
-          disabled={isCheckingName}
-          style={{
-            padding: "4px 8px",
-            backgroundColor: "#0084ff",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: isCheckingName ? "default" : "pointer",
-            opacity: isCheckingName ? 0.7 : 1,
-            marginRight: "8px",
-          }}
-        >
-          {isCheckingName ? "Checking..." : "Save"}
-        </button>
-        <button
-          onClick={handleCancel}
-          disabled={isCheckingName}
-          style={{
-            padding: "4px 8px",
-            backgroundColor: "#f0f0f0",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            cursor: isCheckingName ? "default" : "pointer",
-            opacity: isCheckingName ? 0.7 : 1,
-          }}
-        >
-          Cancel
-        </button>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <button
+            onClick={handleSave}
+            disabled={isCheckingName}
+            style={{
+              padding: "4px 8px",
+              backgroundColor: "#0084ff",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: isCheckingName ? "default" : "pointer",
+              opacity: isCheckingName ? 0.7 : 1,
+            }}
+          >
+            {isCheckingName ? "Checking..." : "Save"}
+          </button>
+          <button
+            onClick={handleCancel}
+            disabled={isCheckingName}
+            style={{
+              padding: "4px 8px",
+              backgroundColor: "#f0f0f0",
+              border: "1px solid #ccc",
+              borderRadius: "4px",
+              cursor: isCheckingName ? "default" : "pointer",
+              opacity: isCheckingName ? 0.7 : 1,
+            }}
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "center", flex: 1 }}>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        flex: 1,
+        flexWrap: "wrap", // Allow wrapping on mobile
+        gap: "8px", // Add spacing between wrapped items
+      }}
+    >
       <span style={{ marginRight: "8px" }}>{initialName}</span>
       <button
         onClick={handleEdit}

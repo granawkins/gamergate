@@ -4,7 +4,6 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from datetime import datetime
 import subprocess
-from typing import Optional
 from uuid import uuid4
 
 from db import db, GAMES_PATH, Message, User
@@ -28,11 +27,6 @@ class MessageRequest(BaseModel):
     message: str
 
 
-class GameNameCheckRequest(BaseModel):
-    name: str
-    current_game_id: Optional[str] = None
-
-
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
@@ -54,17 +48,30 @@ async def get_game(game_id: str):
 
 
 @app.post("/games/check-name")
-async def check_game_name(request: GameNameCheckRequest):
+async def check_game_name(request: Request):
     """
     Check if a game name is unique in the database.
     Returns true if the name is available, false if it's already taken.
     If current_game_id is provided, it will exclude that game from the check.
+
+    Request body:
+    {
+        "name": str,
+        "current_game_id": Optional[str]
+    }
     """
+    data = await request.json()
+    name = data.get("name")
+    current_game_id = data.get("current_game_id")
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+
     _db = await db.get()
 
     # Check if the name is already taken by another game
     for id, game in _db["games"].items():
-        if game["name"] == request.name and id != request.current_game_id:
+        if game["name"] == name and id != current_game_id:
             return {"available": False}
 
     return {"available": True}
