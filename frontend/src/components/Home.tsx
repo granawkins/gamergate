@@ -91,7 +91,7 @@ export const Home = () => {
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`/api/games/${game.name}`, {
+      const response = await fetch(`/api/games/${game.id}`, {
         method: "DELETE",
       });
 

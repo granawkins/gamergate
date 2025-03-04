@@ -81,24 +81,35 @@ async def serve_game(game_id: str):
     game = _db["games"][game_id]
     game_dir = GAMES_PATH / game_id
 
-    # First check if there's a file named after the game
-    game_file = game_dir / f"{game['name']}.html"
+    # Always use index.html
+    game_file = game_dir / "index.html"
     if not game_file.exists():
-        # If not, look for any HTML file in the directory
-        html_files = list(game_dir.glob("*.html"))
-        if html_files:
-            game_file = html_files[0]
-        else:
-            # If no HTML file is found, return 404
-            raise HTTPException(
-                status_code=404, detail=f"Game '{game['name']}' not found"
-            )
+        raise HTTPException(status_code=404, detail=f"Game '{game['name']}' not found")
 
     # Read the HTML content
     with open(game_file, "r") as f:
         html_content = f.read()
 
     return HTMLResponse(content=html_content)
+
+
+@app.get("/games/by-name/{game_name}/play")
+async def serve_game_by_name(game_name: str):
+    """Serve the HTML file for a specific game by name."""
+    # Find the game by name
+    _db = await db.get()
+    game_id = None
+
+    for id, game in _db["games"].items():
+        if game["name"] == game_name:
+            game_id = id
+            break
+
+    if game_id is None:
+        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+
+    # Redirect to the game_id endpoint
+    return await serve_game(game_id)
 
 
 @app.delete("/games/{game_id}")
@@ -159,13 +170,36 @@ async def get_chat_messages(
     for message in messages:
         if message.get("role") == "assistant" and message.get("status") != "error":
             message["text"] = extract_message(message["text"], allow_incomplete=True)
-    
+
     parent_id = game.pop("parent_id")
     game["parent_name"] = (
         None if parent_id is None else _db["games"][parent_id].get("name", None)
     )
-    
+
     return {"messages": messages, "gameInfo": game}
+
+
+@app.get("/chat/by-name/{game_name}")
+async def get_chat_messages_by_name(
+    game_name: str, current_user: User = Depends(get_current_user)
+):
+    """
+    Get all chat messages and game info for a specific game by name.
+    """
+    # Find the game by name
+    _db = await db.get()
+    game_id = None
+
+    for id, game in _db["games"].items():
+        if game["name"] == game_name:
+            game_id = id
+            break
+
+    if game_id is None:
+        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+
+    # Redirect to the game_id endpoint
+    return await get_chat_messages(game_id, current_user)
 
 
 @app.post("/chat/{game_id}")
@@ -226,6 +260,31 @@ async def handle_chat(
     return {"message": assistant_message, "gameInfo": game}
 
 
+@app.post("/chat/by-name/{game_name}")
+async def handle_chat_by_name(
+    game_name: str,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Handle chat messages for the game editor by game name.
+    """
+    # Find the game by name
+    _db = await db.get()
+    game_id = None
+
+    for id, game in _db["games"].items():
+        if game["name"] == game_name:
+            game_id = id
+            break
+
+    if game_id is None:
+        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+
+    # Redirect to the game_id endpoint
+    return await handle_chat(game_id, request, current_user)
+
+
 @app.get("/chat/{game_id}/message/{message_id}")
 async def get_message(
     game_id: str, message_id: str, current_user: User = Depends(get_current_user)
@@ -260,6 +319,29 @@ async def get_message(
             return {"message": message}
 
     raise HTTPException(status_code=404, detail=f"Message '{message_id}' not found")
+
+
+@app.get("/chat/by-name/{game_name}/message/{message_id}")
+async def get_message_by_name(
+    game_name: str, message_id: str, current_user: User = Depends(get_current_user)
+):
+    """
+    Get a specific message by ID for a game specified by name.
+    """
+    # Find the game by name
+    _db = await db.get()
+    game_id = None
+
+    for id, game in _db["games"].items():
+        if game["name"] == game_name:
+            game_id = id
+            break
+
+    if game_id is None:
+        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+
+    # Redirect to the game_id endpoint
+    return await get_message(game_id, message_id, current_user)
 
 
 class UndoRequest(BaseModel):
@@ -340,3 +422,26 @@ async def undo_last_commit(
     await db.set(_db)
 
     return {"success": True, "messages": _db["games"][game_id]["messages"]}
+
+
+@app.post("/chat/by-name/{game_name}/undo")
+async def undo_last_commit_by_name(
+    game_name: str, request: UndoRequest, current_user: User = Depends(get_current_user)
+):
+    """
+    Undo the commit associated with a specific message for a game specified by name.
+    """
+    # Find the game by name
+    _db = await db.get()
+    game_id = None
+
+    for id, game in _db["games"].items():
+        if game["name"] == game_name:
+            game_id = id
+            break
+
+    if game_id is None:
+        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+
+    # Redirect to the game_id endpoint
+    return await undo_last_commit(game_id, request, current_user)

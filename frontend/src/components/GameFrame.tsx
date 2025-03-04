@@ -49,7 +49,7 @@ export const GameFrame = ({
     >
       <iframe
         ref={iframeRef}
-        src={`/api/games/${gameName}/play`}
+        src={`/api/games/by-name/${gameName}/play`}
         style={{
           position: "absolute",
           top: 0,
