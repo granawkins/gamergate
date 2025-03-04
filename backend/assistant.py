@@ -2,6 +2,7 @@ import asyncio
 import os
 import re
 import subprocess
+from datetime import datetime
 from typing import List, Tuple
 
 from anthropic import AsyncAnthropic, AnthropicError
@@ -255,6 +256,9 @@ async def generate_completion(game_id: str):
                 last_message["commit_sha"] = commit_result.stdout.strip().decode(
                     "utf-8"
                 )
+
+                # Update the updated_at field
+                _db["games"][game_id]["updated_at"] = datetime.now().isoformat()
 
             # Success!
             last_message["status"] = "completed"

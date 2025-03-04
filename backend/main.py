@@ -429,6 +429,10 @@ async def undo_last_commit(
 
     # Remove the assistant message, the user message before it, and all messages after it
     _db["games"][game_id]["messages"] = messages[: message_index - 1]
+
+    # Update the updated_at field
+    _db["games"][game_id]["updated_at"] = datetime.now().isoformat()
+
     await db.set(_db)
 
     return {"success": True, "messages": _db["games"][game_id]["messages"]}
