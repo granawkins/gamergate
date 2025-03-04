@@ -41,7 +41,7 @@ const EditableName = ({
     // Check if the name is unique and update it if it is
     setIsCheckingName(true);
     try {
-      const response = await fetch("/api/games/check-name", {
+      const response = await fetch("/api/games/update-name", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -38,23 +38,9 @@ async def get_games():
     return list(_db["games"].values())
 
 
-@app.post("/games/check-name")
-async def check_game_name(request: Request):
-    """
-    Check if a game name is unique in the database.
-    If the name is available and current_game_id is provided, update the game's name.
-
-    Returns:
-    - If name is not available: {"successful": False}
-    - If name is available and updated: {"successful": True}
-    - If name is available but no current_game_id: {"available": True} (for backward compatibility)
-
-    Request body:
-    {
-        "name": str,
-        "current_game_id": Optional[str]
-    }
-    """
+@app.post("/games/update-name")
+async def update_game_name(request: Request):
+    """Update the name, if it's not a duplicate of another game."""
     data = await request.json()
     name = data.get("name")
     current_game_id = data.get("current_game_id")
