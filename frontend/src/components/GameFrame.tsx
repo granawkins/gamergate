@@ -30,11 +30,43 @@ export const GameFrame = ({
       }
     };
 
-    window.addEventListener("resize", handleResize);
+    // Handle messages from the iframe
+    const handleMessage = (event: MessageEvent) => {
+      // Make sure the message is from our iframe
+      if (
+        iframeRef.current &&
+        event.source === iframeRef.current.contentWindow
+      ) {
+        if (event.data.type === "screenshotResult") {
+          // We got a successful screenshot
+          const dataUrl = event.data.dataUrl;
 
-    // Clean up event listener on component unmount
+          // Create a download link
+          const downloadLink = document.createElement("a");
+          downloadLink.href = dataUrl;
+          downloadLink.download = `${gameName}-snapshot-${new Date().toISOString().replace(/:/g, "-")}.png`;
+
+          // Trigger the download
+          document.body.appendChild(downloadLink);
+          downloadLink.click();
+          document.body.removeChild(downloadLink);
+
+          setIsCapturing(false);
+        } else if (event.data.type === "screenshotError") {
+          // We got an error
+          setError(event.data.error || "Unknown error capturing screenshot");
+          setIsCapturing(false);
+        }
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("message", handleMessage);
+
+    // Clean up event listeners on component unmount
     return () => {
       window.removeEventListener("resize", handleResize);
+      window.removeEventListener("message", handleMessage);
     };
   }, [gameName]);
 
@@ -47,36 +79,22 @@ export const GameFrame = ({
         throw new Error("Cannot access iframe content");
       }
 
-      const iframe = iframeRef.current;
-      const iframeDocument =
-        iframe.contentDocument || iframe.contentWindow.document;
-
-      // Find the canvas element in the iframe
-      // Most WebGL/ThreeJS games use a canvas element
-      const canvas = iframeDocument.querySelector("canvas");
-
-      if (!canvas) {
-        throw new Error("No canvas element found in the game");
-      }
-
-      // Create a data URL from the canvas
-      const dataUrl = canvas.toDataURL("image/png");
-
-      // Create a download link
-      const downloadLink = document.createElement("a");
-      downloadLink.href = dataUrl;
-      downloadLink.download = `${gameName}-snapshot-${new Date().toISOString().replace(/:/g, "-")}.png`;
-
-      // Trigger the download
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
-    } catch (err) {
-      console.error("Error capturing snapshot:", err);
-      setError(
-        err instanceof Error ? err.message : "Unknown error capturing snapshot",
+      // Send a message to the iframe to request a screenshot
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "takeScreenshot",
+        },
+        "*",
       );
-    } finally {
+
+      // The response will be handled by the message event listener
+    } catch (err) {
+      console.error("Error requesting snapshot:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unknown error requesting snapshot",
+      );
       setIsCapturing(false);
     }
   };
