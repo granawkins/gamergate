@@ -7,3 +7,4 @@ export * from "./Play";
 export * from "./GameFrame";
 export * from "./ConversationTab";
 export * from "./GameInfoTab";
+export * from "./Avatar";

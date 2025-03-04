@@ -11,7 +11,8 @@ class User(TypedDict):
     id: str
     username: str
     email: str
-    created_at: datetime
+    created_at: str  # ISO format string of datetime
+    avatar_id: Optional[str]
 
 
 class Message(TypedDict, total=False):
@@ -30,8 +31,8 @@ class Game(TypedDict):
     path: str
     owner_id: str
     parent_id: Optional[str]
-    created_at: datetime
-    updated_at: datetime
+    created_at: str  # ISO format string of datetime
+    updated_at: str  # ISO format string of datetime
     plays: int
     messages: List[Message]
 
@@ -58,6 +59,7 @@ class DB:
                 "username": "admin",
                 "email": ADMIN_EMAIL,
                 "created_at": datetime.now().isoformat(),
+                "avatar_id": None,
             }
 
             for dir in GAMES_PATH.iterdir():
