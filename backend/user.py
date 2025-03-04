@@ -10,7 +10,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import RedirectResponse, Response
 from fastapi.security import APIKeyCookie
 
-from db import db, User, UserWithOptionalFields
+from db import db, User
 
 load_dotenv()
 
@@ -112,33 +112,32 @@ async def user_google_callback(request: Request):
 
     _db = await db.get()
     user = next((u for u in _db["users"].values() if u["email"] == email), None)
-    
+
     # Variable to store the user ID for the token
     user_id: str
-    
+
     if not user:
-        # Create base user with required fields
+        # Create user with required and optional fields
         user_id = str(uuid.uuid4())
-        base_user: User = {
+        new_user: User = {
             "id": user_id,
             "username": email.split("@")[0],
             "email": email,
             "created_at": datetime.now().isoformat(),
         }
-        # Add optional fields
-        user_with_avatar = dict(base_user)  # Create a copy as a regular dict
+
+        # Add avatar if available
         if avatar_id:
-            user_with_avatar["avatar_id"] = avatar_id
-            
-        _db["users"][user_id] = user_with_avatar
+            new_user["avatar_id"] = avatar_id
+
+        _db["users"][user_id] = new_user
         await db.set(_db)
     else:
         user_id = user["id"]
         if avatar_id and user.get("avatar_id") != avatar_id:
             # Update avatar if it has changed
-            updated_user = dict(user)  # Create a copy as a regular dict
-            updated_user["avatar_id"] = avatar_id
-            _db["users"][user_id] = updated_user
+            user["avatar_id"] = avatar_id
+            _db["users"][user_id] = user
             await db.set(_db)
 
     auth_token = create_session_token(user_id)
@@ -182,11 +181,13 @@ async def avatar_proxy(url: str):
     try:
         response = requests.get(url, stream=True)
         if response.status_code != 200:
-            raise HTTPException(status_code=response.status_code, detail="Failed to fetch avatar")
-        
+            raise HTTPException(
+                status_code=response.status_code, detail="Failed to fetch avatar"
+            )
+
         # Get the content type from the response
         content_type = response.headers.get("Content-Type", "image/jpeg")
-        
+
         # Return the image with the appropriate content type
         return Response(content=response.content, media_type=content_type)
     except Exception as e:

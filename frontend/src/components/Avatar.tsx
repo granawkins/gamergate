@@ -6,30 +6,11 @@ interface AvatarProps {
   size?: number;
 }
 
-// Function to generate a consistent color based on username
-const generateColor = (username: string): string => {
-  // Simple hash function to generate a number from a string
-  let hash = 0;
-  for (let i = 0; i < username.length; i++) {
-    hash = username.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  
-  // Convert to a hex color
-  let color = "#";
-  for (let i = 0; i < 3; i++) {
-    const value = (hash >> (i * 8)) & 0xFF;
-    color += ("00" + value.toString(16)).substr(-2);
-  }
-  
-  return color;
-};
+// Fixed dark purple color as requested
+const AVATAR_BACKGROUND_COLOR = "#4A148C";
 
 export const Avatar: React.FC<AvatarProps> = ({ user, size = 40 }) => {
   const firstLetter = user.username.charAt(0).toUpperCase();
-  const backgroundColor = generateColor(user.username);
-  
-  // Log the avatar URL for debugging
-  console.log("Avatar URL:", user.avatar_id);
   
   const avatarStyle: React.CSSProperties = {
     width: `${size}px`,
@@ -38,7 +19,7 @@ export const Avatar: React.FC<AvatarProps> = ({ user, size = 40 }) => {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor,
+    backgroundColor: AVATAR_BACKGROUND_COLOR,
     color: "white",
     fontWeight: "bold",
     fontSize: `${size / 2}px`,
@@ -54,19 +35,19 @@ export const Avatar: React.FC<AvatarProps> = ({ user, size = 40 }) => {
     e.currentTarget.parentElement!.innerText = firstLetter;
   };
 
-  // Create a proxied URL for the avatar if it exists
-  const avatarUrl = user.avatar_id 
-    ? `/api/user/avatar-proxy?url=${encodeURIComponent(user.avatar_id)}`
-    : null;
-
+  // Use the avatar_id directly if available
+  // This approach relies on the browser's ability to handle cross-origin requests
+  // If this doesn't work, we can fall back to the proxy approach
   return (
     <div style={avatarStyle}>
-      {avatarUrl ? (
+      {user.avatar_id ? (
         <img 
-          src={avatarUrl} 
+          src={user.avatar_id} 
           alt={`${user.username}'s avatar`} 
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
           onError={handleImageError}
+          referrerPolicy="no-referrer"
+          crossOrigin="anonymous"
         />
       ) : (
         firstLetter
