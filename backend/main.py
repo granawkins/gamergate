@@ -38,6 +38,36 @@ async def get_games():
     return list(_db["games"].values())
 
 
+@app.post("/games/check-name")
+async def check_game_name(request: Request):
+    """
+    Check if a game name is unique in the database.
+    Returns true if the name is available, false if it's already taken.
+    If current_game_id is provided, it will exclude that game from the check.
+
+    Request body:
+    {
+        "name": str,
+        "current_game_id": Optional[str]
+    }
+    """
+    data = await request.json()
+    name = data.get("name")
+    current_game_id = data.get("current_game_id")
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+
+    _db = await db.get()
+
+    # Check if the name is already taken by another game
+    for id, game in _db["games"].items():
+        if game["name"] == name and id != current_game_id:
+            return {"available": False}
+
+    return {"available": True}
+
+
 @app.get("/games/{game_id}/play")
 async def serve_game(game_id: str):
     """Serve the HTML file for a specific game with added resize handling."""
@@ -117,7 +147,7 @@ async def get_chat_messages(
             status_code=404, detail=f"Game with ID '{game_id}' not found"
         )
 
-    game = _db["games"][game_id]
+    game = _db["games"][game_id].copy()
 
     # Check if the user is the owner
     if current_user["id"] != game["owner_id"]:
@@ -125,10 +155,16 @@ async def get_chat_messages(
             status_code=403, detail="You are not the owner of this game"
         )
 
-    messages = game.get("messages")
+    messages = game.pop("messages")
     for message in messages:
         if message.get("role") == "assistant" and message.get("status") != "error":
             message["text"] = extract_message(message["text"], allow_incomplete=True)
+    
+    parent_id = game.pop("parent_id")
+    game["parent_name"] = (
+        None if parent_id is None else _db["games"][parent_id].get("name", None)
+    )
+    
     return {"messages": messages, "gameInfo": game}
 
 

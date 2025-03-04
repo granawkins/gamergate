@@ -11,10 +11,10 @@ export interface Game {
   name: string;
   path: string;
   owner_id: string;
-  parent_id: string;
   created_at: string;
   updated_at: string;
   plays: number;
+  parent_name: string | null;
 }
 
 export interface Message {
