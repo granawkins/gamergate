@@ -38,13 +38,21 @@ async def get_games():
     return list(_db["games"].values())
 
 
-@app.get("/games/{game_name}/play")
-async def serve_game(game_name: str):
+@app.get("/games/{game_id}/play")
+async def serve_game(game_id: str):
     """Serve the HTML file for a specific game with added resize handling."""
-    game_dir = GAMES_PATH / game_name
+    # Check if the game exists
+    _db = await db.get()
+    if game_id not in _db["games"]:
+        raise HTTPException(
+            status_code=404, detail=f"Game with ID '{game_id}' not found"
+        )
+
+    game = _db["games"][game_id]
+    game_dir = GAMES_PATH / game_id
 
     # First check if there's a file named after the game
-    game_file = game_dir / f"{game_name}.html"
+    game_file = game_dir / f"{game['name']}.html"
     if not game_file.exists():
         # If not, look for any HTML file in the directory
         html_files = list(game_dir.glob("*.html"))
@@ -52,7 +60,9 @@ async def serve_game(game_name: str):
             game_file = html_files[0]
         else:
             # If no HTML file is found, return 404
-            raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+            raise HTTPException(
+                status_code=404, detail=f"Game '{game['name']}' not found"
+            )
 
     # Read the HTML content
     with open(game_file, "r") as f:
@@ -61,67 +71,70 @@ async def serve_game(game_name: str):
     return HTMLResponse(content=html_content)
 
 
-@app.delete("/games/{game_name}")
-async def delete_game(game_name: str, current_user: User = Depends(get_current_user)):
+@app.delete("/games/{game_id}")
+async def delete_game(game_id: str, current_user: User = Depends(get_current_user)):
     """
-    Delete a game by name. Only the owner can delete their game.
+    Delete a game by ID. Only the owner can delete their game.
     """
     _db = await db.get()
-    game_id = None
 
-    # Find the game by name
-    for id, game in _db["games"].items():
-        if game["name"] == game_name:
-            if current_user["id"] != game["owner_id"]:
-                raise HTTPException(
-                    status_code=403, detail="You are not the owner of this game"
-                )
-            game_id = id
-            break
+    # Check if the game exists
+    if game_id not in _db["games"]:
+        raise HTTPException(
+            status_code=404, detail=f"Game with ID '{game_id}' not found"
+        )
 
-    if game_id is None:
-        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+    game = _db["games"][game_id]
+
+    # Check if the user is the owner
+    if current_user["id"] != game["owner_id"]:
+        raise HTTPException(
+            status_code=403, detail="You are not the owner of this game"
+        )
 
     # Delete the game from the database
     del _db["games"][game_id]
     await db.set(_db)
 
     return JSONResponse(
-        status_code=200, content={"message": f"Game '{game_name}' deleted successfully"}
+        status_code=200,
+        content={"message": f"Game '{game['name']}' deleted successfully"},
     )
 
 
-@app.get("/chat/{game_name}")
+@app.get("/chat/{game_id}")
 async def get_chat_messages(
-    game_name: str, current_user: User = Depends(get_current_user)
+    game_id: str, current_user: User = Depends(get_current_user)
 ):
     """
     Get all chat messages and game info for a specific game.
     """
     _db = await db.get()
-    for game in _db["games"].values():
-        if game["name"] == game_name:
-            if current_user["id"] != game["owner_id"]:
-                raise HTTPException(
-                    status_code=403, detail="You are not the owner of this game"
-                )
-            messages = game.get("messages")
-            for message in messages:
-                if (
-                    message.get("role") == "assistant"
-                    and message.get("status") != "error"
-                ):
-                    message["text"] = extract_message(
-                        message["text"], allow_incomplete=True
-                    )
-            return {"messages": messages, "gameInfo": game}
 
-    raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+    # Check if the game exists
+    if game_id not in _db["games"]:
+        raise HTTPException(
+            status_code=404, detail=f"Game with ID '{game_id}' not found"
+        )
+
+    game = _db["games"][game_id]
+
+    # Check if the user is the owner
+    if current_user["id"] != game["owner_id"]:
+        raise HTTPException(
+            status_code=403, detail="You are not the owner of this game"
+        )
+
+    messages = game.get("messages")
+    for message in messages:
+        if message.get("role") == "assistant" and message.get("status") != "error":
+            message["text"] = extract_message(message["text"], allow_incomplete=True)
+    return {"messages": messages, "gameInfo": game}
 
 
-@app.post("/chat/{game_name}")
+@app.post("/chat/{game_id}")
 async def handle_chat(
-    game_name: str,
+    game_id: str,
     request: Request,
     current_user: User = Depends(get_current_user),
 ):
@@ -132,24 +145,22 @@ async def handle_chat(
     """
     # Check if the game exists
     _db = await db.get()
-    game_id = None
-    game = None
     body = await request.json()
     user_message_text = body["message"]
 
-    # Find the game by name
-    for id, g in _db["games"].items():
-        if g["name"] == game_name:
-            if current_user["id"] != g["owner_id"]:
-                raise HTTPException(
-                    status_code=403, detail="You are not the owner of this game"
-                )
-            game_id = id
-            game = g
-            break
+    # Check if the game exists
+    if game_id not in _db["games"]:
+        raise HTTPException(
+            status_code=404, detail=f"Game with ID '{game_id}' not found"
+        )
 
-    if game_id is None:
-        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+    game = _db["games"][game_id]
+
+    # Check if the user is the owner
+    if current_user["id"] != game["owner_id"]:
+        raise HTTPException(
+            status_code=403, detail="You are not the owner of this game"
+        )
 
     # Create user message
     user_message: Message = {
@@ -179,9 +190,9 @@ async def handle_chat(
     return {"message": assistant_message, "gameInfo": game}
 
 
-@app.get("/chat/{game_name}/message/{message_id}")
+@app.get("/chat/{game_id}/message/{message_id}")
 async def get_message(
-    game_name: str, message_id: str, current_user: User = Depends(get_current_user)
+    game_id: str, message_id: str, current_user: User = Depends(get_current_user)
 ):
     """
     Get a specific message by ID.
@@ -189,62 +200,59 @@ async def get_message(
     """
     _db = await db.get()
 
-    # Find the game by name
-    for game in _db["games"].values():
-        if game["name"] == game_name:
-            if current_user["id"] != game["owner_id"]:
-                raise HTTPException(
-                    status_code=403, detail="You are not the owner of this game"
+    # Check if the game exists
+    if game_id not in _db["games"]:
+        raise HTTPException(
+            status_code=404, detail=f"Game with ID '{game_id}' not found"
+        )
+
+    game = _db["games"][game_id]
+
+    # Check if the user is the owner
+    if current_user["id"] != game["owner_id"]:
+        raise HTTPException(
+            status_code=403, detail="You are not the owner of this game"
+        )
+
+    # Find the message by ID
+    for message in game.get("messages", []):
+        if message["id"] == message_id:
+            if message.get("role") == "assistant" and message.get("status") != "error":
+                message["text"] = extract_message(
+                    message["text"], allow_incomplete=True
                 )
+            return {"message": message}
 
-            # Find the message by ID
-            for message in game.get("messages", []):
-                if message["id"] == message_id:
-                    if (
-                        message.get("role") == "assistant"
-                        and message.get("status") != "error"
-                    ):
-                        message["text"] = extract_message(
-                            message["text"], allow_incomplete=True
-                        )
-                    return {"message": message}
-
-            raise HTTPException(
-                status_code=404, detail=f"Message '{message_id}' not found"
-            )
-
-    raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+    raise HTTPException(status_code=404, detail=f"Message '{message_id}' not found")
 
 
 class UndoRequest(BaseModel):
     message_id: str
 
 
-@app.post("/chat/{game_name}/undo")
+@app.post("/chat/{game_id}/undo")
 async def undo_last_commit(
-    game_name: str, request: UndoRequest, current_user: User = Depends(get_current_user)
+    game_id: str, request: UndoRequest, current_user: User = Depends(get_current_user)
 ):
     """
     Undo the commit associated with a specific message and delete that message,
     the user message that prompted it, and all messages that came after it.
     """
     _db = await db.get()
-    game_id = None
-    game = None
 
-    # Find the game by name
-    for id, g in _db["games"].items():
-        if g["name"] == game_name:
-            if current_user["id"] != g["owner_id"]:
-                raise HTTPException(
-                    status_code=403, detail="You are not the owner of this game"
-                )
-            game_id = id
-            game = g
-            break
+    # Check if the game exists
+    if game_id not in _db["games"]:
+        raise HTTPException(
+            status_code=404, detail=f"Game with ID '{game_id}' not found"
+        )
 
-    if game_id is None or game is None:
-        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+    game = _db["games"][game_id]
+
+    # Check if the user is the owner
+    if current_user["id"] != game["owner_id"]:
+        raise HTTPException(
+            status_code=403, detail="You are not the owner of this game"
+        )
 
     # Check if there are messages to undo
     messages = game.get("messages", [])
@@ -285,7 +293,7 @@ async def undo_last_commit(
     try:
         subprocess.run(
             ["git", "reset", "--hard", "HEAD~1"],
-            cwd=GAMES_PATH / game["path"],
+            cwd=GAMES_PATH / game_id,
             check=True,
         )
     except subprocess.CalledProcessError as e:

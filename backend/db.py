@@ -28,7 +28,6 @@ class Message(TypedDict, total=False):
 class Game(TypedDict):
     id: str
     name: str
-    path: str
     owner_id: str
     parent_id: Optional[str]
     created_at: str  # ISO format string of datetime
@@ -67,7 +66,6 @@ class DB:
                 _db["games"][id] = {
                     "id": id,
                     "name": dir.name,
-                    "path": dir.name,
                     "owner_id": admin_id,
                     "parent_id": None,
                     "created_at": datetime.now().isoformat(),
@@ -75,12 +73,23 @@ class DB:
                     "plays": 0,
                     "messages": [],
                 }
+                # Create a new directory with the game_id and copy the contents
+                game_dir = GAMES_PATH / id
+                game_dir.mkdir(exist_ok=True)
+
+                # Copy the contents from the original directory to the new one
+                import shutil
+
+                for item in (GAMES_PATH / dir.name).iterdir():
+                    if item.is_file():
+                        shutil.copy2(item, game_dir)
+                    elif item.is_dir():
+                        shutil.copytree(item, game_dir / item.name)
+
                 # Initialize a git repo for the game
-                subprocess.run(["git", "init"], cwd=GAMES_PATH / dir.name)
-                subprocess.run(["git", "add", "."], cwd=GAMES_PATH / dir.name)
-                subprocess.run(
-                    ["git", "commit", "-m", "Initial commit"], cwd=GAMES_PATH / dir.name
-                )
+                subprocess.run(["git", "init"], cwd=game_dir)
+                subprocess.run(["git", "add", "."], cwd=game_dir)
+                subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=game_dir)
             with open(DB_PATH, "w") as f:
                 json.dump(_db, f, indent=4)
         self.lock = Lock()
