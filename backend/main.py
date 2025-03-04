@@ -319,7 +319,7 @@ async def undo_last_commit(
     try:
         subprocess.run(
             ["git", "reset", "--hard", "HEAD~1"],
-            cwd=GAMES_PATH / game["path"],
+            cwd=GAMES_PATH / game["id"],
             check=True,
         )
     except subprocess.CalledProcessError as e:
