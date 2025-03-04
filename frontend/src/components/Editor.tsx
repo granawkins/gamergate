@@ -237,7 +237,7 @@ export const Editor = () => {
             style={{
               width: "100%",
               height: "30%",
-              minHeight: "500px",
+              minHeight: "300px",
               display: "flex",
               flexDirection: "column",
               borderTop: "1px solid #ccc",
