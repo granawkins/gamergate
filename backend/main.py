@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from datetime import datetime
 import subprocess
+from typing import Optional
 from uuid import uuid4
 
 from db import db, GAMES_PATH, Message, User
@@ -29,7 +30,7 @@ class MessageRequest(BaseModel):
 
 class GameNameCheckRequest(BaseModel):
     name: str
-    current_game_id: str = None
+    current_game_id: Optional[str] = None
 
 
 @app.get("/")

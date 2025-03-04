@@ -65,19 +65,19 @@ export const GameInfoTab = ({ gameInfo, isLoading }: GameInfoTabProps) => {
 
   const handleNameSave = async () => {
     if (!gameInfo) return;
-    
+
     // Don't save if name is empty
     if (!editableName.trim()) {
       alert("Game name cannot be empty");
       return;
     }
-    
+
     // Don't save if name hasn't changed
     if (editableName === gameInfo.name) {
       setIsEditing(false);
       return;
     }
-    
+
     // Check if the name is unique
     setIsCheckingName(true);
     try {
@@ -91,18 +91,20 @@ export const GameInfoTab = ({ gameInfo, isLoading }: GameInfoTabProps) => {
           current_game_id: gameInfo.id,
         }),
       });
-      
+
       if (!response.ok) {
         throw new Error("Failed to check game name");
       }
-      
+
       const data = await response.json();
-      
+
       if (!data.available) {
-        alert(`The name "${editableName}" is already taken. Please choose a different name.`);
+        alert(
+          `The name "${editableName}" is already taken. Please choose a different name.`,
+        );
         return;
       }
-      
+
       // In the future, this will send the updated name to the backend
       setIsEditing(false);
     } catch (error) {
