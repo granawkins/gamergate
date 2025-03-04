@@ -1,4 +1,5 @@
 import json
+import shutil
 import subprocess
 from asyncio import Lock
 from datetime import datetime
@@ -75,16 +76,9 @@ class DB:
                 }
                 # Create a new directory with the game_id and copy the contents
                 game_dir = GAMES_PATH / id
-                game_dir.mkdir(exist_ok=True)
 
                 # Copy the contents from the original directory to the new one
-                import shutil
-
-                for item in (GAMES_PATH / dir.name).iterdir():
-                    if item.is_file():
-                        shutil.copy2(item, game_dir)
-                    elif item.is_dir():
-                        shutil.copytree(item, game_dir / item.name)
+                shutil.copytree(GAMES_PATH / dir.name, game_dir)
 
                 # Initialize a git repo for the game
                 subprocess.run(["git", "init"], cwd=game_dir)
