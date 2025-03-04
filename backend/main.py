@@ -40,7 +40,7 @@ async def get_games():
 
 @app.get("/games/{game_name}/play")
 async def serve_game(game_name: str):
-    """Serve the HTML file for a specific game with added resize handling and screenshot capability."""
+    """Serve the HTML file for a specific game."""
     game_dir = GAMES_PATH / game_name
 
     # First check if there's a file named after the game
@@ -57,53 +57,6 @@ async def serve_game(game_name: str):
     # Read the HTML content
     with open(game_file, "r") as f:
         html_content = f.read()
-
-    # Inject screenshot functionality script
-    screenshot_script = """
-    <script>
-    // Screenshot functionality
-    window.addEventListener('message', function(event) {
-        // Only accept messages from our parent window
-        if (event.source !== window.parent) return;
-        
-        // Handle screenshot request
-        if (event.data.type === 'takeScreenshot') {
-            try {
-                // Find the canvas element (used by ThreeJS and most WebGL games)
-                const canvas = document.querySelector('canvas');
-                if (!canvas) {
-                    window.parent.postMessage({
-                        type: 'screenshotError',
-                        error: 'No canvas element found in the game'
-                    }, '*');
-                    return;
-                }
-                
-                // Take the screenshot
-                const dataUrl = canvas.toDataURL('image/png');
-                
-                // Send it back to the parent window
-                window.parent.postMessage({
-                    type: 'screenshotResult',
-                    dataUrl: dataUrl
-                }, '*');
-            } catch (error) {
-                window.parent.postMessage({
-                    type: 'screenshotError',
-                    error: error.message || 'Unknown error taking screenshot'
-                }, '*');
-            }
-        }
-    });
-    </script>
-    """
-
-    # Insert the script before the closing </body> tag
-    if "</body>" in html_content:
-        html_content = html_content.replace("</body>", f"{screenshot_script}</body>")
-    else:
-        # If there's no </body> tag, append the script at the end
-        html_content += screenshot_script
 
     return HTMLResponse(content=html_content)
 
