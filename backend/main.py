@@ -83,10 +83,23 @@ async def check_game_name(request: Request):
 @app.get("/games/{game_name}/play")
 async def serve_game(game_name: str):
     """Serve the HTML file for a specific game with added resize handling."""
-    game_dir = GAMES_PATH / game_name
+    # Find the game ID from the name in the database
+    _db = await db.get()
+    game_id = None
 
-    # First check if there's a file named after the game
-    game_file = game_dir / f"{game_name}.html"
+    for id, game in _db["games"].items():
+        if game["name"] == game_name:
+            game_id = id
+            break
+
+    if game_id is None:
+        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+
+    # Use the game ID to locate the game directory
+    game_dir = GAMES_PATH / game_id
+
+    # First check if there's a file named index.html (most common)
+    game_file = game_dir / "index.html"
     if not game_file.exists():
         # If not, look for any HTML file in the directory
         html_files = list(game_dir.glob("*.html"))
