@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from datetime import datetime
 import subprocess
+import shutil
 from uuid import uuid4
 
 from db import db, GAMES_PATH, Message, User
@@ -130,6 +131,96 @@ async def delete_game(game_name: str, current_user: User = Depends(get_current_u
     return JSONResponse(
         status_code=200, content={"message": f"Game '{game_name}' deleted successfully"}
     )
+
+
+class CloneGameRequest(BaseModel):
+    new_name: str
+
+
+@app.post("/games/{game_name}/clone")
+async def clone_game(
+    game_name: str,
+    request: CloneGameRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Clone a game with a new name.
+    1. Check if the name is available
+    2. Create a new database entry with parent_id set to the cloned project
+    3. Copy the game directory to a new one with the new ID
+    4. Return the new game information
+    """
+    new_name = request.new_name
+
+    if not new_name or not new_name.strip():
+        raise HTTPException(status_code=400, detail="New game name cannot be empty")
+
+    # Check if the name is available
+    _db = await db.get()
+    for game in _db["games"].values():
+        if game["name"] == new_name:
+            raise HTTPException(
+                status_code=400, detail=f"Game name '{new_name}' is already taken"
+            )
+
+    # Find the source game
+    source_game_id = None
+    source_game = None
+    for id, game in _db["games"].items():
+        if game["name"] == game_name:
+            source_game_id = id
+            source_game = game
+            break
+
+    if source_game_id is None or source_game is None:
+        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+
+    # Create a new game entry
+    new_game_id = str(uuid4())
+    now = datetime.now().isoformat()
+
+    new_game = {
+        "id": new_game_id,
+        "name": new_name,
+        "owner_id": current_user["id"],
+        "parent_id": source_game_id,
+        "created_at": now,
+        "updated_at": now,
+        "plays": 0,
+        "messages": [],
+    }
+
+    # Copy the game directory
+    source_dir = GAMES_PATH / source_game_id
+    target_dir = GAMES_PATH / new_game_id
+
+    try:
+        shutil.copytree(source_dir, target_dir)
+
+        # Initialize git repo for the new game
+        subprocess.run(["git", "init"], cwd=target_dir)
+        subprocess.run(["git", "add", "."], cwd=target_dir)
+        subprocess.run(
+            [
+                "git",
+                "commit",
+                "-m",
+                "Initial commit (cloned from {})".format(game_name),
+            ],
+            cwd=target_dir,
+        )
+
+        # Add the new game to the database
+        _db["games"][new_game_id] = new_game
+        await db.set(_db)
+
+        return {"success": True, "game": new_game, "redirect": f"/editor/{new_name}"}
+
+    except Exception as e:
+        # Clean up if something went wrong
+        if target_dir.exists():
+            shutil.rmtree(target_dir)
+        raise HTTPException(status_code=500, detail=f"Failed to clone game: {str(e)}")
 
 
 @app.get("/chat/{game_name}")
