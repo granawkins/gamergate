@@ -168,7 +168,3 @@ async def user_logout():
     response = RedirectResponse("http://localhost:5173/")
     response.delete_cookie("session_token")
     return response
-
-
-# Avatar proxy route removed as it's no longer needed
-# The frontend now uses the avatar_id directly with referrerPolicy="no-referrer" and crossOrigin="anonymous"
