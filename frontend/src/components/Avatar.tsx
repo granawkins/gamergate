@@ -28,6 +28,9 @@ export const Avatar: React.FC<AvatarProps> = ({ user, size = 40 }) => {
   const firstLetter = user.username.charAt(0).toUpperCase();
   const backgroundColor = generateColor(user.username);
   
+  // Log the avatar URL for debugging
+  console.log("Avatar URL:", user.avatar_id);
+  
   const avatarStyle: React.CSSProperties = {
     width: `${size}px`,
     height: `${size}px`,
@@ -43,13 +46,27 @@ export const Avatar: React.FC<AvatarProps> = ({ user, size = 40 }) => {
     overflow: "hidden",
   };
 
+  // Handle image loading error
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    console.error("Error loading avatar image:", e);
+    // Hide the broken image and show the fallback
+    e.currentTarget.style.display = 'none';
+    e.currentTarget.parentElement!.innerText = firstLetter;
+  };
+
+  // Create a proxied URL for the avatar if it exists
+  const avatarUrl = user.avatar_id 
+    ? `/api/user/avatar-proxy?url=${encodeURIComponent(user.avatar_id)}`
+    : null;
+
   return (
     <div style={avatarStyle}>
-      {user.avatar_id ? (
+      {avatarUrl ? (
         <img 
-          src={user.avatar_id} 
+          src={avatarUrl} 
           alt={`${user.username}'s avatar`} 
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          onError={handleImageError}
         />
       ) : (
         firstLetter
