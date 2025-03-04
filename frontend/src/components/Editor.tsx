@@ -147,6 +147,38 @@ export const Editor = () => {
     }
   };
 
+  const handleUndo = async (message: Message) => {
+    if (!message.commit_sha) return;
+
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      "Are you sure you want to undo this change? This action cannot be undone.",
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`/api/chat/${gameName}/undo`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message_id: message.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to undo changes");
+      }
+
+      const data = await response.json();
+      setMessages(data.messages);
+      // Reload the iframe to show the changes
+      setFrameKey((prev) => prev + 1);
+    } catch (error) {
+      setError(error as string);
+    }
+  };
+
   // Redirect to home if no gameName is provided
   if (!gameName) {
     return <Navigate to="/" replace />;
@@ -202,6 +234,7 @@ export const Editor = () => {
         isPolling={isPolling}
         error={error}
         onSendMessage={handleSendMessage}
+        onUndo={handleUndo}
       />
     ) : (
       <GameInfoTab gameInfo={gameInfo} isLoading={isLoading} />
@@ -265,6 +298,7 @@ export const Editor = () => {
             {renderTabContent()}
           </div>
 
+<<<<<<< HEAD
           {/* Right Column - Game Preview */}
           <div
             style={{
