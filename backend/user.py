@@ -7,7 +7,7 @@ from urllib.parse import urlencode
 
 import jwt
 from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.responses import RedirectResponse, Response
+from fastapi.responses import RedirectResponse
 from fastapi.security import APIKeyCookie
 
 from db import db, User
@@ -170,23 +170,5 @@ async def user_logout():
     return response
 
 
-@app.get("/avatar-proxy")
-async def avatar_proxy(url: str):
-    """
-    Proxy endpoint to fetch avatar images from external sources.
-    This helps bypass CORS restrictions.
-    """
-    try:
-        response = requests.get(url, stream=True)
-        if response.status_code != 200:
-            raise HTTPException(
-                status_code=response.status_code, detail="Failed to fetch avatar"
-            )
-
-        # Get the content type from the response
-        content_type = response.headers.get("Content-Type", "image/jpeg")
-
-        # Return the image with the appropriate content type
-        return Response(content=response.content, media_type=content_type)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching avatar: {str(e)}")
+# Avatar proxy route removed as it's no longer needed
+# The frontend now uses the avatar_id directly with referrerPolicy="no-referrer" and crossOrigin="anonymous"
