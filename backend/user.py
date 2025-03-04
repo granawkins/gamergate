@@ -112,31 +112,36 @@ async def user_google_callback(request: Request):
 
     _db = await db.get()
     user = next((u for u in _db["users"].values() if u["email"] == email), None)
+    
+    # Variable to store the user ID for the token
+    user_id: str
+    
     if not user:
         # Create base user with required fields
+        user_id = str(uuid.uuid4())
         base_user: User = {
-            "id": str(uuid.uuid4()),
+            "id": user_id,
             "username": email.split("@")[0],
             "email": email,
             "created_at": datetime.now().isoformat(),
         }
         # Add optional fields
-        user_with_avatar: UserWithOptionalFields = {**base_user}
+        user_with_avatar = dict(base_user)  # Create a copy as a regular dict
         if avatar_id:
             user_with_avatar["avatar_id"] = avatar_id
             
-        _db["users"][base_user["id"]] = user_with_avatar
+        _db["users"][user_id] = user_with_avatar
         await db.set(_db)
-    elif avatar_id and user.get("avatar_id") != avatar_id:
-        # Update avatar if it has changed
-        updated_user: UserWithOptionalFields = {**user}
-        updated_user["avatar_id"] = avatar_id
-        _db["users"][user["id"]] = updated_user
-        await db.set(_db)
+    else:
+        user_id = user["id"]
+        if avatar_id and user.get("avatar_id") != avatar_id:
+            # Update avatar if it has changed
+            updated_user = dict(user)  # Create a copy as a regular dict
+            updated_user["avatar_id"] = avatar_id
+            _db["users"][user_id] = updated_user
+            await db.set(_db)
 
-    # Get the user ID for the token
-    user_id = base_user["id"] if not user else user["id"]
-    auth_token = create_session_token(str(user_id))
+    auth_token = create_session_token(user_id)
     response = RedirectResponse("http://localhost:5173/")
     response.set_cookie(
         key="session_token",

@@ -11,7 +11,7 @@ class User(TypedDict):
     id: str
     username: str
     email: str
-    created_at: datetime
+    created_at: str  # ISO format string of datetime
 
 class UserWithOptionalFields(User, total=False):
     avatar_id: Optional[str]
@@ -33,8 +33,8 @@ class Game(TypedDict):
     path: str
     owner_id: str
     parent_id: Optional[str]
-    created_at: datetime
-    updated_at: datetime
+    created_at: str  # ISO format string of datetime
+    updated_at: str  # ISO format string of datetime
     plays: int
     messages: List[Message]
 
