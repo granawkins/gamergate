@@ -133,6 +133,7 @@ export const Editor = () => {
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ message_id: message.id }),
       });
 
       if (!response.ok) {

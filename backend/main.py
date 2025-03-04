@@ -216,13 +216,17 @@ async def get_message(
     raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
 
 
+class UndoRequest(BaseModel):
+    message_id: str
+
+
 @app.post("/chat/{game_name}/undo")
 async def undo_last_commit(
-    game_name: str, current_user: User = Depends(get_current_user)
+    game_name: str, request: UndoRequest, current_user: User = Depends(get_current_user)
 ):
     """
-    Undo the last commit in the game's repo and delete the last two messages
-    (assistant message with diff and user message that prompted it).
+    Undo the commit associated with a specific message and delete that message,
+    the user message that prompted it, and all messages that came after it.
     """
     _db = await db.get()
     game_id = None
@@ -249,15 +253,35 @@ async def undo_last_commit(
             status_code=400, detail="Not enough messages to perform undo operation"
         )
 
-    # Check if the last message is from the assistant and has a commit_sha
-    last_message = messages[-1]
-    if last_message["role"] != "assistant" or not last_message.get("commit_sha"):
+    # Find the message with the given ID
+    message_index = -1
+    target_message = None
+    for i, message in enumerate(messages):
+        if message["id"] == request.message_id:
+            message_index = i
+            target_message = message
+            break
+
+    if message_index == -1 or target_message is None:
         raise HTTPException(
-            status_code=400,
-            detail="Last message is not an assistant message with a commit",
+            status_code=404, detail=f"Message with ID {request.message_id} not found"
         )
 
-    # Undo the last commit in the game's repo
+    # Check if the message is from the assistant and has a commit_sha
+    if target_message["role"] != "assistant" or not target_message.get("commit_sha"):
+        raise HTTPException(
+            status_code=400,
+            detail="Selected message is not an assistant message with a commit",
+        )
+
+    # Check if there's a user message before it
+    if message_index == 0 or messages[message_index - 1]["role"] != "user":
+        raise HTTPException(
+            status_code=400,
+            detail="No user message found before the selected assistant message",
+        )
+
+    # Undo the commit in the game's repo
     try:
         subprocess.run(
             ["git", "reset", "--hard", "HEAD~1"],
@@ -267,8 +291,8 @@ async def undo_last_commit(
     except subprocess.CalledProcessError as e:
         raise HTTPException(status_code=500, detail=f"Failed to undo commit: {str(e)}")
 
-    # Remove the last two messages (assistant message and user message)
-    _db["games"][game_id]["messages"] = messages[:-2]
+    # Remove the assistant message, the user message before it, and all messages after it
+    _db["games"][game_id]["messages"] = messages[: message_index - 1]
     await db.set(_db)
 
     return {"success": True, "messages": _db["games"][game_id]["messages"]}
