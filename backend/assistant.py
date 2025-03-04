@@ -163,7 +163,7 @@ async def generate_completion(game_id: str):
         raise BadRequestError(f"Game {game_id} not found")
 
     # Build system prompt
-    file_path = GAMES_PATH / game["path"] / "index.html"
+    file_path = GAMES_PATH / game["id"] / "index.html"
     if not file_path.exists():
         raise BadRequestError("Game code not found")
     with open(file_path, "r") as f:
@@ -234,7 +234,7 @@ async def generate_completion(game_id: str):
 
                 # Apply to codebase
                 subprocess.run(
-                    ["git", "add", "index.html"], cwd=GAMES_PATH / game["path"]
+                    ["git", "add", "index.html"], cwd=GAMES_PATH / game["id"]
                 )
                 # First make the commit
                 subprocess.run(
@@ -244,12 +244,12 @@ async def generate_completion(game_id: str):
                         "-m",
                         f"message {last_message['id']}",
                     ],
-                    cwd=GAMES_PATH / game["path"],
+                    cwd=GAMES_PATH / game["id"],
                 )
                 # Then get the commit hash
                 commit_result = subprocess.run(
                     ["git", "rev-parse", "HEAD"],
-                    cwd=GAMES_PATH / game["path"],
+                    cwd=GAMES_PATH / game["id"],
                     capture_output=True,
                 )
                 last_message["commit_sha"] = commit_result.stdout.strip().decode(
