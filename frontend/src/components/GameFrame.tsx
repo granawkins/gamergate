@@ -66,7 +66,7 @@ export const GameFrame = ({
         allowTaint: true,
         logging: false,
         // Attempt to capture WebGL content
-        onclone: (documentClone) => {
+        onclone: () => {
           // This function runs before the screenshot is taken
           // We can use it to prepare the cloned document
           console.log("Preparing document for screenshot");
