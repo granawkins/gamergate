@@ -10,6 +10,8 @@ type TabType = "conversation" | "info";
 export const Editor = () => {
   const { gameName } = useParams();
   const [activeTab, setActiveTab] = useState<TabType>("conversation");
+  const [isPortrait, setIsPortrait] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Conversation State
   const [isLoading, setIsLoading] = useState(true);
@@ -18,6 +20,27 @@ export const Editor = () => {
   const [gameInfo, setGameInfo] = useState<Game | null>(null);
 
   const [frameKey, setFrameKey] = useState(0);
+
+  // Check if we're in portrait mode (aspect ratio taller than 1:1)
+  useEffect(() => {
+    const checkOrientation = () => {
+      if (containerRef.current) {
+        const { width, height } = containerRef.current.getBoundingClientRect();
+        setIsPortrait(height > width);
+      }
+    };
+
+    // Initial check
+    checkOrientation();
+
+    // Add resize listener
+    window.addEventListener("resize", checkOrientation);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener("resize", checkOrientation);
+    };
+  }, []);
 
   useEffect(() => {
     const initializeConversation = async () => {
@@ -129,89 +152,130 @@ export const Editor = () => {
     return <Navigate to="/" replace />;
   }
 
-  return (
+  // Render the tabs for conversation and game info
+  const renderTabs = () => (
     <div
       style={{
         display: "flex",
-        flexDirection: "row",
+        borderBottom: "1px solid #ccc",
+      }}
+    >
+      <div
+        onClick={() => setActiveTab("conversation")}
+        style={{
+          padding: "0.75rem 1rem",
+          cursor: "pointer",
+          fontWeight: activeTab === "conversation" ? "bold" : "normal",
+          borderBottom:
+            activeTab === "conversation"
+              ? "2px solid #0084ff"
+              : "2px solid transparent",
+          color: activeTab === "conversation" ? "#0084ff" : "inherit",
+        }}
+      >
+        Conversation
+      </div>
+      <div
+        onClick={() => setActiveTab("info")}
+        style={{
+          padding: "0.75rem 1rem",
+          cursor: "pointer",
+          fontWeight: activeTab === "info" ? "bold" : "normal",
+          borderBottom:
+            activeTab === "info"
+              ? "2px solid #0084ff"
+              : "2px solid transparent",
+          color: activeTab === "info" ? "#0084ff" : "inherit",
+        }}
+      >
+        Game Info
+      </div>
+    </div>
+  );
+
+  // Render the tab content (conversation or game info)
+  const renderTabContent = () =>
+    activeTab === "conversation" ? (
+      <ConversationTab
+        messages={messages}
+        isLoading={isLoading}
+        isPolling={isPolling}
+        error={error}
+        onSendMessage={handleSendMessage}
+      />
+    ) : (
+      <GameInfoTab gameInfo={gameInfo} isLoading={isLoading} />
+    );
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        display: "flex",
+        flexDirection: isPortrait ? "column" : "row",
         width: "100%",
         height: "100%",
         overflow: "hidden",
       }}
     >
-      {/* Left Column - Chat Interface and Game Info */}
-      <div
-        style={{
-          width: "50%",
-          maxWidth: "400px",
-          display: "flex",
-          flexDirection: "column",
-          borderRight: "1px solid #ccc",
-          height: "100%",
-        }}
-      >
-        {/* Tabs */}
-        <div
-          style={{
-            display: "flex",
-            borderBottom: "1px solid #ccc",
-          }}
-        >
+      {isPortrait ? (
+        // Portrait layout - Game on top, messages on bottom 30%
+        <>
+          {/* Top section - Game Preview */}
           <div
-            onClick={() => setActiveTab("conversation")}
             style={{
-              padding: "0.75rem 1rem",
-              cursor: "pointer",
-              fontWeight: activeTab === "conversation" ? "bold" : "normal",
-              borderBottom:
-                activeTab === "conversation"
-                  ? "2px solid #0084ff"
-                  : "2px solid transparent",
-              color: activeTab === "conversation" ? "#0084ff" : "inherit",
+              width: "100%",
+              height: "70%",
+              minHeight: "300px",
             }}
           >
-            Conversation
+            <GameFrame key={frameKey} gameName={gameName} />
           </div>
+
+          {/* Bottom section - Chat Interface and Game Info */}
           <div
-            onClick={() => setActiveTab("info")}
             style={{
-              padding: "0.75rem 1rem",
-              cursor: "pointer",
-              fontWeight: activeTab === "info" ? "bold" : "normal",
-              borderBottom:
-                activeTab === "info"
-                  ? "2px solid #0084ff"
-                  : "2px solid transparent",
-              color: activeTab === "info" ? "#0084ff" : "inherit",
+              width: "100%",
+              height: "30%",
+              minHeight: "300px",
+              display: "flex",
+              flexDirection: "column",
+              borderTop: "1px solid #ccc",
             }}
           >
-            Game Info
+            {renderTabs()}
+            {renderTabContent()}
           </div>
-        </div>
+        </>
+      ) : (
+        // Landscape layout - Messages on left, game on right
+        <>
+          {/* Left Column - Chat Interface and Game Info */}
+          <div
+            style={{
+              width: "40%",
+              maxWidth: "400px",
+              display: "flex",
+              flexDirection: "column",
+              borderRight: "1px solid #ccc",
+              height: "100%",
+            }}
+          >
+            {renderTabs()}
+            {renderTabContent()}
+          </div>
 
-        {/* Tab Content */}
-        {activeTab === "conversation" ? (
-          <ConversationTab
-            messages={messages}
-            isLoading={isLoading}
-            isPolling={isPolling}
-            error={error}
-            onSendMessage={handleSendMessage}
-          />
-        ) : (
-          <GameInfoTab gameInfo={gameInfo} isLoading={isLoading} />
-        )}
-      </div>
-
-      {/* Right Column - Game Preview */}
-      <div
-        style={{
-          flexGrow: 1,
-          height: "100%",
-        }}
-      >
-        <GameFrame key={frameKey} gameName={gameName} />
-      </div>
+          {/* Right Column - Game Preview */}
+          <div
+            style={{
+              flexGrow: 1,
+              height: "100%",
+            }}
+          >
+            <GameFrame key={frameKey} gameName={gameName} />
+          </div>
+        </>
+      )}
     </div>
   );
 };
