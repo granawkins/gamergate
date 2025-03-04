@@ -226,6 +226,7 @@ export const Editor = () => {
             style={{
               width: "100%",
               height: "70%",
+              minHeight: "300px",
             }}
           >
             <GameFrame key={frameKey} gameName={gameName} />
@@ -236,6 +237,7 @@ export const Editor = () => {
             style={{
               width: "100%",
               height: "30%",
+              minHeight: "500px",
               display: "flex",
               flexDirection: "column",
               borderTop: "1px solid #ccc",
