@@ -127,6 +127,13 @@ export const Editor = () => {
   const handleUndo = async (message: Message) => {
     if (!message.commit_sha) return;
 
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      "Are you sure you want to undo this change? This action cannot be undone.",
+    );
+
+    if (!confirmed) return;
+
     try {
       const response = await fetch(`/api/chat/${gameName}/undo`, {
         method: "POST",
