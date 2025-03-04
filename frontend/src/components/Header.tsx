@@ -41,12 +41,12 @@ export const Header = () => {
         <h1>GAMERGATE</h1>
       </a>
       {user ? (
-        <a 
-          href="/user" 
-          style={{ 
-            display: "flex", 
-            alignItems: "center", 
-            textDecoration: "none" 
+        <a
+          href="/user"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            textDecoration: "none",
           }}
         >
           <Avatar user={user} size={36} />
@@ -54,11 +54,11 @@ export const Header = () => {
       ) : loading ? (
         <p>Loading...</p>
       ) : (
-        <a 
-          onClick={loginWithGoogle} 
-          style={{ 
-            fontSize: "1.5rem", 
-            cursor: "pointer" 
+        <a
+          onClick={loginWithGoogle}
+          style={{
+            fontSize: "1.5rem",
+            cursor: "pointer",
           }}
         >
           Login

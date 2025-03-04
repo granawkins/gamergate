@@ -7,12 +7,17 @@ from typing import TypedDict, Optional, List, Literal
 from uuid import UUID, uuid4
 
 
-class User(TypedDict, total=False):
-    id: str  # Required
-    username: str  # Required
-    email: str  # Required
-    created_at: str  # Required, ISO format string of datetime
-    avatar_id: Optional[str]  # Optional
+# Define required fields for User
+class UserRequired(TypedDict):
+    id: str
+    username: str
+    email: str
+    created_at: str  # ISO format string of datetime
+
+
+# Define User with both required and optional fields
+class User(UserRequired, total=False):
+    avatar_id: Optional[str]
 
 
 class Message(TypedDict, total=False):
