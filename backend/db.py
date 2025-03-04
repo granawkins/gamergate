@@ -7,11 +7,13 @@ from typing import TypedDict, Optional, List, Literal
 from uuid import UUID, uuid4
 
 
-class User(TypedDict, total=False):
+class User(TypedDict):
     id: str
     username: str
     email: str
     created_at: datetime
+
+class UserWithOptionalFields(User, total=False):
     avatar_id: Optional[str]
 
 

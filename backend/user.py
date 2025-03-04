@@ -10,7 +10,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.security import APIKeyCookie
 
-from db import db, User
+from db import db, User, UserWithOptionalFields
 
 load_dotenv()
 
@@ -113,22 +113,30 @@ async def user_google_callback(request: Request):
     _db = await db.get()
     user = next((u for u in _db["users"].values() if u["email"] == email), None)
     if not user:
-        user = {
+        # Create base user with required fields
+        base_user: User = {
             "id": str(uuid.uuid4()),
             "username": email.split("@")[0],
             "email": email,
-            "avatar_id": avatar_id,
             "created_at": datetime.now().isoformat(),
         }
-        _db["users"][user["id"]] = user
+        # Add optional fields
+        user_with_avatar: UserWithOptionalFields = {**base_user}
+        if avatar_id:
+            user_with_avatar["avatar_id"] = avatar_id
+            
+        _db["users"][base_user["id"]] = user_with_avatar
         await db.set(_db)
     elif avatar_id and user.get("avatar_id") != avatar_id:
         # Update avatar if it has changed
-        user["avatar_id"] = avatar_id
-        _db["users"][user["id"]] = user
+        updated_user: UserWithOptionalFields = {**user}
+        updated_user["avatar_id"] = avatar_id
+        _db["users"][user["id"]] = updated_user
         await db.set(_db)
 
-    auth_token = create_session_token(str(user["id"]))
+    # Get the user ID for the token
+    user_id = base_user["id"] if not user else user["id"]
+    auth_token = create_session_token(str(user_id))
     response = RedirectResponse("http://localhost:5173/")
     response.set_cookie(
         key="session_token",
