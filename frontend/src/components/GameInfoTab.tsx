@@ -38,7 +38,7 @@ const EditableName = ({
       return;
     }
 
-    // Check if the name is unique
+    // Check if the name is unique and update it if it is
     setIsCheckingName(true);
     try {
       const response = await fetch("/api/games/check-name", {
@@ -55,18 +55,35 @@ const EditableName = ({
 
       const data = await response.json();
 
-      if (!data.available) {
+      // Handle the new response format
+      if (data.successful === false) {
         alert(
           `The name "${name}" is already taken. Please choose a different name.`,
         );
         return;
       }
 
-      // In the future, this will send the updated name to the backend
+      // If the update was successful, reload the page with the new URL
+      if (data.successful === true) {
+        setIsEditing(false);
+        // Redirect to the new URL
+        const currentPath = window.location.pathname;
+        const pathParts = currentPath.split("/");
+
+        // Replace the game name in the URL
+        if (pathParts.length >= 3 && pathParts[1] === "editor") {
+          pathParts[2] = name;
+          const newPath = pathParts.join("/");
+          window.location.href = window.location.origin + newPath;
+          return;
+        }
+      }
+
+      // Handle backward compatibility or other cases
       setIsEditing(false);
     } catch (error) {
-      console.error("Error checking game name:", error);
-      alert("Failed to check if the name is available. Please try again.");
+      console.error("Error checking/updating game name:", error);
+      alert("Failed to update the game name. Please try again.");
     } finally {
       setIsCheckingName(false);
     }

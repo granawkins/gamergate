@@ -42,8 +42,12 @@ async def get_games():
 async def check_game_name(request: Request):
     """
     Check if a game name is unique in the database.
-    Returns true if the name is available, false if it's already taken.
-    If current_game_id is provided, it will exclude that game from the check.
+    If the name is available and current_game_id is provided, update the game's name.
+
+    Returns:
+    - If name is not available: {"successful": False}
+    - If name is available and updated: {"successful": True}
+    - If name is available but no current_game_id: {"available": True} (for backward compatibility)
 
     Request body:
     {
@@ -63,8 +67,16 @@ async def check_game_name(request: Request):
     # Check if the name is already taken by another game
     for id, game in _db["games"].items():
         if game["name"] == name and id != current_game_id:
-            return {"available": False}
+            return {"successful": False}
 
+    # If current_game_id is provided, update the game's name
+    if current_game_id and current_game_id in _db["games"]:
+        _db["games"][current_game_id]["name"] = name
+        _db["games"][current_game_id]["updated_at"] = datetime.now().isoformat()
+        await db.set(_db)
+        return {"successful": True}
+
+    # For backward compatibility
     return {"available": True}
 
 
