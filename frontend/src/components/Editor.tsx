@@ -298,7 +298,6 @@ export const Editor = () => {
             {renderTabContent()}
           </div>
 
-<<<<<<< HEAD
           {/* Right Column - Game Preview */}
           <div
             style={{
