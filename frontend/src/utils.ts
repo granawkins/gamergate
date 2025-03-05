@@ -16,4 +16,4 @@ const env = () => {
   return "PROD";
 };
 
-export const backendUrl = () => `${origin()}${env() === "DEV" ? ":8000" : ""}`;
+export const backendUrl = () => `${origin()}${env() === "DEV" ? ":8001" : ""}`;
