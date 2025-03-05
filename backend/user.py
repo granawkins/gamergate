@@ -78,7 +78,20 @@ async def user_me(request: Request):
     token = request.cookies.get("session_token")
     _db = await db.get()
 
-    if not token:
+    user_id = None
+    user = None
+
+    # Try to get user from token if it exists
+    if token:
+        try:
+            user_id = verify_session_token(token)
+            user = _db["users"].get(user_id)
+        except AuthError:
+            # Invalid token, will create a dummy user
+            pass
+
+    # If no valid user found, create a dummy user
+    if user is None:
         # Create a dummy user for non-authenticated visitors
         dummy_id = str(uuid.uuid4())
         dummy_user: User = {
@@ -112,77 +125,11 @@ async def user_me(request: Request):
         )
         return return_response
 
-    try:
-        user_id = verify_session_token(token)
-        user = _db["users"].get(user_id)
-
-        if user is None:
-            # If user not found but token is valid, create a new dummy user
-            dummy_id = str(uuid.uuid4())
-            dummy_user: User = {
-                "id": dummy_id,
-                "created_at": datetime.now().isoformat(),
-                "messages_left": 0,
-            }
-
-            _db["users"][dummy_id] = dummy_user
-            await db.set(_db)
-
-            # Create a new session token
-            auth_token = create_session_token(dummy_id)
-            response = {
-                "user": dummy_user,
-                "games": [],
-            }
-
-            return_response = Response(
-                content=json.dumps(response), media_type="application/json"
-            )
-            return_response.set_cookie(
-                key="session_token",
-                value=auth_token,
-                httponly=True,
-                secure=True,
-                samesite="lax",
-                max_age=3600 * 24 * 30,
-            )
-            return return_response
-
-        return {
-            "user": user,
-            "games": [g for g in _db["games"].values() if g["owner_id"] == user["id"]],
-        }
-    except AuthError:
-        # If token is invalid, create a new dummy user
-        dummy_id = str(uuid.uuid4())
-        dummy_user: User = {
-            "id": dummy_id,
-            "created_at": datetime.now().isoformat(),
-            "messages_left": 0,
-        }
-
-        _db["users"][dummy_id] = dummy_user
-        await db.set(_db)
-
-        # Create a new session token
-        auth_token = create_session_token(dummy_id)
-        response = {
-            "user": dummy_user,
-            "games": [],
-        }
-
-        return_response = Response(
-            content=json.dumps(response), media_type="application/json"
-        )
-        return_response.set_cookie(
-            key="session_token",
-            value=auth_token,
-            httponly=True,
-            secure=True,
-            samesite="lax",
-            max_age=3600 * 24 * 30,
-        )
-        return return_response
+    # Return existing user data
+    return {
+        "user": user,
+        "games": [g for g in _db["games"].values() if g["owner_id"] == user["id"]],
+    }
 
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
@@ -214,17 +161,20 @@ async def user_google_callback(request: Request):
 
     _db = await db.get()
 
-    # Get the dummy user ID from the state parameter if it exists
-    dummy_user_id = request.query_params.get("state", "")
+    # Get the dummy user ID from the session token
+    # We assume we always have a dummy user at this point
+    dummy_user_id = ""
+    session_token = request.cookies.get("session_token")
+    if session_token:
+        try:
+            dummy_user_id = verify_session_token(session_token)
+        except AuthError:
+            # If token is invalid, we'll still proceed with the state parameter
+            pass
+
+    # If no session token or invalid, try to get from state parameter
     if not dummy_user_id:
-        # If no state parameter, try to get from session token
-        session_token = request.cookies.get("session_token")
-        if session_token:
-            try:
-                dummy_user_id = verify_session_token(session_token)
-            except AuthError:
-                # Invalid token, will create a new user
-                dummy_user_id = ""
+        dummy_user_id = request.query_params.get("state", "")
 
     # Check if a user with this email already exists
     existing_user = next(
