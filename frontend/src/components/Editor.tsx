@@ -4,11 +4,13 @@ import { GameFrame } from "./GameFrame";
 import { Game, Message } from "../types";
 import { ConversationTab } from "./ConversationTab";
 import { GameInfoTab } from "./GameInfoTab";
+import useAuth from "../auth/useAuth";
 
 type TabType = "conversation" | "info";
 
 export const Editor = () => {
   const { gameName } = useParams();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("conversation");
   const [isPortrait, setIsPortrait] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -235,6 +237,7 @@ export const Editor = () => {
         error={error}
         onSendMessage={handleSendMessage}
         onUndo={handleUndo}
+        messagesLeft={user?.messages_left}
       />
     ) : (
       <GameInfoTab gameInfo={gameInfo} isLoading={isLoading} />

@@ -262,6 +262,14 @@ async def generate_completion(game_id: str):
 
             # Success!
             last_message["status"] = "completed"
+
+            # Decrement messages_left for the user
+            _db = await db.get()
+            user_id = _db["games"][game_id]["owner_id"]
+            if user_id in _db["users"]:
+                if _db["users"][user_id]["messages_left"] > 0:
+                    _db["users"][user_id]["messages_left"] -= 1
+                    await db.set(_db)
             break
         except AnthropicError as e:
             last_message["text"] += f"Error generating response: {str(e)}"

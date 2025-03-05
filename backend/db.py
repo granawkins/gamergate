@@ -14,6 +14,7 @@ class User(TypedDict):
     email: str
     created_at: str  # ISO format string of datetime
     avatar_id: Optional[str]
+    messages_left: int
 
 
 class Message(TypedDict, total=False):
@@ -60,6 +61,7 @@ class DB:
                 "email": ADMIN_EMAIL,
                 "created_at": datetime.now().isoformat(),
                 "avatar_id": None,
+                "messages_left": 10,
             }
 
             for dir in GAMES_PATH.iterdir():
