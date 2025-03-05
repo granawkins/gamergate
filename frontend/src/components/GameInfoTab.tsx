@@ -2,90 +2,115 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Game } from "../types";
 
-// EditableName component for handling name editing functionality
-const EditableName = ({
-  initialName,
+// EditableField component for handling field editing functionality
+const EditableField = ({
+  initialValue,
   gameId,
+  fieldName,
+  fieldType = "text",
+  placeholder = "",
+  validation = (value: string) => ({ valid: true, message: "" }),
+  onSaveSuccess = () => {},
 }: {
-  initialName: string;
+  initialValue: string;
   gameId: string;
+  fieldName: "name" | "description";
+  fieldType?: string;
+  placeholder?: string;
+  validation?: (value: string) => { valid: boolean; message: string };
+  onSaveSuccess?: () => void;
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(initialName);
-  const [isCheckingName, setIsCheckingName] = useState(false);
+  const [value, setValue] = useState(initialValue);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  // Update name when initialName changes
+  // Update value when initialValue changes
   useEffect(() => {
-    setName(initialName);
-  }, [initialName]);
+    setValue(initialValue);
+  }, [initialValue]);
 
   const handleCancel = () => {
-    // Reset to original name and exit edit mode
-    setName(initialName);
+    // Reset to original value and exit edit mode
+    setValue(initialValue);
     setIsEditing(false);
   };
 
   const handleSave = async () => {
-    // Don't save if name is empty
-    if (!name.trim()) {
-      alert("Game name cannot be empty");
+    // Validate the value
+    const validationResult = validation(value);
+    if (!validationResult.valid) {
+      alert(validationResult.message);
       return;
     }
 
-    // Don't save if name hasn't changed
-    if (name === initialName) {
+    // Don't save if value hasn't changed
+    if (value === initialValue) {
       setIsEditing(false);
       return;
     }
 
-    // Check if the name is unique and update it if it is
-    setIsCheckingName(true);
+    // Update the field
+    setIsUpdating(true);
     try {
-      const response = await fetch("/api/games/update-name", {
+      const response = await fetch("/api/games/update-info", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name, current_game_id: gameId }),
+        body: JSON.stringify({
+          [fieldName]: value,
+          current_game_id: gameId,
+          field: fieldName,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to check game name");
+        throw new Error(`Failed to update game ${fieldName}`);
       }
 
       const data = await response.json();
 
-      // Handle the new response format
+      // Handle the response
       if (data.successful === false) {
-        alert(
-          `The name "${name}" is already taken. Please choose a different name.`,
-        );
+        if (fieldName === "name") {
+          alert(
+            `The name "${value}" is already taken. Please choose a different name.`,
+          );
+        } else {
+          alert(`Failed to update ${fieldName}. Please try again.`);
+        }
         return;
       }
 
-      // If the update was successful, reload the page with the new URL
+      // If the update was successful
       if (data.successful === true) {
         setIsEditing(false);
-        // Redirect to the new URL
-        const currentPath = window.location.pathname;
-        const pathParts = currentPath.split("/");
 
-        // Replace the game name in the URL
-        if (pathParts.length >= 3 && pathParts[1] === "editor") {
-          pathParts[2] = name;
-          const newPath = pathParts.join("/");
-          window.location.href = window.location.origin + newPath;
-          return;
+        // Special handling for name field - redirect to new URL
+        if (fieldName === "name") {
+          const currentPath = window.location.pathname;
+          const pathParts = currentPath.split("/");
+
+          // Replace the game name in the URL
+          if (pathParts.length >= 3 && pathParts[1] === "editor") {
+            pathParts[2] = value;
+            const newPath = pathParts.join("/");
+            window.location.href = window.location.origin + newPath;
+            return;
+          }
         }
+
+        // Call the success callback
+        onSaveSuccess();
       }
 
-      // Handle backward compatibility or other cases
+      // Handle other cases
       setIsEditing(false);
     } catch (error) {
-      console.error("Error checking/updating game name:", error);
-      alert("Failed to update the game name. Please try again.");
+      console.error(`Error updating game ${fieldName}:`, error);
+      alert(`Failed to update the game ${fieldName}. Please try again.`);
     } finally {
-      setIsCheckingName(false);
+      setIsUpdating(false);
     }
   };
 
@@ -94,52 +119,79 @@ const EditableName = ({
       <div
         style={{
           display: "flex",
-          alignItems: "center",
+          alignItems: fieldType === "textarea" ? "flex-start" : "center",
           flex: 1,
           flexWrap: "wrap", // Allow wrapping on mobile
           gap: "8px", // Add spacing between wrapped items
         }}
       >
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+        {fieldType === "textarea" ? (
+          <textarea
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={placeholder}
+            style={{
+              padding: "4px 8px",
+              border: "1px solid #ccc",
+              borderRadius: "4px",
+              flexGrow: 1,
+              minWidth: "120px",
+              minHeight: "80px",
+              marginRight: "8px",
+              fontFamily: "inherit",
+              fontSize: "inherit",
+            }}
+            autoFocus
+          />
+        ) : (
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={placeholder}
+            style={{
+              padding: "4px 8px",
+              border: "1px solid #ccc",
+              borderRadius: "4px",
+              flexGrow: 1,
+              minWidth: "120px",
+              marginRight: "8px",
+            }}
+            autoFocus
+          />
+        )}
+        <div
           style={{
-            padding: "4px 8px",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            flexGrow: 1,
-            minWidth: "120px", // Ensure input has reasonable minimum width
-            marginRight: "8px",
+            display: "flex",
+            gap: "8px",
+            marginTop: fieldType === "textarea" ? "8px" : "0",
           }}
-          autoFocus
-        />
-        <div style={{ display: "flex", gap: "8px" }}>
+        >
           <button
             onClick={handleSave}
-            disabled={isCheckingName}
+            disabled={isUpdating}
             style={{
               padding: "4px 8px",
               backgroundColor: "#0084ff",
               color: "white",
               border: "none",
               borderRadius: "4px",
-              cursor: isCheckingName ? "default" : "pointer",
-              opacity: isCheckingName ? 0.7 : 1,
+              cursor: isUpdating ? "default" : "pointer",
+              opacity: isUpdating ? 0.7 : 1,
             }}
           >
-            {isCheckingName ? "Checking..." : "Save"}
+            {isUpdating ? "Saving..." : "Save"}
           </button>
           <button
             onClick={handleCancel}
-            disabled={isCheckingName}
+            disabled={isUpdating}
             style={{
               padding: "4px 8px",
               backgroundColor: "#f0f0f0",
               border: "1px solid #ccc",
               borderRadius: "4px",
-              cursor: isCheckingName ? "default" : "pointer",
-              opacity: isCheckingName ? 0.7 : 1,
+              cursor: isUpdating ? "default" : "pointer",
+              opacity: isUpdating ? 0.7 : 1,
             }}
           >
             Cancel
@@ -159,7 +211,9 @@ const EditableName = ({
         gap: "8px", // Add spacing between wrapped items
       }}
     >
-      <span style={{ marginRight: "8px" }}>{initialName}</span>
+      <span style={{ marginRight: "8px" }}>
+        {initialValue || <em style={{ color: "#888" }}>No {fieldName} set</em>}
+      </span>
       <button
         onClick={() => setIsEditing(true)}
         style={{
@@ -192,9 +246,26 @@ export const GameInfoTab = ({
     {
       label: "Name",
       content: (
-        <EditableName
-          initialName={gameInfo?.name || ""}
+        <EditableField
+          initialValue={gameInfo?.name || ""}
           gameId={gameInfo?.id || ""}
+          fieldName="name"
+          validation={(value) => ({
+            valid: !!value.trim(),
+            message: "Game name cannot be empty",
+          })}
+        />
+      ),
+    },
+    {
+      label: "Description",
+      content: (
+        <EditableField
+          initialValue={gameInfo?.description || ""}
+          gameId={gameInfo?.id || ""}
+          fieldName="description"
+          fieldType="textarea"
+          placeholder="Add a description for your game..."
         />
       ),
     },
@@ -222,10 +293,6 @@ export const GameInfoTab = ({
       label: "Updated At",
       content: formatDate(gameInfo?.updated_at || ""),
     },
-    {
-      label: "Plays",
-      content: gameInfo?.plays,
-    },
   ];
 
   return (
@@ -245,18 +312,20 @@ export const GameInfoTab = ({
                   display: "flex",
                   padding: "0.5rem 0",
                   borderBottom: "1px solid #eee",
+                  flexDirection: label === "Description" ? "column" : "row",
                 }}
               >
                 <div
                   style={{
                     fontWeight: "bold",
-                    width: "120px",
+                    width: label === "Description" ? "auto" : "120px",
                     flexShrink: 0,
+                    marginBottom: label === "Description" ? "8px" : "0",
                   }}
                 >
                   {label}:
                 </div>
-                <div>{content}</div>
+                <div style={{ flex: 1 }}>{content}</div>
               </div>
             ))}
           </div>

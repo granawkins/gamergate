@@ -29,11 +29,11 @@ class Message(TypedDict, total=False):
 class Game(TypedDict):
     id: str
     name: str
+    description: Optional[str]
     owner_id: str
     parent_id: Optional[str]
     created_at: str  # ISO format string of datetime
     updated_at: str  # ISO format string of datetime
-    plays: int
     messages: List[Message]
 
 
@@ -67,11 +67,11 @@ class DB:
                 _db["games"][id] = {
                     "id": id,
                     "name": dir.name,
+                    "description": "",
                     "owner_id": admin_id,
                     "parent_id": None,
                     "created_at": datetime.now().isoformat(),
                     "updated_at": datetime.now().isoformat(),
-                    "plays": 0,
                     "messages": [],
                 }
 

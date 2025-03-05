@@ -39,32 +39,50 @@ async def get_games():
     return list(_db["games"].values())
 
 
-@app.post("/games/update-name")
-async def update_game_name(request: Request):
-    """Update the name, if it's not a duplicate of another game."""
+@app.post("/games/update-info")
+async def update_game_info(request: Request):
+    """Update the game info (name and/or description)."""
     data = await request.json()
     name = data.get("name")
+    description = data.get("description")
     current_game_id = data.get("current_game_id")
+    field_to_update = data.get(
+        "field", "name"
+    )  # Default to name for backward compatibility
 
-    if not name:
+    if field_to_update == "name" and not name:
         raise HTTPException(status_code=400, detail="Name is required")
 
     _db = await db.get()
 
-    # Check if the name is already taken by another game
-    for id, game in _db["games"].items():
-        if game["name"] == name and id != current_game_id:
-            return {"successful": False}
+    # If updating name, check if it's already taken by another game
+    if field_to_update == "name":
+        for id, game in _db["games"].items():
+            if game["name"] == name and id != current_game_id:
+                return {"successful": False}
 
-    # If current_game_id is provided, update the game's name
+    # If current_game_id is provided, update the game's info
     if current_game_id and current_game_id in _db["games"]:
-        _db["games"][current_game_id]["name"] = name
+        if field_to_update == "name" and name:
+            _db["games"][current_game_id]["name"] = name
+        elif field_to_update == "description" and description is not None:
+            _db["games"][current_game_id]["description"] = description
+
         _db["games"][current_game_id]["updated_at"] = datetime.now().isoformat()
         await db.set(_db)
         return {"successful": True}
 
     # For backward compatibility
     return {"available": True}
+
+
+# Keep the old endpoint for backward compatibility
+@app.post("/games/update-name")
+async def update_game_name(request: Request):
+    """Update the name, if it's not a duplicate of another game."""
+    data = await request.json()
+    data["field"] = "name"  # Ensure field is set to name
+    return await update_game_info(request)
 
 
 @app.get("/games/{game_name}/play")
@@ -182,11 +200,13 @@ async def clone_game(
     new_game = {
         "id": new_game_id,
         "name": new_name,
+        "description": source_game.get(
+            "description", ""
+        ),  # Copy description from source game
         "owner_id": current_user["id"],
         "parent_id": source_game_id,
         "created_at": now,
         "updated_at": now,
-        "plays": 0,
         "messages": [],
     }
 
