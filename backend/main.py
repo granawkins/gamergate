@@ -35,8 +35,19 @@ async def root():
 
 @app.get("/games")
 async def get_games():
+    """
+    Get all games, separated into Play and Templates sections.
+    - Play: games where owner_id is not empty
+    - Templates: games where owner_id is empty
+    """
     _db = await db.get()
-    return list(_db["games"].values())
+    games = list(_db["games"].values())
+
+    # Separate games into Play and Templates sections
+    play_games = [game for game in games if game["owner_id"] != ""]
+    template_games = [game for game in games if game["owner_id"] == ""]
+
+    return {"play": play_games, "templates": template_games}
 
 
 @app.post("/games/update-info")

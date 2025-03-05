@@ -230,16 +230,25 @@ const GameCard = ({
 export const Home = () => {
   const { user, games: userGames, setGames } = useAuth();
   const [publicGames, setPublicGames] = useState<Game[]>([]);
+  const [templates, setTemplates] = useState<Game[]>([]);
   const [gameToClone, setGameToClone] = useState<Game | null>(null);
 
-  const fetchPublicGames = async () => {
+  const fetchGames = async () => {
     const response = await fetch("/api/games");
     const data = await response.json();
-    setPublicGames(data);
+
+    // Handle the new API response format
+    if (data.play && data.templates) {
+      setPublicGames(data.play);
+      setTemplates(data.templates);
+    } else {
+      // Fallback for backward compatibility
+      setPublicGames(data);
+    }
   };
 
   useEffect(() => {
-    fetchPublicGames();
+    fetchGames();
   }, []);
 
   // Shared style for game grid
@@ -325,21 +334,56 @@ export const Home = () => {
       <h2>Create</h2>
       {!user || !user.email ? (
         <p>Login to create games</p>
-      ) : userGames.length === 0 ? (
-        <p>Create a new game by remixing an existing game</p>
       ) : (
-        <div style={gameGridStyle}>
-          {userGames.map((game) => (
-            <GameCard
-              key={game.id}
-              game={game}
-              linkPrefix="/editor"
-              showDeleteButton={true}
-              onDelete={handleDeleteGame}
-              onClone={handleCloneGame}
-            />
-          ))}
-        </div>
+        <>
+          {/* User's games */}
+          {userGames.length > 0 && (
+            <div style={gameGridStyle}>
+              {userGames.map((game) => (
+                <GameCard
+                  key={game.id}
+                  game={game}
+                  linkPrefix="/editor"
+                  showDeleteButton={true}
+                  onDelete={handleDeleteGame}
+                  onClone={handleCloneGame}
+                />
+              ))}
+
+              {/* Templates - added at the end of userGames */}
+              {templates.map((template) => (
+                <GameCard
+                  key={template.id}
+                  game={template}
+                  linkPrefix="/editor"
+                  onClone={handleCloneGame}
+                />
+              ))}
+            </div>
+          )}
+
+          {userGames.length === 0 && (
+            <>
+              <p>
+                Create a new game by using a template or remixing an existing
+                game
+              </p>
+              {/* Show templates even when user has no games */}
+              {templates.length > 0 && (
+                <div style={gameGridStyle}>
+                  {templates.map((template) => (
+                    <GameCard
+                      key={template.id}
+                      game={template}
+                      linkPrefix="/editor"
+                      onClone={handleCloneGame}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </>
       )}
 
       <h2>Play</h2>
