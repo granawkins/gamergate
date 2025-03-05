@@ -69,18 +69,16 @@ async def record_play_session(
     return {"id": session_id, "success": True}
 
 
-def calculate_minutes_played(game_id: str, user_id: str, _db: dict) -> float:
+def calculate_seconds_played(game_id: str, user_id: str, _db: dict) -> int:
     """
-    Calculate the total minutes played for a game by a user.
+    Calculate the total seconds played for a game by a user.
     """
     total_seconds = 0
     for session in _db.get("play_sessions", {}).values():
         if session["game_id"] == game_id and session["user_id"] == user_id:
             total_seconds += session["seconds_played"]
 
-    return round(
-        total_seconds / 60, 1
-    )  # Convert to minutes and round to 1 decimal place
+    return total_seconds
 
 
 @app.get("/games")
@@ -88,10 +86,10 @@ async def get_games(current_user: Optional[User] = None):
     _db = await db.get()
     games = list(_db["games"].values())
 
-    # Add minutes_played if user is logged in
+    # Add seconds_played if user is logged in
     if current_user:
         for game in games:
-            game["minutes_played"] = calculate_minutes_played(
+            game["seconds_played"] = calculate_seconds_played(
                 game["id"], current_user["id"], _db
             )
 
@@ -321,8 +319,8 @@ async def get_chat_messages(
                 None if parent_id is None else _db["games"][parent_id].get("name", None)
             )
 
-            # Add minutes_played to gameInfo
-            game["minutes_played"] = calculate_minutes_played(
+            # Add seconds_played to gameInfo
+            game["seconds_played"] = calculate_seconds_played(
                 game_id, current_user["id"], _db
             )
 

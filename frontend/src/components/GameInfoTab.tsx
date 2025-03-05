@@ -300,8 +300,8 @@ export const GameInfoTab = ({
     {
       label: "Play Time",
       content:
-        gameInfo?.minutes_played !== undefined
-          ? `${gameInfo.minutes_played} minutes`
+        gameInfo?.seconds_played !== undefined
+          ? `${gameInfo.seconds_played} seconds`
           : "Not played yet",
     },
     {

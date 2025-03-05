@@ -16,7 +16,7 @@ export interface Game {
   created_at: string;
   updated_at: string;
   parent_name: string | null;
-  minutes_played?: number;
+  seconds_played?: number;
 }
 
 export interface Message {
