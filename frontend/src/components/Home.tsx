@@ -256,14 +256,9 @@ export const Home = () => {
       const response = await fetch(`/api/games?search=${query}&sort=${sort}`);
       const data = await response.json();
 
-      // Handle the new API response format
-      if (data.play && data.templates) {
-        setPublicGames(data.play);
-        setTemplates(data.templates);
-      } else {
-        // Fallback for backward compatibility
-        setPublicGames(data);
-      }
+      // Assume the new format is always used
+      setPublicGames(data.play);
+      setTemplates(data.templates);
     } catch (error) {
       console.error("Error fetching games:", error);
     } finally {
@@ -370,10 +365,10 @@ export const Home = () => {
         <p>Login to create games</p>
       ) : (
         <>
-          {/* User's games */}
-          {userGames.length > 0 && (
-            <div style={gameGridStyle}>
-              {userGames.map((game) => (
+          <div style={gameGridStyle}>
+            {/* User's games */}
+            {userGames.length > 0 &&
+              userGames.map((game) => (
                 <GameCard
                   key={game.id}
                   game={game}
@@ -384,40 +379,22 @@ export const Home = () => {
                 />
               ))}
 
-              {/* Templates - added at the end of userGames */}
-              {templates.map((template) => (
-                <GameCard
-                  key={template.id}
-                  game={template}
-                  linkPrefix="/editor"
-                  onClone={handleCloneGame}
-                  isTemplate={true}
-                />
-              ))}
-            </div>
-          )}
+            {/* Templates - always shown for logged-in users */}
+            {templates.map((template) => (
+              <GameCard
+                key={template.id}
+                game={template}
+                linkPrefix="/editor"
+                onClone={handleCloneGame}
+                isTemplate={true}
+              />
+            ))}
+          </div>
 
           {userGames.length === 0 && (
-            <>
-              <p>
-                Create a new game by using a template or remixing an existing
-                game
-              </p>
-              {/* Show templates even when user has no games */}
-              {templates.length > 0 && (
-                <div style={gameGridStyle}>
-                  {templates.map((template) => (
-                    <GameCard
-                      key={template.id}
-                      game={template}
-                      linkPrefix="/editor"
-                      onClone={handleCloneGame}
-                      isTemplate={true}
-                    />
-                  ))}
-                </div>
-              )}
-            </>
+            <p>
+              Create a new game by using a template or remixing an existing game
+            </p>
           )}
         </>
       )}

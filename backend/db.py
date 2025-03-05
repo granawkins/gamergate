@@ -67,9 +67,9 @@ class DB:
             for dir in GAMES_PATH.iterdir():
                 id = str(uuid4())
 
-                # Set owner_id to empty string for templates, admin_id for regular games
-                # Templates are identified by having an empty owner_id
-                owner_id = "" if dir.name == "blank-html" else admin_id
+                # Set owner_id to empty string for all games
+                # Games with empty owner_id are treated as templates
+                owner_id = ""
 
                 _db["games"][id] = {
                     "id": id,
