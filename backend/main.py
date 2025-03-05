@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from datetime import datetime
 import subprocess
 import shutil
+from typing import Optional
 from uuid import uuid4
 
 from db import db, GAMES_PATH, Message, User, PlaySession
@@ -83,7 +84,7 @@ def calculate_minutes_played(game_id: str, user_id: str, _db: dict) -> float:
 
 
 @app.get("/games")
-async def get_games(current_user: User = None):
+async def get_games(current_user: Optional[User] = None):
     _db = await db.get()
     games = list(_db["games"].values())
 

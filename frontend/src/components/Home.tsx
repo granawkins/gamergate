@@ -190,20 +190,22 @@ const GameCard = ({
       }}
     >
       <h3 style={{ marginBottom: "4px", textAlign: "center" }}>{game.name}</h3>
-      
+
       {game.minutes_played !== undefined && (
-        <div style={{ 
-          fontSize: "0.8rem", 
-          color: "#666",
-          marginTop: "4px",
-          textAlign: "center"
-        }}>
-          {game.minutes_played > 0 
-            ? `Played: ${game.minutes_played} min` 
+        <div
+          style={{
+            fontSize: "0.8rem",
+            color: "#666",
+            marginTop: "4px",
+            textAlign: "center",
+          }}
+        >
+          {game.minutes_played > 0
+            ? `Played: ${game.minutes_played} min`
             : "Not played yet"}
         </div>
       )}
-      
+
       {/* Clone button (remix icon) */}
       <button
         onClick={handleCloneClick}

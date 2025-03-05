@@ -23,7 +23,7 @@ export const GameFrame = ({
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { user } = useAuth();
-  
+
   // Play session tracking
   const [gameId, setGameId] = useState<string | null>(null);
   const startTimeRef = useRef<number>(Date.now());
@@ -76,19 +76,19 @@ export const GameFrame = ({
   // Handle user activity
   const handleActivity = () => {
     const now = Date.now();
-    
+
     // If we were idle and now active, add the idle time to the active time
     if (!isActiveRef.current) {
       isActiveRef.current = true;
     }
-    
+
     lastActivityRef.current = now;
-    
+
     // Clear any existing timeout
     if (idleTimeoutRef.current) {
       window.clearTimeout(idleTimeoutRef.current);
     }
-    
+
     // Set a new timeout
     idleTimeoutRef.current = window.setTimeout(() => {
       isActiveRef.current = false;
@@ -98,11 +98,12 @@ export const GameFrame = ({
   // Handle visibility change (tab switching)
   const handleVisibilityChange = () => {
     visibilityChangeRef.current = document.hidden;
-    
+
     if (document.hidden) {
       // User switched away from the tab
       const now = Date.now();
-      const activeTime = now - Math.max(startTimeRef.current, lastActivityRef.current);
+      const activeTime =
+        now - Math.max(startTimeRef.current, lastActivityRef.current);
       if (isActiveRef.current && activeTime > 0) {
         activeTimeRef.current += activeTime;
       }
@@ -116,52 +117,53 @@ export const GameFrame = ({
   // Setup activity tracking
   useEffect(() => {
     if (isEditor) return; // Don't track play time in editor mode
-    
+
     // Reset tracking variables
     startTimeRef.current = Date.now();
     activeTimeRef.current = 0;
     lastActivityRef.current = Date.now();
     isActiveRef.current = true;
-    
+
     // Add event listeners for activity tracking
     ACTIVITY_EVENTS.forEach((event) => {
       window.addEventListener(event, handleActivity);
     });
-    
+
     // Add visibility change listener
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    
+
     // Set initial idle timeout
     idleTimeoutRef.current = window.setTimeout(() => {
       isActiveRef.current = false;
     }, IDLE_TIMEOUT_MS);
-    
+
     // Record session on unmount
     return () => {
       // Calculate final active time
       const now = Date.now();
       let finalActiveTime = activeTimeRef.current;
-      
+
       // Add time since last activity if still active
       if (isActiveRef.current && !visibilityChangeRef.current) {
-        const additionalTime = now - Math.max(startTimeRef.current, lastActivityRef.current);
+        const additionalTime =
+          now - Math.max(startTimeRef.current, lastActivityRef.current);
         if (additionalTime > 0) {
           finalActiveTime += additionalTime;
         }
       }
-      
+
       // Convert to seconds
       const activeSeconds = finalActiveTime / 1000;
-      
+
       // Record the session
       recordPlaySession(activeSeconds);
-      
+
       // Clean up event listeners
       ACTIVITY_EVENTS.forEach((event) => {
         window.removeEventListener(event, handleActivity);
       });
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      
+
       // Clear timeout
       if (idleTimeoutRef.current) {
         window.clearTimeout(idleTimeoutRef.current);
