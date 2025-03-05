@@ -8,13 +8,21 @@ from typing import TypedDict, Optional, List, Literal
 from uuid import UUID, uuid4
 
 
-class User(TypedDict, total=False):
-    id: str  # Required
-    created_at: str  # Required - ISO format string of datetime
-    messages_left: int  # Required
-    username: str  # Optional
-    email: str  # Optional
-    avatar_id: Optional[str]  # Optional
+class User(TypedDict):
+    id: str
+    created_at: str  # ISO format string of datetime
+    messages_left: int
+
+
+class UserOptional(TypedDict, total=False):
+    username: str
+    email: str
+    avatar_id: Optional[str]
+
+
+# Combine required and optional fields
+class User(User, UserOptional):
+    pass
 
 
 class Message(TypedDict, total=False):
