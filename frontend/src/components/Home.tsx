@@ -232,24 +232,34 @@ export const Home = () => {
   const [publicGames, setPublicGames] = useState<Game[]>([]);
   const [templates, setTemplates] = useState<Game[]>([]);
   const [gameToClone, setGameToClone] = useState<Game | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [sortOption, setSortOption] = useState<string>("newest");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const fetchGames = async () => {
-    const response = await fetch("/api/games");
-    const data = await response.json();
+  const fetchGames = async (query = "", sort = "newest") => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/games?search=${query}&sort=${sort}`);
+      const data = await response.json();
 
-    // Handle the new API response format
-    if (data.play && data.templates) {
-      setPublicGames(data.play);
-      setTemplates(data.templates);
-    } else {
-      // Fallback for backward compatibility
-      setPublicGames(data);
+      // Handle the new API response format
+      if (data.play && data.templates) {
+        setPublicGames(data.play);
+        setTemplates(data.templates);
+      } else {
+        // Fallback for backward compatibility
+        setPublicGames(data);
+      }
+    } catch (error) {
+      console.error("Error fetching games:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchGames();
-  }, []);
+    fetchGames(searchQuery, sortOption);
+  }, [searchQuery, sortOption]);
 
   // Shared style for game grid
   const gameGridStyle = {
@@ -329,6 +339,16 @@ export const Home = () => {
     }
   };
 
+  // Handle search input change with debounce
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  // Handle sort option change
+  const handleSortChange = (option: string) => {
+    setSortOption(option);
+  };
+
   return (
     <div>
       <h2>Create</h2>
@@ -386,17 +406,97 @@ export const Home = () => {
         </>
       )}
 
-      <h2>Play</h2>
-      <div style={gameGridStyle}>
-        {publicGames.map((game) => (
-          <GameCard
-            key={game.id}
-            game={game}
-            linkPrefix="/play"
-            onClone={handleCloneGame}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "1rem",
+        }}
+      >
+        <h2>Play</h2>
+        <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+          <input
+            type="text"
+            placeholder="Search games..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+            style={{
+              padding: "0.5rem",
+              borderRadius: "4px",
+              border: "1px solid #ccc",
+              width: "200px",
+            }}
           />
-        ))}
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button
+              onClick={() => handleSortChange("newest")}
+              style={{
+                padding: "0.5rem",
+                borderRadius: "4px",
+                border: "1px solid #ccc",
+                backgroundColor:
+                  sortOption === "newest" ? "#0084ff" : "#f5f5f5",
+                color: sortOption === "newest" ? "white" : "black",
+                cursor: "pointer",
+              }}
+            >
+              Newest
+            </button>
+            <button
+              onClick={() => handleSortChange("oldest")}
+              style={{
+                padding: "0.5rem",
+                borderRadius: "4px",
+                border: "1px solid #ccc",
+                backgroundColor:
+                  sortOption === "oldest" ? "#0084ff" : "#f5f5f5",
+                color: sortOption === "oldest" ? "white" : "black",
+                cursor: "pointer",
+              }}
+            >
+              Oldest
+            </button>
+            <button
+              onClick={() => handleSortChange("most_played")}
+              style={{
+                padding: "0.5rem",
+                borderRadius: "4px",
+                border: "1px solid #ccc",
+                backgroundColor:
+                  sortOption === "most_played" ? "#0084ff" : "#f5f5f5",
+                color: sortOption === "most_played" ? "white" : "black",
+                cursor: "pointer",
+              }}
+            >
+              Most Played
+            </button>
+          </div>
+        </div>
       </div>
+
+      {isLoading ? (
+        <div style={{ textAlign: "center", padding: "2rem" }}>
+          Loading games...
+        </div>
+      ) : publicGames.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "2rem" }}>
+          {searchQuery
+            ? "No games found matching your search."
+            : "No games available."}
+        </div>
+      ) : (
+        <div style={gameGridStyle}>
+          {publicGames.map((game) => (
+            <GameCard
+              key={game.id}
+              game={game}
+              linkPrefix="/play"
+              onClone={handleCloneGame}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Clone Game Modal */}
       {gameToClone && (

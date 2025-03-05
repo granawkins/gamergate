@@ -34,18 +34,43 @@ async def root():
 
 
 @app.get("/games")
-async def get_games():
+async def get_games(search: str = "", sort: str = "newest"):
     """
     Get all games, separated into Play and Templates sections.
-    - Play: games where owner_id is not empty
-    - Templates: games where owner_id is empty
+
+    Parameters:
+    - search: Filter games by name (case-insensitive)
+    - sort: Sort games by "newest", "oldest", or "most_played"
+
+    Returns:
+    - play: games where owner_id is not empty
+    - templates: games where owner_id is empty
     """
     _db = await db.get()
     games = list(_db["games"].values())
 
+    # Filter by search query if provided
+    if search:
+        search = search.lower()
+        games = [
+            game
+            for game in games
+            if search in game["name"].lower()
+            or (game.get("description") and search in game["description"].lower())
+        ]
+
     # Separate games into Play and Templates sections
     play_games = [game for game in games if game["owner_id"] != ""]
     template_games = [game for game in games if game["owner_id"] == ""]
+
+    # Sort the play games based on the sort parameter
+    if sort == "newest":
+        play_games.sort(key=lambda x: x["created_at"], reverse=True)
+    elif sort == "oldest":
+        play_games.sort(key=lambda x: x["created_at"])
+    elif sort == "most_played":
+        # For now, we'll sort by updated_at as a proxy for popularity
+        play_games.sort(key=lambda x: x["updated_at"], reverse=True)
 
     return {"play": play_games, "templates": template_games}
 
