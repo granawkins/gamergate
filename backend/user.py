@@ -125,6 +125,7 @@ async def user_google_callback(request: Request):
             "email": email,
             "created_at": datetime.now().isoformat(),
             "avatar_id": avatar_id if avatar_id else None,
+            "messages_left": 10,
         }
 
         _db["users"][user_id] = new_user

@@ -277,8 +277,14 @@ async def handle_chat(
     Store the message and return a response with the game info immediately,
     then run the completion in the background with a semaphore.
     """
-    # Check if the game exists
+    # Check if the user has messages left
     _db = await db.get()
+    if current_user["messages_left"] <= 0:
+        raise HTTPException(
+            status_code=403, detail="You have no messages left. Please try again later."
+        )
+
+    # Check if the game exists
     game_id = None
     game = None
     body = await request.json()
