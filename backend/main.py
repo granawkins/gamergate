@@ -34,9 +34,38 @@ async def root():
 
 
 @app.get("/games")
-async def get_games():
+async def get_games(search: str = "", sort: str = "newest"):
+    """
+    Get all games with optional search and sorting.
+
+    Parameters:
+    - search: Filter games by name (case-insensitive)
+    - sort: Sort games by "newest", "oldest", or "most_played"
+    """
     _db = await db.get()
-    return list(_db["games"].values())
+    games = list(_db["games"].values())
+
+    # Filter by search query if provided
+    if search:
+        search = search.lower()
+        games = [
+            game
+            for game in games
+            if search in game["name"].lower()
+            or (game.get("description") and search in game["description"].lower())
+        ]
+
+    # Sort the games based on the sort parameter
+    if sort == "newest":
+        games.sort(key=lambda x: x["created_at"], reverse=True)
+    elif sort == "oldest":
+        games.sort(key=lambda x: x["created_at"])
+    elif sort == "most_played":
+        # For now, we'll sort by updated_at as a proxy for popularity
+        # In the future, you might want to add a play_count field
+        games.sort(key=lambda x: x["updated_at"], reverse=True)
+
+    return games
 
 
 @app.post("/games/update-info")
