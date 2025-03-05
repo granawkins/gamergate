@@ -1,10 +1,10 @@
 export interface User {
   id: string;
-  email: string;
-  username: string;
   created_at: string;
-  avatar_id?: string;
   messages_left: number;
+  email?: string;
+  username?: string;
+  avatar_id?: string;
 }
 
 export interface Game {

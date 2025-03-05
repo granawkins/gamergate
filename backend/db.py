@@ -8,13 +8,13 @@ from typing import TypedDict, Optional, List, Literal
 from uuid import UUID, uuid4
 
 
-class User(TypedDict):
-    id: str
-    username: str
-    email: str
-    created_at: str  # ISO format string of datetime
-    avatar_id: Optional[str]
-    messages_left: int
+class User(TypedDict, total=False):
+    id: str  # Required
+    created_at: str  # Required - ISO format string of datetime
+    messages_left: int  # Required
+    username: str  # Optional
+    email: str  # Optional
+    avatar_id: Optional[str]  # Optional
 
 
 class Message(TypedDict, total=False):
