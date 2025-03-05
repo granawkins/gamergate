@@ -81,10 +81,40 @@ def calculate_seconds_played(game_id: str, user_id: str, _db: dict) -> int:
     return total_seconds
 
 
+def calculate_total_seconds_played(game_id: str, _db: dict) -> int:
+    """
+    Calculate the total seconds played for a game by all users.
+    """
+    total_seconds = 0
+    for session in _db.get("play_sessions", {}).values():
+        if session["game_id"] == game_id:
+            total_seconds += session["seconds_played"]
+
+    return total_seconds
+
+
 @app.get("/games")
-async def get_games(current_user: Optional[User] = None):
+async def get_games(search: str = "", sort: str = "newest", current_user: Optional[User] = None):
+    """
+    Get all games with optional search and sorting.
+
+    Parameters:
+    - search: Filter games by name (case-insensitive)
+    - sort: Sort games by "newest", "oldest", or "most_played"
+    - current_user: Optional user for adding seconds_played information
+    """
     _db = await db.get()
     games = list(_db["games"].values())
+
+    # Filter by search query if provided
+    if search:
+        search = search.lower()
+        games = [
+            game
+            for game in games
+            if search in game["name"].lower()
+            or (game.get("description") and search in game["description"].lower())
+        ]
 
     # Add seconds_played if user is logged in
     if current_user:
@@ -92,6 +122,26 @@ async def get_games(current_user: Optional[User] = None):
             game["seconds_played"] = calculate_seconds_played(
                 game["id"], current_user["id"], _db
             )
+
+    # Add total_seconds_played for sorting by most_played
+    for game in games:
+        game["total_seconds_played"] = calculate_total_seconds_played(
+            game["id"], _db
+        )
+
+    # Sort the games based on the sort parameter
+    if sort == "newest":
+        games.sort(key=lambda x: x["created_at"], reverse=True)
+    elif sort == "oldest":
+        games.sort(key=lambda x: x["created_at"])
+    elif sort == "most_played":
+        # Sort by total_seconds_played
+        games.sort(key=lambda x: x.get("total_seconds_played", 0), reverse=True)
+        
+    # Remove total_seconds_played from response as it's only used for sorting
+    for game in games:
+        if "total_seconds_played" in game:
+            del game["total_seconds_played"]
 
     return games
 
