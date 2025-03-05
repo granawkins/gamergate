@@ -10,10 +10,28 @@ type TabType = "conversation" | "info";
 
 export const Editor = () => {
   const { gameName } = useParams();
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("conversation");
   const [isPortrait, setIsPortrait] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Function to fetch the latest user data
+  const fetchUserData = async () => {
+    try {
+      const response = await fetch("/api/user/me", {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch user data");
+      }
+
+      const data = await response.json();
+      setUser(data.user);
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+    }
+  };
 
   // Conversation State
   const [isLoading, setIsLoading] = useState(true);
@@ -98,6 +116,9 @@ export const Editor = () => {
           !!updatedMessage.commit_sha
         ) {
           setFrameKey((prev) => prev + 1);
+
+          // Update user data to get the latest messages_left count
+          fetchUserData();
         }
       } catch (error) {
         setError(error as string);
@@ -144,6 +165,9 @@ export const Editor = () => {
         1000,
       );
       setIsPolling(true);
+
+      // Fetch updated user data to reflect the latest messages_left count
+      fetchUserData();
     } catch (error) {
       setError(error as string);
     }
