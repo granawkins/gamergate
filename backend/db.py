@@ -8,7 +8,7 @@ from typing import TypedDict, Optional, List, Literal
 from uuid import UUID, uuid4
 
 
-class User(TypedDict):
+class UserRequired(TypedDict):
     id: str
     created_at: str  # ISO format string of datetime
     messages_left: int
@@ -21,7 +21,7 @@ class UserOptional(TypedDict, total=False):
 
 
 # Combine required and optional fields
-class User(User, UserOptional):
+class User(UserRequired, UserOptional):
     pass
 
 

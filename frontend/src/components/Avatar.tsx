@@ -11,7 +11,9 @@ const AVATAR_BACKGROUND_COLOR = "#4A148C";
 
 export const Avatar: React.FC<AvatarProps> = ({ user, size = 40 }) => {
   // Get the first letter of username if available, otherwise use "U" as fallback
-  const firstLetter = user.username ? user.username.charAt(0).toUpperCase() : "U";
+  const firstLetter = user.username
+    ? user.username.charAt(0).toUpperCase()
+    : "U";
 
   const avatarStyle: React.CSSProperties = {
     width: `${size}px`,
