@@ -150,12 +150,14 @@ const GameCard = ({
   showDeleteButton = false,
   onDelete,
   onClone,
+  isTemplate = false,
 }: {
   game: Game;
   linkPrefix: string;
   showDeleteButton?: boolean;
   onDelete?: (game: Game) => void;
   onClone?: (game: Game) => void;
+  isTemplate?: boolean;
 }) => {
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -173,10 +175,19 @@ const GameCard = ({
     }
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // For templates, clicking the card should trigger the clone action
+    if (isTemplate && onClone) {
+      e.preventDefault();
+      onClone(game);
+    }
+  };
+
   return (
     <a
       href={`${linkPrefix}/${game.name}`}
       key={game.id}
+      onClick={handleCardClick}
       style={{
         position: "relative",
         height: "180px",
@@ -185,26 +196,29 @@ const GameCard = ({
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
+        cursor: isTemplate ? "pointer" : "default",
       }}
     >
       <h3>{game.name}</h3>
-      {/* Clone button (remix icon) */}
-      <button
-        onClick={handleCloneClick}
-        style={{
-          position: "absolute",
-          top: "8px",
-          right: "8px",
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          fontSize: "1.2rem",
-          padding: "4px",
-        }}
-        title="Clone game"
-      >
-        🔄
-      </button>
+      {/* Clone button (remix icon) - not shown for templates */}
+      {!isTemplate && (
+        <button
+          onClick={handleCloneClick}
+          style={{
+            position: "absolute",
+            top: "8px",
+            right: "8px",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "1.2rem",
+            padding: "4px",
+          }}
+          title="Clone game"
+        >
+          🔄
+        </button>
+      )}
       {showDeleteButton && (
         <button
           onClick={handleDeleteClick}
@@ -377,6 +391,7 @@ export const Home = () => {
                   game={template}
                   linkPrefix="/editor"
                   onClone={handleCloneGame}
+                  isTemplate={true}
                 />
               ))}
             </div>
@@ -397,6 +412,7 @@ export const Home = () => {
                       game={template}
                       linkPrefix="/editor"
                       onClone={handleCloneGame}
+                      isTemplate={true}
                     />
                   ))}
                 </div>
