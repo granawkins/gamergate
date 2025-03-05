@@ -40,7 +40,9 @@ export const GameFrame = ({
         const response = await fetch("/api/games");
         if (response.ok) {
           const games = await response.json();
-          const game = games.find((g: any) => g.name === gameName);
+          const game = games.find(
+            (g: { name: string; id: string }) => g.name === gameName,
+          );
           if (game) {
             setGameId(game.id);
           }
@@ -169,7 +171,7 @@ export const GameFrame = ({
         window.clearTimeout(idleTimeoutRef.current);
       }
     };
-  }, [gameName, gameId, user, isEditor]);
+  }, [gameName, gameId, user, isEditor, recordPlaySession]);
 
   useEffect(() => {
     if (iframeRef.current) {
