@@ -150,12 +150,14 @@ const GameCard = ({
   showDeleteButton = false,
   onDelete,
   onClone,
+  isTemplate = false,
 }: {
   game: Game;
   linkPrefix: string;
   showDeleteButton?: boolean;
   onDelete?: (game: Game) => void;
   onClone?: (game: Game) => void;
+  isTemplate?: boolean;
 }) => {
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -173,10 +175,19 @@ const GameCard = ({
     }
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // For templates, clicking the card should trigger the clone action
+    if (isTemplate && onClone) {
+      e.preventDefault();
+      onClone(game);
+    }
+  };
+
   return (
     <a
       href={`${linkPrefix}/${game.name}`}
       key={game.id}
+      onClick={handleCardClick}
       style={{
         position: "relative",
         height: "180px",
@@ -185,26 +196,29 @@ const GameCard = ({
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
+        cursor: isTemplate ? "pointer" : "default",
       }}
     >
       <h3>{game.name}</h3>
-      {/* Clone button (remix icon) */}
-      <button
-        onClick={handleCloneClick}
-        style={{
-          position: "absolute",
-          top: "8px",
-          right: "8px",
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          fontSize: "1.2rem",
-          padding: "4px",
-        }}
-        title="Clone game"
-      >
-        🔄
-      </button>
+      {/* Clone button (remix icon) - not shown for templates */}
+      {!isTemplate && (
+        <button
+          onClick={handleCloneClick}
+          style={{
+            position: "absolute",
+            top: "8px",
+            right: "8px",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "1.2rem",
+            padding: "4px",
+          }}
+          title="Clone game"
+        >
+          🔄
+        </button>
+      )}
       {showDeleteButton && (
         <button
           onClick={handleDeleteClick}
@@ -230,17 +244,21 @@ const GameCard = ({
 export const Home = () => {
   const { user, games: userGames, setGames } = useAuth();
   const [publicGames, setPublicGames] = useState<Game[]>([]);
+  const [templates, setTemplates] = useState<Game[]>([]);
   const [gameToClone, setGameToClone] = useState<Game | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortOption, setSortOption] = useState<string>("newest");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const fetchPublicGames = async (query = "", sort = "newest") => {
+  const fetchGames = async (query = "", sort = "newest") => {
     setIsLoading(true);
     try {
       const response = await fetch(`/api/games?search=${query}&sort=${sort}`);
       const data = await response.json();
-      setPublicGames(data);
+
+      // Assume the new format is always used
+      setPublicGames(data.play);
+      setTemplates(data.templates);
     } catch (error) {
       console.error("Error fetching games:", error);
     } finally {
@@ -249,7 +267,7 @@ export const Home = () => {
   };
 
   useEffect(() => {
-    fetchPublicGames(searchQuery, sortOption);
+    fetchGames(searchQuery, sortOption);
   }, [searchQuery, sortOption]);
 
   // Shared style for game grid
@@ -294,10 +312,6 @@ export const Home = () => {
     setGameToClone(game);
   };
 
-  const handleCloseModal = () => {
-    setGameToClone(null);
-  };
-
   const handleCloneSubmit = async (gameName: string, newName: string) => {
     try {
       const response = await fetch(`/api/games/${gameName}/clone`, {
@@ -330,36 +344,39 @@ export const Home = () => {
     }
   };
 
-  // Handle search input change with debounce
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  };
-
-  // Handle sort option change
-  const handleSortChange = (option: string) => {
-    setSortOption(option);
-  };
-
   return (
     <div>
       <h2>Create</h2>
       {!user || !user.email ? (
         <p>Login to create games</p>
-      ) : userGames.length === 0 ? (
-        <p>Create a new game by remixing an existing game</p>
       ) : (
-        <div style={gameGridStyle}>
-          {userGames.map((game) => (
-            <GameCard
-              key={game.id}
-              game={game}
-              linkPrefix="/editor"
-              showDeleteButton={true}
-              onDelete={handleDeleteGame}
-              onClone={handleCloneGame}
-            />
-          ))}
-        </div>
+        <>
+          <div style={gameGridStyle}>
+            {/* User's games */}
+            {userGames.length > 0 &&
+              userGames.map((game) => (
+                <GameCard
+                  key={game.id}
+                  game={game}
+                  linkPrefix="/editor"
+                  showDeleteButton={true}
+                  onDelete={handleDeleteGame}
+                  onClone={handleCloneGame}
+                />
+              ))}
+
+            {/* Templates - always shown for logged-in users */}
+            {templates.map((template) => (
+              <GameCard
+                key={template.id}
+                game={template}
+                linkPrefix="/editor"
+                onClone={handleCloneGame}
+                isTemplate={true}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       <div
@@ -376,7 +393,7 @@ export const Home = () => {
             type="text"
             placeholder="Search games..."
             value={searchQuery}
-            onChange={handleSearchChange}
+            onChange={(e) => setSearchQuery(e.target.value)}
             style={{
               padding: "0.5rem",
               borderRadius: "4px",
@@ -386,7 +403,7 @@ export const Home = () => {
           />
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <button
-              onClick={() => handleSortChange("newest")}
+              onClick={() => setSortOption("newest")}
               style={{
                 padding: "0.5rem",
                 borderRadius: "4px",
@@ -400,7 +417,7 @@ export const Home = () => {
               Newest
             </button>
             <button
-              onClick={() => handleSortChange("oldest")}
+              onClick={() => setSortOption("oldest")}
               style={{
                 padding: "0.5rem",
                 borderRadius: "4px",
@@ -414,7 +431,7 @@ export const Home = () => {
               Oldest
             </button>
             <button
-              onClick={() => handleSortChange("most_played")}
+              onClick={() => setSortOption("most_played")}
               style={{
                 padding: "0.5rem",
                 borderRadius: "4px",
@@ -458,7 +475,7 @@ export const Home = () => {
       {gameToClone && (
         <CloneGameModal
           game={gameToClone}
-          onClose={handleCloseModal}
+          onClose={() => setGameToClone(null)}
           onClone={handleCloneSubmit}
         />
       )}

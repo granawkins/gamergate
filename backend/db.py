@@ -70,7 +70,7 @@ class DB:
                     "id": id,
                     "name": dir.name,
                     "description": "",
-                    "owner_id": admin_id,
+                    "owner_id": "",  # Empty owner_id means it's a template
                     "parent_id": None,
                     "created_at": datetime.now().isoformat(),
                     "updated_at": datetime.now().isoformat(),

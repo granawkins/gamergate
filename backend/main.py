@@ -36,11 +36,15 @@ async def root():
 @app.get("/games")
 async def get_games(search: str = "", sort: str = "newest"):
     """
-    Get all games with optional search and sorting.
+    Get all games, separated into Play and Templates sections.
 
     Parameters:
     - search: Filter games by name (case-insensitive)
     - sort: Sort games by "newest", "oldest", or "most_played"
+
+    Returns:
+    - play: games where owner_id is not empty
+    - templates: games where owner_id is empty
     """
     _db = await db.get()
     games = list(_db["games"].values())
@@ -55,17 +59,20 @@ async def get_games(search: str = "", sort: str = "newest"):
             or (game.get("description") and search in game["description"].lower())
         ]
 
-    # Sort the games based on the sort parameter
+    # Separate games into Play and Templates sections
+    play_games = [game for game in games if game["owner_id"] != ""]
+    template_games = [game for game in games if game["owner_id"] == ""]
+
+    # Sort the play games based on the sort parameter
     if sort == "newest":
-        games.sort(key=lambda x: x["created_at"], reverse=True)
+        play_games.sort(key=lambda x: x["created_at"], reverse=True)
     elif sort == "oldest":
-        games.sort(key=lambda x: x["created_at"])
+        play_games.sort(key=lambda x: x["created_at"])
     elif sort == "most_played":
         # For now, we'll sort by updated_at as a proxy for popularity
-        # In the future, you might want to add a play_count field
-        games.sort(key=lambda x: x["updated_at"], reverse=True)
+        play_games.sort(key=lambda x: x["updated_at"], reverse=True)
 
-    return games
+    return {"play": play_games, "templates": template_games}
 
 
 @app.post("/games/update-info")
