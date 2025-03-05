@@ -298,6 +298,13 @@ export const GameInfoTab = ({
       ),
     },
     {
+      label: "Play Time",
+      content:
+        gameInfo?.seconds_played !== undefined
+          ? `${gameInfo.seconds_played} seconds`
+          : "Not played yet",
+    },
+    {
       label: "Created At",
       content: formatDate(gameInfo?.created_at || ""),
     },

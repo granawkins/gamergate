@@ -4,8 +4,8 @@ import subprocess
 from asyncio import Lock
 from datetime import datetime
 from pathlib import Path
-from typing import TypedDict, Optional, List, Literal
-from uuid import UUID, uuid4
+from typing import TypedDict, Optional, List, Literal, Dict
+from uuid import uuid4
 
 
 class User(TypedDict):
@@ -27,6 +27,14 @@ class Message(TypedDict, total=False):
     commit_sha: Optional[str]
 
 
+class PlaySession(TypedDict):
+    id: str
+    user_id: str
+    game_id: str
+    seconds_played: int
+    timestamp: str  # ISO format string of datetime
+
+
 class Game(TypedDict):
     id: str
     name: str
@@ -39,8 +47,9 @@ class Game(TypedDict):
 
 
 class Database(TypedDict):
-    users: dict[UUID, User]
-    games: dict[UUID, Game]
+    users: Dict[str, User]
+    games: Dict[str, Game]
+    play_sessions: Dict[str, PlaySession]
 
 
 DB_PATH = Path(__file__).parent / "db.json"
@@ -51,7 +60,7 @@ ADMIN_EMAIL = "granthawkins88@gmail.com"
 class DB:
     def __init__(self):
         if not DB_PATH.exists():
-            _db = {"users": {}, "games": {}}
+            _db = {"users": {}, "games": {}, "play_sessions": {}}
 
             # Setup Admin user
             admin_id = str(uuid4())
@@ -87,7 +96,23 @@ class DB:
                 subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=game_dir)
             with open(DB_PATH, "w") as f:
                 json.dump(_db, f, indent=4)
+        else:
+            # Check if play_sessions exists in the DB, add it if not
+            self._ensure_play_sessions_exists()
         self.lock = Lock()
+
+    def _ensure_play_sessions_exists(self):
+        """Ensure the play_sessions table exists in the database."""
+        try:
+            with open(DB_PATH, "r") as f:
+                data = json.load(f)
+
+            if "play_sessions" not in data:
+                data["play_sessions"] = {}
+                with open(DB_PATH, "w") as f:
+                    json.dump(data, f, indent=4)
+        except Exception as e:
+            print(f"Error ensuring play_sessions exists: {e}")
 
     async def get(self) -> dict:
         async with self.lock:

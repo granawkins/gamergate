@@ -183,11 +183,29 @@ const GameCard = ({
         width: "180px",
         border: "1px solid black",
         display: "flex",
+        flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
+        padding: "8px",
       }}
     >
-      <h3>{game.name}</h3>
+      <h3 style={{ marginBottom: "4px", textAlign: "center" }}>{game.name}</h3>
+
+      {game.seconds_played !== undefined && (
+        <div
+          style={{
+            fontSize: "0.8rem",
+            color: "#666",
+            marginTop: "4px",
+            textAlign: "center",
+          }}
+        >
+          {game.seconds_played > 0
+            ? `Played: ${game.seconds_played} sec`
+            : "Not played yet"}
+        </div>
+      )}
+
       {/* Clone button (remix icon) */}
       <button
         onClick={handleCloneClick}

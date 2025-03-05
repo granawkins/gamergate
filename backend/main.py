@@ -5,9 +5,10 @@ from pydantic import BaseModel
 from datetime import datetime
 import subprocess
 import shutil
+from typing import Optional
 from uuid import uuid4
 
-from db import db, GAMES_PATH, Message, User
+from db import db, GAMES_PATH, Message, User, PlaySession
 from user import app as user_app, get_current_user
 from assistant import get_completion_background, extract_message
 
@@ -28,15 +29,71 @@ class MessageRequest(BaseModel):
     message: str
 
 
+class PlaySessionRequest(BaseModel):
+    game_id: str
+    seconds_played: int
+
+
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
 
-@app.get("/games")
-async def get_games():
+@app.post("/play-sessions")
+async def record_play_session(
+    request: PlaySessionRequest, current_user: User = Depends(get_current_user)
+):
+    """
+    Record a play session for a game.
+    """
     _db = await db.get()
-    return list(_db["games"].values())
+
+    # Validate game_id
+    if request.game_id not in _db["games"]:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    # Create a new play session
+    session_id = str(uuid4())
+    play_session: PlaySession = {
+        "id": session_id,
+        "user_id": current_user["id"],
+        "game_id": request.game_id,
+        "seconds_played": request.seconds_played,
+        "timestamp": datetime.now().isoformat(),
+    }
+
+    # Add to database
+    _db["play_sessions"][session_id] = play_session
+    await db.set(_db)
+
+    return {"id": session_id, "success": True}
+
+
+def calculate_seconds_played(game_id: str, user_id: str, _db: dict) -> int:
+    """
+    Calculate the total seconds played for a game by a user.
+    """
+    total_seconds = 0
+    for session in _db.get("play_sessions", {}).values():
+        if session["game_id"] == game_id and session["user_id"] == user_id:
+            total_seconds += session["seconds_played"]
+
+    return total_seconds
+
+
+@app.get("/games")
+async def get_games(current_user: Optional[User] = None):
+    _db = await db.get()
+    games = list(_db["games"].values())
+
+    # Add seconds_played if user is logged in
+    if current_user:
+        for game in games:
+            game["seconds_played"] = calculate_seconds_played(
+                game["id"], current_user["id"], _db
+            )
+
+    return games
 
 
 @app.post("/games/update-info")
@@ -242,7 +299,7 @@ async def get_chat_messages(
     Get all chat messages and game info for a specific game.
     """
     _db = await db.get()
-    for game in _db["games"].values():
+    for game_id, game in _db["games"].items():
         if game["name"] == game_name:
             if current_user["id"] != game["owner_id"]:
                 raise HTTPException(
@@ -261,6 +318,12 @@ async def get_chat_messages(
             game["parent_name"] = (
                 None if parent_id is None else _db["games"][parent_id].get("name", None)
             )
+
+            # Add seconds_played to gameInfo
+            game["seconds_played"] = calculate_seconds_played(
+                game_id, current_user["id"], _db
+            )
+
             return {"messages": messages, "gameInfo": game}
 
     raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
