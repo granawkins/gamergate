@@ -10,11 +10,11 @@ export interface User {
 export interface Game {
   id: string;
   name: string;
+  description?: string;
   path: string;
   owner_id: string;
   created_at: string;
   updated_at: string;
-  plays: number;
   parent_name: string | null;
 }
 
