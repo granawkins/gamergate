@@ -4,6 +4,7 @@ backend/**/*__pycache__
 backend/db.json
 backend/games/*
 !backend/games/driver/
+!backend/games/blank-html/
 
 frontend/node_modules
 frontend/dist
