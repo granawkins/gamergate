@@ -292,7 +292,7 @@ export const Editor = () => {
               minHeight: "300px",
             }}
           >
-            <GameFrame key={frameKey} gameName={gameName} />
+            <GameFrame key={frameKey} gameName={gameName} isEditor={true} />
           </div>
 
           {/* Bottom section - Chat Interface and Game Info */}
@@ -335,7 +335,7 @@ export const Editor = () => {
               height: "100%",
             }}
           >
-            <GameFrame key={frameKey} gameName={gameName} />
+            <GameFrame key={frameKey} gameName={gameName} isEditor={true} />
           </div>
         </>
       )}
