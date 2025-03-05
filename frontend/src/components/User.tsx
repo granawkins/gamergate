@@ -9,7 +9,8 @@ export const User = () => {
 
   if (loading) {
     return null;
-  } else if (!user) {
+  } else if (!user || !user.email) {
+    // Redirect to home if no user or if it's a dummy user (no email)
     return (window.location.href = "/");
   }
 
