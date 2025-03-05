@@ -16,6 +16,7 @@ export interface Game {
   created_at: string;
   updated_at: string;
   parent_name: string | null;
+  is_template?: boolean;
 }
 
 export interface Message {

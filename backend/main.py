@@ -34,9 +34,22 @@ async def root():
 
 
 @app.get("/games")
-async def get_games():
+async def get_games(templates: bool = False):
+    """
+    Get all games. By default, excludes templates.
+    If templates=True, returns only templates.
+    """
     _db = await db.get()
-    return list(_db["games"].values())
+    if templates:
+        # Return only templates
+        return [
+            game for game in _db["games"].values() if game.get("is_template", False)
+        ]
+    else:
+        # Return non-templates (for Play section)
+        return [
+            game for game in _db["games"].values() if not game.get("is_template", False)
+        ]
 
 
 @app.post("/games/update-info")

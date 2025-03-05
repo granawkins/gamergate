@@ -36,6 +36,7 @@ class Game(TypedDict):
     created_at: str  # ISO format string of datetime
     updated_at: str  # ISO format string of datetime
     messages: List[Message]
+    is_template: bool  # Flag to identify templates
 
 
 class Database(TypedDict):
@@ -64,7 +65,12 @@ class DB:
                 "messages_left": 10,
             }
 
+            # Process regular games
             for dir in GAMES_PATH.iterdir():
+                # Skip the templates directory, we'll handle it separately
+                if dir.name == "templates":
+                    continue
+
                 id = str(uuid4())
                 _db["games"][id] = {
                     "id": id,
@@ -75,6 +81,7 @@ class DB:
                     "created_at": datetime.now().isoformat(),
                     "updated_at": datetime.now().isoformat(),
                     "messages": [],
+                    "is_template": False,
                 }
 
                 # Create a new directory with the game_id and copy the contents
@@ -85,6 +92,36 @@ class DB:
                 subprocess.run(["git", "init"], cwd=game_dir)
                 subprocess.run(["git", "add", "."], cwd=game_dir)
                 subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=game_dir)
+
+            # Process templates
+            templates_dir = GAMES_PATH / "templates"
+            if templates_dir.exists() and templates_dir.is_dir():
+                for template_dir in templates_dir.iterdir():
+                    if template_dir.is_dir():
+                        id = str(uuid4())
+                        _db["games"][id] = {
+                            "id": id,
+                            "name": template_dir.name,
+                            "description": "Template",
+                            "owner_id": admin_id,
+                            "parent_id": None,
+                            "created_at": datetime.now().isoformat(),
+                            "updated_at": datetime.now().isoformat(),
+                            "messages": [],
+                            "is_template": True,
+                        }
+
+                        # Create a new directory with the template_id and copy the contents
+                        template_game_dir = GAMES_PATH / id
+                        shutil.copytree(template_dir, template_game_dir)
+
+                        # Initialize a git repo for the template
+                        subprocess.run(["git", "init"], cwd=template_game_dir)
+                        subprocess.run(["git", "add", "."], cwd=template_game_dir)
+                        subprocess.run(
+                            ["git", "commit", "-m", "Initial template commit"],
+                            cwd=template_game_dir,
+                        )
             with open(DB_PATH, "w") as f:
                 json.dump(_db, f, indent=4)
         self.lock = Lock()
