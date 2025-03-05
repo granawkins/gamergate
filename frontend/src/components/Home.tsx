@@ -312,10 +312,6 @@ export const Home = () => {
     setGameToClone(game);
   };
 
-  const handleCloseModal = () => {
-    setGameToClone(null);
-  };
-
   const handleCloneSubmit = async (gameName: string, newName: string) => {
     try {
       const response = await fetch(`/api/games/${gameName}/clone`, {
@@ -346,16 +342,6 @@ export const Home = () => {
       console.error("Error cloning game:", error);
       throw error;
     }
-  };
-
-  // Handle search input change with debounce
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  };
-
-  // Handle sort option change
-  const handleSortChange = (option: string) => {
-    setSortOption(option);
   };
 
   return (
@@ -390,12 +376,6 @@ export const Home = () => {
               />
             ))}
           </div>
-
-          {userGames.length === 0 && (
-            <p>
-              Create a new game by using a template or remixing an existing game
-            </p>
-          )}
         </>
       )}
 
@@ -413,7 +393,7 @@ export const Home = () => {
             type="text"
             placeholder="Search games..."
             value={searchQuery}
-            onChange={handleSearchChange}
+            onChange={(e) => setSearchQuery(e.target.value)}
             style={{
               padding: "0.5rem",
               borderRadius: "4px",
@@ -423,7 +403,7 @@ export const Home = () => {
           />
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <button
-              onClick={() => handleSortChange("newest")}
+              onClick={() => setSortOption("newest")}
               style={{
                 padding: "0.5rem",
                 borderRadius: "4px",
@@ -437,7 +417,7 @@ export const Home = () => {
               Newest
             </button>
             <button
-              onClick={() => handleSortChange("oldest")}
+              onClick={() => setSortOption("oldest")}
               style={{
                 padding: "0.5rem",
                 borderRadius: "4px",
@@ -451,7 +431,7 @@ export const Home = () => {
               Oldest
             </button>
             <button
-              onClick={() => handleSortChange("most_played")}
+              onClick={() => setSortOption("most_played")}
               style={{
                 padding: "0.5rem",
                 borderRadius: "4px",
@@ -495,7 +475,7 @@ export const Home = () => {
       {gameToClone && (
         <CloneGameModal
           game={gameToClone}
-          onClose={handleCloseModal}
+          onClose={() => setGameToClone(null)}
           onClone={handleCloneSubmit}
         />
       )}

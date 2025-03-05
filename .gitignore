@@ -2,9 +2,11 @@ backend/.venv
 backend/.env
 backend/**/*__pycache__
 backend/db.json
+
+# Ignore all games except templates
 backend/games/*
 !backend/games/driver/
-!backend/games/blank-html/
+!backend/games/blank-slate/
 
 frontend/node_modules
 frontend/dist

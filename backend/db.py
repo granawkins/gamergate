@@ -66,16 +66,11 @@ class DB:
 
             for dir in GAMES_PATH.iterdir():
                 id = str(uuid4())
-
-                # Set owner_id to empty string for all games
-                # Games with empty owner_id are treated as templates
-                owner_id = ""
-
                 _db["games"][id] = {
                     "id": id,
                     "name": dir.name,
-                    "description": "Template" if owner_id == "" else "",
-                    "owner_id": owner_id,
+                    "description": "",
+                    "owner_id": "",  # Empty owner_id means it's a template
                     "parent_id": None,
                     "created_at": datetime.now().isoformat(),
                     "updated_at": datetime.now().isoformat(),
