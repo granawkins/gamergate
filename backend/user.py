@@ -98,6 +98,9 @@ async def user_me(request: Request):
             "id": dummy_id,
             "created_at": datetime.now().isoformat(),
             "messages_left": 0,
+            "username": None,
+            "email": None,
+            "avatar_id": None,
         }
 
         # Store the dummy user in the database
