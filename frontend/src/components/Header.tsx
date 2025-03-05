@@ -2,13 +2,14 @@ import { useState } from "react";
 import { Info } from "./Info";
 import { Avatar } from "./Avatar";
 import useAuth from "../auth/useAuth";
+import { backendUrl } from "../utils";
 
 export const Header = () => {
   const { loading, user } = useAuth();
 
   const [showInfo, setShowInfo] = useState(false);
   const loginWithGoogle = () => {
-    window.location.href = "http://localhost:8000/api/user/login";
+    window.location.href = `${backendUrl()}/api/user/login`;
   };
 
   return (

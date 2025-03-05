@@ -1,6 +1,8 @@
+import os
+
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from pydantic import BaseModel
 from datetime import datetime
 import subprocess
@@ -8,10 +10,10 @@ import shutil
 from uuid import uuid4
 
 from db import db, GAMES_PATH, Message, User
-from user import app as user_app, get_current_user
+from routes.user import app as user_app, get_current_user
 from assistant import get_completion_background, extract_message
 
-app = FastAPI(root_path="/api")
+app = FastAPI()
 
 app.mount("/user", user_app)
 
@@ -489,3 +491,12 @@ async def undo_last_commit(
     await db.set(_db)
 
     return {"success": True, "messages": _db["games"][game_id]["messages"]}
+
+
+@app.get("/{full_path:path}")
+async def serve_index(request: Request, full_path: str):
+    public_file_path = os.path.join("../frontend/dist", full_path)
+    if os.path.exists(public_file_path) and os.path.isfile(public_file_path):
+        return FileResponse(public_file_path)
+    with open("../frontend/dist/index.html") as file:
+        return HTMLResponse(content=file.read())

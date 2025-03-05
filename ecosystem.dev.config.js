@@ -3,7 +3,7 @@ module.exports = {
       {
           name: 'gamergate-backend',
           cwd: './backend',
-          script: 'uvicorn main:app --reload',
+          script: 'uvicorn routes:app --reload --host 0.0.0.0 --port 8001',
           env: {
             NODE_ENV: 'development',
           },

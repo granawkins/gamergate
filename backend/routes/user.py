@@ -140,6 +140,16 @@ GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USER_INFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
+ENV = os.getenv("ENV", "dev")
+if ENV == "PROD":
+    BASE_URL = "https://gamergate.ai"
+    FRONTEND_URL = "https://gamergate.ai"
+else:
+    BASE_URL = "http://localhost:8001"
+    if ENV == "DEV":
+        FRONTEND_URL = "http://localhost:5173"
+    else:
+        FRONTEND_URL = "http://localhost:8001"
 
 
 @app.get("/google/callback")
@@ -149,7 +159,7 @@ async def user_google_callback(request: Request):
         "client_secret": GOOGLE_CLIENT_SECRET,
         "code": request.query_params["code"],
         "grant_type": "authorization_code",
-        "redirect_uri": "http://localhost:8000/api/user/google/callback",
+        "redirect_uri": f"{BASE_URL}/api/user/google/callback",
     }
     token_response = requests.post(GOOGLE_TOKEN_URL, data=token_params)
     token = token_response.json().get("access_token")
@@ -228,7 +238,7 @@ async def user_google_callback(request: Request):
         await db.set(_db)
 
     auth_token = create_session_token(user_id)
-    response = RedirectResponse("http://localhost:5173/")
+    response = RedirectResponse(f"{FRONTEND_URL}/")
     response.set_cookie(
         key="session_token",
         value=auth_token,
@@ -257,7 +267,7 @@ async def user_login(request: Request):
 
     params = {
         "client_id": GOOGLE_CLIENT_ID,
-        "redirect_uri": "http://localhost:8000/api/user/google/callback",
+        "redirect_uri": f"{BASE_URL}/api/user/google/callback",
         "response_type": "code",
         "scope": "email",
         "state": state,  # Pass the user_id as state
@@ -268,6 +278,6 @@ async def user_login(request: Request):
 
 @app.get("/logout")
 async def user_logout():
-    response = RedirectResponse("http://localhost:5173/")
+    response = RedirectResponse(f"{FRONTEND_URL}/")
     response.delete_cookie("session_token")
     return response
