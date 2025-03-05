@@ -1,5 +1,5 @@
 import { useParams, Navigate } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { GameFrame } from "./GameFrame";
 import useAuth from "../auth/useAuth";
 
@@ -27,52 +27,28 @@ export const Play = () => {
   const idleTimeoutRef = useRef<number | null>(null);
   const visibilityChangeRef = useRef<boolean>(false);
 
-  // Redirect to home if no gameName is provided
-  if (!gameName) {
-    return <Navigate to="/" replace />;
-  }
+  // Function to record play session - wrapped in useCallback to prevent recreation on every render
+  const recordPlaySession = useCallback(
+    async (seconds: number) => {
+      if (!user || !gameId || seconds <= 0) return;
 
-  // Find game ID from name
-  useEffect(() => {
-    const fetchGameId = async () => {
       try {
-        const response = await fetch("/api/games");
-        if (response.ok) {
-          const games = await response.json();
-          const game = games.find(
-            (g: { name: string; id: string }) => g.name === gameName,
-          );
-          if (game) {
-            setGameId(game.id);
-          }
-        }
+        await fetch("/api/play-sessions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            game_id: gameId,
+            seconds_played: Math.round(seconds),
+          }),
+        });
       } catch (error) {
-        console.error("Error fetching game ID:", error);
+        console.error("Error recording play session:", error);
       }
-    };
-
-    fetchGameId();
-  }, [gameName]);
-
-  // Function to record play session
-  const recordPlaySession = async (seconds: number) => {
-    if (!user || !gameId || seconds <= 0) return;
-
-    try {
-      await fetch("/api/play-sessions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          game_id: gameId,
-          seconds_played: Math.round(seconds),
-        }),
-      });
-    } catch (error) {
-      console.error("Error recording play session:", error);
-    }
-  };
+    },
+    [user, gameId],
+  );
 
   // Handle user activity
   const handleActivity = () => {
@@ -115,8 +91,34 @@ export const Play = () => {
     }
   };
 
+  // Find game ID from name
+  useEffect(() => {
+    if (!gameName) return;
+
+    const fetchGameId = async () => {
+      try {
+        const response = await fetch("/api/games");
+        if (response.ok) {
+          const games = await response.json();
+          const game = games.find(
+            (g: { name: string; id: string }) => g.name === gameName,
+          );
+          if (game) {
+            setGameId(game.id);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching game ID:", error);
+      }
+    };
+
+    fetchGameId();
+  }, [gameName]);
+
   // Setup activity tracking
   useEffect(() => {
+    if (!gameName) return;
+
     // Reset tracking variables
     startTimeRef.current = Date.now();
     activeTimeRef.current = 0;
@@ -168,7 +170,12 @@ export const Play = () => {
         window.clearTimeout(idleTimeoutRef.current);
       }
     };
-  }, [gameName, gameId, user, recordPlaySession]);
+  }, [gameName, recordPlaySession]);
+
+  // Redirect to home if no gameName is provided
+  if (!gameName) {
+    return <Navigate to="/" replace />;
+  }
 
   return <GameFrame gameName={gameName} title={gameName} />;
 };
