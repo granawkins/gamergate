@@ -18,7 +18,7 @@ const EditableField = ({
   fieldType?: string;
   placeholder?: string;
   validation?: (value: string) => { valid: boolean; message: string };
-  onSaveSuccess?: () => void;
+  onSaveSuccess?: (value: string) => void;
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(initialValue);
@@ -101,7 +101,7 @@ const EditableField = ({
         }
 
         // Call the success callback
-        onSaveSuccess();
+        onSaveSuccess(value);
       }
 
       // Handle other cases
@@ -233,9 +233,11 @@ const EditableField = ({
 export const GameInfoTab = ({
   gameInfo,
   isLoading,
+  onGameInfoUpdate,
 }: {
   gameInfo: Game | null;
   isLoading: boolean;
+  onGameInfoUpdate?: (updatedInfo: Partial<Game>) => void;
 }) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -254,6 +256,11 @@ export const GameInfoTab = ({
             valid: !!value.trim(),
             message: "Game name cannot be empty",
           })}
+          onSaveSuccess={(value) => {
+            if (onGameInfoUpdate && gameInfo) {
+              onGameInfoUpdate({ ...gameInfo, name: value });
+            }
+          }}
         />
       ),
     },
@@ -266,6 +273,11 @@ export const GameInfoTab = ({
           fieldName="description"
           fieldType="textarea"
           placeholder="Add a description for your game..."
+          onSaveSuccess={(value) => {
+            if (onGameInfoUpdate && gameInfo) {
+              onGameInfoUpdate({ ...gameInfo, description: value });
+            }
+          }}
         />
       ),
     },

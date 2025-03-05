@@ -237,7 +237,13 @@ export const Editor = () => {
         onUndo={handleUndo}
       />
     ) : (
-      <GameInfoTab gameInfo={gameInfo} isLoading={isLoading} />
+      <GameInfoTab
+        gameInfo={gameInfo}
+        isLoading={isLoading}
+        onGameInfoUpdate={(updatedInfo) =>
+          setGameInfo((prev) => (prev ? { ...prev, ...updatedInfo } : null))
+        }
+      />
     );
 
   return (
