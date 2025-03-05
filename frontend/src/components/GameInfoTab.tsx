@@ -9,7 +9,7 @@ const EditableField = ({
   fieldName,
   fieldType = "text",
   placeholder = "",
-  validation = (value: string) => ({ valid: true, message: "" }),
+  validation = (_: string) => ({ valid: true, message: "" }),
   onSaveSuccess = () => {},
 }: {
   initialValue: string;
