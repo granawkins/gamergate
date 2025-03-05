@@ -4,6 +4,7 @@ export interface User {
   username: string;
   created_at: string;
   avatar_id?: string;
+  messages_left: number;
 }
 
 export interface Game {

@@ -86,6 +86,7 @@ export const ConversationTab = ({
   error,
   onSendMessage,
   onUndo,
+  messagesLeft,
 }: {
   messages: MessageType[];
   isLoading: boolean;
@@ -93,6 +94,7 @@ export const ConversationTab = ({
   error?: string;
   onSendMessage: (message: string) => Promise<void>;
   onUndo?: (message: MessageType) => Promise<void>;
+  messagesLeft?: number;
 }) => {
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -172,42 +174,57 @@ export const ConversationTab = ({
       <div
         style={{
           display: "flex",
+          flexDirection: "column",
           borderTop: "1px solid #ccc",
         }}
       >
-        <textarea
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Type a message..."
-          style={{
-            flex: 1,
-            padding: "8px",
-            border: "none",
-            borderRight: "1px solid #ccc",
-            resize: "none",
-            minHeight: "40px",
-            maxHeight: "120px",
-            outline: "none",
-            opacity: textDisabled ? 0.6 : 1,
-          }}
-          rows={1}
-          disabled={textDisabled} // Disable input while waiting for response
-        />
-        <button
-          onClick={handleSendMessage}
-          disabled={sendDisabled}
-          style={{
-            padding: "0 16px",
-            backgroundColor: "#0084ff",
-            color: "white",
-            border: "none",
-            cursor: sendDisabled ? "default" : "pointer",
-            opacity: sendDisabled ? 0.6 : 1,
-          }}
-        >
-          Send
-        </button>
+        <div style={{ display: "flex" }}>
+          <textarea
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type a message..."
+            style={{
+              flex: 1,
+              padding: "8px",
+              border: "none",
+              borderRight: "1px solid #ccc",
+              resize: "none",
+              minHeight: "40px",
+              maxHeight: "120px",
+              outline: "none",
+              opacity: textDisabled ? 0.6 : 1,
+            }}
+            rows={1}
+            disabled={textDisabled} // Disable input while waiting for response
+          />
+          <button
+            onClick={handleSendMessage}
+            disabled={sendDisabled}
+            style={{
+              padding: "0 16px",
+              backgroundColor: "#0084ff",
+              color: "white",
+              border: "none",
+              cursor: sendDisabled ? "default" : "pointer",
+              opacity: sendDisabled ? 0.6 : 1,
+            }}
+          >
+            Send
+          </button>
+        </div>
+        {messagesLeft !== undefined && (
+          <div
+            style={{
+              fontSize: "12px",
+              color: "#666",
+              padding: "4px 8px",
+              textAlign: "center",
+            }}
+          >
+            Messages left: {messagesLeft}
+          </div>
+        )}
       </div>
     </>
   );
