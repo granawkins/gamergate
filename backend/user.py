@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 import uuid
 from datetime import datetime, timedelta, UTC
@@ -6,8 +7,8 @@ from dotenv import load_dotenv
 from urllib.parse import urlencode
 
 import jwt
-from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.responses import RedirectResponse
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.responses import RedirectResponse, Response
 from fastapi.security import APIKeyCookie
 
 from db import db, User
@@ -73,13 +74,64 @@ async def get_current_user(request: Request) -> User:
 
 
 @app.get("/me")
-async def user_me(current_user: User = Depends(get_current_user)):
+async def user_me(request: Request):
+    token = request.cookies.get("session_token")
     _db = await db.get()
+
+    user_id = None
+    user = None
+
+    # Try to get user from token if it exists
+    if token:
+        try:
+            user_id = verify_session_token(token)
+            user = _db["users"].get(user_id)
+        except AuthError:
+            # Invalid token, will create a dummy user
+            pass
+
+    # If no valid user found, create a dummy user
+    if user is None:
+        # Create a dummy user for non-authenticated visitors
+        dummy_id = str(uuid.uuid4())
+        dummy_user: User = {
+            "id": dummy_id,
+            "created_at": datetime.now().isoformat(),
+            "messages_left": 0,
+            "username": None,
+            "email": None,
+            "avatar_id": None,
+        }
+
+        # Store the dummy user in the database
+        _db["users"][dummy_id] = dummy_user
+        await db.set(_db)
+
+        # Create a session token for the dummy user
+        auth_token = create_session_token(dummy_id)
+        response = {
+            "user": dummy_user,
+            "games": [],
+        }
+
+        # Return the response with the session token cookie
+        return_response = Response(
+            content=json.dumps(response), media_type="application/json"
+        )
+        return_response.set_cookie(
+            key="session_token",
+            value=auth_token,
+            httponly=True,
+            secure=True,
+            samesite="lax",
+            max_age=3600 * 24 * 30,
+        )
+        return return_response
+
+    # Return existing user data
     return {
-        "user": current_user,
-        "games": [
-            g for g in _db["games"].values() if g["owner_id"] == current_user["id"]
-        ],
+        "user": user,
+        "games": [g for g in _db["games"].values() if g["owner_id"] == user["id"]],
     }
 
 
@@ -111,13 +163,57 @@ async def user_google_callback(request: Request):
     avatar_id = user_data.get("picture")  # Get avatar URL from Google
 
     _db = await db.get()
-    user = next((u for u in _db["users"].values() if u["email"] == email), None)
+
+    # Get the dummy user ID from the session token
+    # We assume we always have a dummy user at this point
+    dummy_user_id = ""
+    session_token = request.cookies.get("session_token")
+    if session_token:
+        try:
+            dummy_user_id = verify_session_token(session_token)
+        except AuthError:
+            # If token is invalid, we'll still proceed with the state parameter
+            pass
+
+    # If no session token or invalid, try to get from state parameter
+    if not dummy_user_id:
+        dummy_user_id = request.query_params.get("state", "")
+
+    # Check if a user with this email already exists
+    existing_user = next(
+        (u for u in _db["users"].values() if u.get("email") == email), None
+    )
 
     # Variable to store the user ID for the token
     user_id: str
 
-    if not user:
-        # Create user with all fields
+    if existing_user:
+        # User with this email already exists
+        user_id = existing_user["id"]
+        user = existing_user
+
+        # Update avatar if needed
+        if "avatar_id" not in user or user["avatar_id"] != avatar_id:
+            user["avatar_id"] = avatar_id if avatar_id else None
+            _db["users"][user_id] = user
+            await db.set(_db)
+    elif dummy_user_id and dummy_user_id in _db["users"]:
+        # Update the dummy user with the Google account info
+        user_id = dummy_user_id
+        dummy_user = _db["users"][dummy_user_id]
+
+        # This is a first-time login for this dummy user, update with Google info
+        dummy_user["email"] = email
+        dummy_user["username"] = email.split("@")[0]
+        dummy_user["avatar_id"] = avatar_id if avatar_id else None
+
+        # Set messages_left to 10 for first-time login
+        dummy_user["messages_left"] = 10
+
+        _db["users"][user_id] = dummy_user
+        await db.set(_db)
+    else:
+        # Create a new user with all fields
         user_id = str(uuid.uuid4())
         new_user: User = {
             "id": user_id,
@@ -130,14 +226,6 @@ async def user_google_callback(request: Request):
 
         _db["users"][user_id] = new_user
         await db.set(_db)
-    else:
-        user_id = user["id"]
-        # Ensure avatar_id is always present
-        if "avatar_id" not in user or user["avatar_id"] != avatar_id:
-            # Update avatar if it has changed or wasn't set
-            user["avatar_id"] = avatar_id if avatar_id else None
-            _db["users"][user_id] = user
-            await db.set(_db)
 
     auth_token = create_session_token(user_id)
     response = RedirectResponse("http://localhost:5173/")
@@ -153,12 +241,26 @@ async def user_google_callback(request: Request):
 
 
 @app.get("/login")
-async def user_login():
+async def user_login(request: Request):
+    # Get the current user ID from the session token if it exists
+    user_id = None
+    session_token = request.cookies.get("session_token")
+    if session_token:
+        try:
+            user_id = verify_session_token(session_token)
+        except AuthError:
+            # Invalid token, proceed without user_id
+            pass
+
+    # Include the user_id in the state parameter if it exists
+    state = user_id if user_id else ""
+
     params = {
         "client_id": GOOGLE_CLIENT_ID,
         "redirect_uri": "http://localhost:8000/api/user/google/callback",
         "response_type": "code",
         "scope": "email",
+        "state": state,  # Pass the user_id as state
     }
     auth_url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
     return RedirectResponse(auth_url)

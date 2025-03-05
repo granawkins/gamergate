@@ -277,7 +277,7 @@ export const Home = () => {
   };
 
   const handleCloneGame = (game: Game) => {
-    if (!user) {
+    if (!user || !user.email) {
       alert("Please log in to clone games");
       return;
     }
@@ -323,7 +323,7 @@ export const Home = () => {
   return (
     <div>
       <h2>Create</h2>
-      {!user ? (
+      {!user || !user.email ? (
         <p>Login to create games</p>
       ) : userGames.length === 0 ? (
         <p>Create a new game by remixing an existing game</p>

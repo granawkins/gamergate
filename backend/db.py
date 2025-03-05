@@ -10,11 +10,11 @@ from uuid import UUID, uuid4
 
 class User(TypedDict):
     id: str
-    username: str
-    email: str
     created_at: str  # ISO format string of datetime
-    avatar_id: Optional[str]
     messages_left: int
+    username: Optional[str]
+    email: Optional[str]
+    avatar_id: Optional[str]
 
 
 class Message(TypedDict, total=False):

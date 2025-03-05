@@ -10,7 +10,10 @@ interface AvatarProps {
 const AVATAR_BACKGROUND_COLOR = "#4A148C";
 
 export const Avatar: React.FC<AvatarProps> = ({ user, size = 40 }) => {
-  const firstLetter = user.username.charAt(0).toUpperCase();
+  // Get the first letter of username if available, otherwise use "U" as fallback
+  const firstLetter = user.username
+    ? user.username.charAt(0).toUpperCase()
+    : "U";
 
   const avatarStyle: React.CSSProperties = {
     width: `${size}px`,
@@ -45,7 +48,7 @@ export const Avatar: React.FC<AvatarProps> = ({ user, size = 40 }) => {
       {user.avatar_id ? (
         <img
           src={user.avatar_id}
-          alt={`${user.username}'s avatar`}
+          alt={`${user.email || "User"}'s avatar`}
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
           onError={handleImageError}
           referrerPolicy="no-referrer"

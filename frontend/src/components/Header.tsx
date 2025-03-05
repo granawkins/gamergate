@@ -40,7 +40,7 @@ export const Header = () => {
       >
         <h1>GAMERGATE</h1>
       </a>
-      {user ? (
+      {user && user.email ? (
         <a
           href="/user"
           style={{
