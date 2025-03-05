@@ -76,15 +76,6 @@ async def update_game_info(request: Request):
     return {"available": True}
 
 
-# Keep the old endpoint for backward compatibility
-@app.post("/games/update-name")
-async def update_game_name(request: Request):
-    """Update the name, if it's not a duplicate of another game."""
-    data = await request.json()
-    data["field"] = "name"  # Ensure field is set to name
-    return await update_game_info(request)
-
-
 @app.get("/games/{game_name}/play")
 async def serve_game(game_name: str):
     """Serve the HTML file for a specific game with added resize handling."""
