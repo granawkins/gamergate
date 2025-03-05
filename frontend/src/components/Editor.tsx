@@ -16,7 +16,7 @@ export const Editor = () => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Function to fetch the latest user data
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     try {
       const response = await fetch("/api/user/me", {
         credentials: "include",
@@ -31,7 +31,7 @@ export const Editor = () => {
     } catch (error) {
       console.error("Error fetching user data:", error);
     }
-  };
+  }, [setUser]);
 
   // Conversation State
   const [isLoading, setIsLoading] = useState(true);
@@ -129,7 +129,7 @@ export const Editor = () => {
         }
       }
     },
-    [gameName],
+    [gameName, fetchUserData],
   );
 
   const handleSendMessage = async (inputText: string) => {
@@ -165,9 +165,6 @@ export const Editor = () => {
         1000,
       );
       setIsPolling(true);
-
-      // Fetch updated user data to reflect the latest messages_left count
-      fetchUserData();
     } catch (error) {
       setError(error as string);
     }
