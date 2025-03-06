@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Game } from "../types";
 
+import { backendUrl } from "../utils";
+
 // EditableField component for handling field editing functionality
 const EditableField = ({
   initialValue,
@@ -248,7 +250,7 @@ export const GameInfoTab = ({
     if (!gameInfo?.name) return;
 
     // Create a link to the download endpoint and click it
-    const downloadUrl = `/games/${gameInfo.name}/download`;
+    const downloadUrl = `${backendUrl()}/api/games/${gameInfo.name}/download`;
 
     // Open in a new tab/window to avoid disrupting the current page
     window.open(downloadUrl, "_blank");
