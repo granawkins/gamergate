@@ -12,6 +12,7 @@ from fastapi.responses import RedirectResponse, Response
 from fastapi.security import APIKeyCookie
 
 from db import db, User
+from routes.utils import BASE_URL, FRONTEND_URL
 
 load_dotenv()
 
@@ -140,16 +141,6 @@ GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USER_INFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
-ENV = os.getenv("ENV", "dev")
-if ENV == "PROD":
-    BASE_URL = "https://gamergate.ai"
-    FRONTEND_URL = "https://gamergate.ai"
-else:
-    BASE_URL = "http://localhost:8001"
-    if ENV == "DEV":
-        FRONTEND_URL = "http://localhost:5173"
-    else:
-        FRONTEND_URL = "http://localhost:8001"
 
 
 @app.get("/google/callback")

@@ -6,4 +6,5 @@ pytest
 python-dotenv
 requests
 ruff
+stripe
 uvicorn
