@@ -1,6 +1,8 @@
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
+from uuid import uuid4
 
 from db import db, User
 from routes.user import get_current_user
@@ -25,6 +27,8 @@ class TransactionInfo(BaseModel):
     status: str
     created_at: str
     updated_at: str
+    amount: int
+    description: str
 
 
 class MessageUpdateRequest(BaseModel):
@@ -90,6 +94,8 @@ async def get_admin_stats(current_user: User = Depends(get_current_user)):
                 "status": transaction.get("status", "unknown"),
                 "created_at": transaction.get("created_at", ""),
                 "updated_at": transaction.get("updated_at", ""),
+                "amount": transaction.get("amount", 0),
+                "description": transaction.get("description", "Unknown transaction"),
             }
         )
 
@@ -116,11 +122,31 @@ async def update_user_messages(
     if request.user_id not in users:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Update the user's message count
     users[request.user_id]["messages_left"] += request.messages_to_add
 
     # Ensure messages_left doesn't go below 0
     if users[request.user_id]["messages_left"] < 0:
         users[request.user_id]["messages_left"] = 0
+
+    # Create a transaction record for this adjustment
+    current_time = datetime.now().isoformat()
+    transaction_id = str(uuid4())
+    transaction = {
+        "id": transaction_id,
+        "user_id": request.user_id,
+        "session_id": "manual",  # Use "manual" to indicate it's not from Stripe
+        "status": "complete",
+        "created_at": current_time,
+        "updated_at": current_time,
+        "amount": request.messages_to_add,
+        "description": "Manual adjustment",
+    }
+
+    # Add the transaction to the database
+    if "transactions" not in _db:
+        _db["transactions"] = {}
+    _db["transactions"][transaction_id] = transaction
 
     await db.set(_db)
 

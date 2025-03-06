@@ -18,6 +18,8 @@ interface Transaction {
   status: string;
   created_at: string;
   updated_at: string;
+  amount: number;
+  description: string;
 }
 
 export const Admin = () => {
@@ -297,6 +299,26 @@ export const Admin = () => {
                   wordWrap: "break-word",
                 }}
               >
+                Description
+              </th>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                Amount
+              </th>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
                 Status
               </th>
             </tr>
@@ -305,7 +327,7 @@ export const Admin = () => {
             {transactions.length === 0 ? (
               <tr>
                 <td
-                  colSpan={3}
+                  colSpan={5}
                   style={{
                     border: "1px solid #ddd",
                     padding: "8px",
@@ -323,6 +345,12 @@ export const Admin = () => {
                   </td>
                   <td style={{ border: "1px solid #ddd", padding: "8px" }}>
                     {formatDate(transaction.updated_at)}
+                  </td>
+                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                    {transaction.description}
+                  </td>
+                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                    {transaction.amount}
                   </td>
                   <td style={{ border: "1px solid #ddd", padding: "8px" }}>
                     {transaction.status}
