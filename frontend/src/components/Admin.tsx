@@ -219,7 +219,7 @@ export const Admin = () => {
                       onChange={(e) =>
                         setMessagesToAdd(parseInt(e.target.value) || 0)
                       }
-                      onClick={(e) => {
+                      onClick={() => {
                         // Clear the input when clicked and set the current user as updating
                         if (updatingUserId !== user.id) {
                           setUpdatingUserId(user.id);
