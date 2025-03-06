@@ -65,7 +65,12 @@ async def get_current_user(request: Request) -> User:
         user = _db["users"].get(user_id)
         if user is None:
             raise AuthError("User not found")
-        return user
+
+        # Add admin field to the user object, determined by email
+        user_with_admin = dict(user)
+        user_with_admin["admin"] = user.get("email") == ADMIN_EMAIL
+
+        return user_with_admin
     except AuthError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -102,7 +107,6 @@ async def user_me(request: Request):
             "username": None,
             "email": None,
             "avatar_id": None,
-            "admin": False,
         }
 
         # Store the dummy user in the database
@@ -111,8 +115,13 @@ async def user_me(request: Request):
 
         # Create a session token for the dummy user
         auth_token = create_session_token(dummy_id)
+
+        # Add admin field to the dummy user (will be False)
+        dummy_user_with_admin = dict(dummy_user)
+        dummy_user_with_admin["admin"] = False
+
         response = {
-            "user": dummy_user,
+            "user": dummy_user_with_admin,
             "games": [],
         }
 
@@ -130,9 +139,13 @@ async def user_me(request: Request):
         )
         return return_response
 
-    # Return existing user data
+    # Add admin field to the user object for existing users
+    user_with_admin = dict(user)
+    user_with_admin["admin"] = user.get("email") == ADMIN_EMAIL
+
+    # Return existing user data with admin field
     return {
-        "user": user,
+        "user": user_with_admin,
         "games": [g for g in _db["games"].values() if g["owner_id"] == user["id"]],
     }
 
@@ -186,9 +199,6 @@ async def user_google_callback(request: Request):
         (u for u in _db["users"].values() if u.get("email") == email), None
     )
 
-    # Check if this is an admin email
-    is_admin = email == ADMIN_EMAIL
-
     # Variable to store the user ID for the token
     user_id: str
 
@@ -197,16 +207,9 @@ async def user_google_callback(request: Request):
         user_id = existing_user["id"]
         user = existing_user
 
-        # Update avatar if needed or admin status if needed
-        update_needed = False
+        # Update avatar if needed
         if "avatar_id" not in user or user["avatar_id"] != avatar_id:
             user["avatar_id"] = avatar_id if avatar_id else None
-            update_needed = True
-        if "admin" not in user or user["admin"] != is_admin:
-            user["admin"] = is_admin
-            update_needed = True
-
-        if update_needed:
             _db["users"][user_id] = user
             await db.set(_db)
     elif dummy_user_id and dummy_user_id in _db["users"]:
@@ -218,9 +221,6 @@ async def user_google_callback(request: Request):
         dummy_user["email"] = email
         dummy_user["username"] = email.split("@")[0]
         dummy_user["avatar_id"] = avatar_id if avatar_id else None
-
-        # Set admin status based on email
-        dummy_user["admin"] = email == ADMIN_EMAIL
 
         # Set messages_left to 10 for first-time login
         dummy_user["messages_left"] = 10
@@ -237,7 +237,6 @@ async def user_google_callback(request: Request):
             "created_at": datetime.now().isoformat(),
             "avatar_id": avatar_id if avatar_id else None,
             "messages_left": 10,
-            "admin": email == ADMIN_EMAIL,
         }
 
         _db["users"][user_id] = new_user
