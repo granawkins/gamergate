@@ -1,5 +1,3 @@
-import { useState } from "react";
-import { Info } from "./Info";
 import { Avatar } from "./Avatar";
 import useAuth from "../auth/useAuth";
 import { backendUrl } from "../utils";
@@ -7,7 +5,6 @@ import { backendUrl } from "../utils";
 export const Header = () => {
   const { loading, user } = useAuth();
 
-  const [showInfo, setShowInfo] = useState(false);
   const loginWithGoogle = () => {
     window.location.href = `${backendUrl()}/api/user/login`;
   };
@@ -23,12 +20,6 @@ export const Header = () => {
         padding: "0 1rem",
       }}
     >
-      <a
-        onClick={() => setShowInfo(true)}
-        style={{ fontSize: "1.5rem", cursor: "pointer" }}
-      >
-        ⓘ
-      </a>
       <a
         href="/"
         style={{
@@ -65,7 +56,6 @@ export const Header = () => {
           Login
         </a>
       )}
-      {showInfo && <Info onClose={() => setShowInfo(false)} />}
     </header>
   );
 };
