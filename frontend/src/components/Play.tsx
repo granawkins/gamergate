@@ -1,5 +1,6 @@
 import { useParams, Navigate } from "react-router-dom";
 import { GameFrame } from "./GameFrame";
+import { Header } from "./Header";
 
 export const Play = () => {
   const { gameName } = useParams();
@@ -9,5 +10,12 @@ export const Play = () => {
     return <Navigate to="/" replace />;
   }
 
-  return <GameFrame gameName={gameName} title={gameName} />;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+      <Header gameName={gameName} />
+      <div style={{ flex: 1, position: "relative" }}>
+        <GameFrame gameName={gameName} title={gameName} />
+      </div>
+    </div>
+  );
 };
