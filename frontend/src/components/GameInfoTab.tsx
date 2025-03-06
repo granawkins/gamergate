@@ -246,12 +246,12 @@ export const GameInfoTab = ({
 
   const handleDownload = () => {
     if (!gameInfo?.name) return;
-    
+
     // Create a link to the download endpoint and click it
     const downloadUrl = `/games/${gameInfo.name}/download`;
-    
+
     // Open in a new tab/window to avoid disrupting the current page
-    window.open(downloadUrl, '_blank');
+    window.open(downloadUrl, "_blank");
   };
 
   const gameFields = [
@@ -336,11 +336,11 @@ export const GameInfoTab = ({
           title="Download game files as a ZIP archive"
         >
           <span style={{ display: "flex", alignItems: "center" }}>
-            <svg 
-              width="16" 
-              height="16" 
-              viewBox="0 0 16 16" 
-              fill="currentColor" 
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="currentColor"
               style={{ marginRight: "8px" }}
             >
               <path d="M8 12l-4-4h2.5V3h3v5H12L8 12z" />

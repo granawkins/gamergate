@@ -2,7 +2,7 @@ import os
 import zipfile
 import tempfile
 
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from pydantic import BaseModel
@@ -496,7 +496,11 @@ async def undo_last_commit(
 
 
 @app.get("/games/{game_name}/download")
-async def download_game(game_name: str, current_user: User = Depends(get_current_user)):
+async def download_game(
+    game_name: str,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+):
     """
     Download a game's directory as a zip file.
     """
@@ -536,12 +540,12 @@ async def download_game(game_name: str, current_user: User = Depends(get_current
                 arcname = os.path.relpath(file_path, game_dir)
                 zipf.write(file_path, arcname)
 
+    # Add task to delete temporary file after response is sent
+    background_tasks.add_task(os.unlink, temp_path)
+
     # Return the zip file as a download
     return FileResponse(
-        path=temp_path,
-        filename=f"{game_name}.zip",
-        media_type="application/zip",
-        background=lambda: os.unlink(temp_path),  # Delete the temp file after download
+        path=temp_path, filename=f"{game_name}.zip", media_type="application/zip"
     )
 
 
