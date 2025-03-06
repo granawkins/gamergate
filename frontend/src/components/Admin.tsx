@@ -83,7 +83,7 @@ export const Admin = () => {
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleString();
-    } catch (e) {
+    } catch (_) {
       return dateString;
     }
   };
