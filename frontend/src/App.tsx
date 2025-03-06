@@ -1,6 +1,14 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import { Header, User, Home, Editor, Play } from "./components";
+import {
+  Header,
+  User,
+  Home,
+  Editor,
+  Play,
+  StripeCheckout,
+  StripeReturn,
+} from "./components";
 import { AuthProvider } from "./auth/AuthProvider";
 
 function App() {
@@ -23,40 +31,14 @@ function App() {
             }}
           >
             <Routes>
-              <Route
-                path="/"
-                element={
-                  <div style={{ padding: "1rem" }}>
-                    <Home />
-                  </div>
-                }
-              />
-              <Route
-                path="/editor"
-                element={
-                  <div style={{ padding: "1rem" }}>
-                    <Editor />
-                  </div>
-                }
-              />
+              <Route path="/" element={<Home />} />
+              <Route path="/editor" element={<Editor />} />
               <Route path="/editor/:gameName" element={<Editor />} />
               <Route path="/play/:gameName" element={<Play />} />
-              <Route
-                path="/user"
-                element={
-                  <div style={{ padding: "1rem" }}>
-                    <User />
-                  </div>
-                }
-              />
-              <Route
-                path="/admin"
-                element={
-                  <div style={{ padding: "1rem" }}>
-                    <Admin />
-                  </div>
-                }
-              />
+              <Route path="/user" element={<User />} />
+              <Route path="/admin" element={<Admin />} />
+              <Route path="/checkout" element={<StripeCheckout />} />
+              <Route path="/return" element={<StripeReturn />} />
             </Routes>
           </main>
         </div>

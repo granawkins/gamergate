@@ -39,9 +39,19 @@ class Game(TypedDict):
     messages: List[Message]
 
 
+class Transaction(TypedDict):
+    id: str
+    user_id: str
+    session_id: str
+    status: str
+    created_at: str
+    updated_at: str
+
+
 class Database(TypedDict):
     users: dict[UUID, User]
     games: dict[UUID, Game]
+    transactions: dict[str, Transaction]
 
 
 DB_PATH = Path(__file__).parent / "db.json"
@@ -52,7 +62,7 @@ ADMIN_EMAIL = "granthawkins88@gmail.com"
 class DB:
     def __init__(self):
         if not DB_PATH.exists():
-            _db = {"users": {}, "games": {}}
+            _db = {"users": {}, "games": {}, "transactions": {}}
 
             # Setup Admin user
             admin_id = str(uuid4())

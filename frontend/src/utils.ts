@@ -3,7 +3,7 @@ const origin = () => {
   return window.location.origin.split(":").slice(0, 2).join(":");
 };
 
-const env = () => {
+export const env = () => {
   const _origin = origin();
   console.log(_origin);
   if (

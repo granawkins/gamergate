@@ -1,6 +1,8 @@
 import os
+import zipfile
+import tempfile
 
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from pydantic import BaseModel
@@ -12,12 +14,14 @@ from uuid import uuid4
 from db import db, GAMES_PATH, Message, User
 from routes.user import app as user_app, get_current_user
 from routes.admin import app as admin_app
+from routes.stripe import app as stripe_app
 from assistant import get_completion_background, extract_message
 
 app = FastAPI()
 
 app.mount("/user", user_app)
 app.mount("/admin", admin_app)
+app.mount("/stripe", stripe_app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -493,6 +497,60 @@ async def undo_last_commit(
     await db.set(_db)
 
     return {"success": True, "messages": _db["games"][game_id]["messages"]}
+
+
+@app.get("/games/{game_name}/download")
+async def download_game(
+    game_name: str,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Download a game's directory as a zip file.
+    """
+    _db = await db.get()
+    game_id = None
+
+    # Find the game by name
+    for id, game in _db["games"].items():
+        if game["name"] == game_name:
+            if current_user["id"] != game["owner_id"]:
+                raise HTTPException(
+                    status_code=403, detail="You are not the owner of this game"
+                )
+            game_id = id
+            break
+
+    if game_id is None:
+        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+
+    # Create a zip file of the game directory
+    game_dir = GAMES_PATH / game_id
+
+    # Create a temporary file for the zip
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp_file:
+        temp_path = tmp_file.name
+
+    # Create the zip file
+    with zipfile.ZipFile(temp_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for root, dirs, files in os.walk(game_dir):
+            # Skip the .git directory
+            if ".git" in dirs:
+                dirs.remove(".git")
+
+            for file in files:
+                file_path = os.path.join(root, file)
+                # Add file to zip with a path relative to the game directory
+                arcname = os.path.relpath(file_path, game_dir)
+                zipf.write(file_path, arcname)
+
+    # Add task to delete temporary file after response is sent
+    background_tasks.add_task(os.unlink, temp_path)
+
+    # Return the zip file as a download
+    return FileResponse(
+        path=temp_path, filename=f"{game_name}.zip", media_type="application/zip"
+    )
 
 
 @app.get("/{full_path:path}")
