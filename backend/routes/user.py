@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime, timedelta, UTC
 from dotenv import load_dotenv
 from urllib.parse import urlencode
+from typing import cast
 
 import jwt
 from fastapi import FastAPI, HTTPException, Request, status
@@ -70,7 +71,8 @@ async def get_current_user(request: Request) -> User:
         user_with_admin = dict(user)
         user_with_admin["admin"] = user.get("email") == ADMIN_EMAIL
 
-        return user_with_admin
+        # Cast back to User type to satisfy the type checker
+        return cast(User, user_with_admin)
     except AuthError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
