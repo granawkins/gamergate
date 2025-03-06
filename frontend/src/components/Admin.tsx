@@ -108,28 +108,110 @@ export const Admin = () => {
       <h2>User Statistics</h2>
 
       <div className="table-responsive">
-        <table className="user-stats-table">
+        <table
+          className="user-stats-table"
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            border: "1px solid #ddd",
+          }}
+        >
           <thead>
             <tr>
-              <th>Username</th>
-              <th>Email</th>
-              <th>Created At</th>
-              <th>Messages Left</th>
-              <th>Total Messages</th>
-              <th>Projects</th>
-              <th>Actions</th>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                Username
+              </th>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                Email
+              </th>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                Created At
+              </th>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                Messages Left
+              </th>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                Total Messages
+              </th>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                Projects
+              </th>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                Adjust Messages Left
+              </th>
             </tr>
           </thead>
           <tbody>
             {userStats.map((user) => (
               <tr key={user.id}>
-                <td>{user.username || "Anonymous"}</td>
-                <td>{user.email || "N/A"}</td>
-                <td>{formatDate(user.created_at)}</td>
-                <td>{user.messages_left}</td>
-                <td>{user.total_messages}</td>
-                <td>{user.n_projects}</td>
-                <td>
+                <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                  {user.username || "Anonymous"}
+                </td>
+                <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                  {user.email || "N/A"}
+                </td>
+                <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                  {formatDate(user.created_at)}
+                </td>
+                <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                  {user.messages_left}
+                </td>
+                <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                  {user.total_messages}
+                </td>
+                <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                  {user.n_projects}
+                </td>
+                <td style={{ border: "1px solid #ddd", padding: "8px" }}>
                   <div className="message-update-controls">
                     <input
                       type="number"
@@ -137,11 +219,21 @@ export const Admin = () => {
                       onChange={(e) =>
                         setMessagesToAdd(parseInt(e.target.value) || 0)
                       }
-                      placeholder="Messages to add"
+                      onClick={(e) => {
+                        // Clear the input when clicked and set the current user as updating
+                        if (updatingUserId !== user.id) {
+                          setUpdatingUserId(user.id);
+                          setMessagesToAdd(0);
+                        }
+                      }}
+                      placeholder="Add/remove"
+                      style={{ width: "100px", marginRight: "5px" }}
                     />
                     <button
                       onClick={() => updateUserMessages(user.id)}
-                      disabled={updatingUserId !== null}
+                      disabled={
+                        updatingUserId !== null && updatingUserId !== user.id
+                      }
                     >
                       {updatingUserId === user.id ? "Updating..." : "Update"}
                     </button>
