@@ -22,6 +22,9 @@ export const User = () => {
           {key}: {value}
         </p>
       ))}
+      <button onClick={() => (window.location.href = "/checkout")}>
+        Buy Messages
+      </button>
       <button onClick={logout}>Logout</button>
     </div>
   );
