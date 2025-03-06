@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-
+import { Info } from "./Info";
 import useAuth from "../auth/useAuth";
 import { Game } from "../types";
 
@@ -249,6 +249,7 @@ export const Home = () => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortOption, setSortOption] = useState<string>("newest");
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [showInfo, setShowInfo] = useState(false);
 
   const fetchGames = async (query = "", sort = "newest") => {
     setIsLoading(true);
@@ -345,131 +346,181 @@ export const Home = () => {
   };
 
   return (
-    <div>
-      <h2>Create</h2>
-      {!user || !user.email ? (
-        <p>Login to create games</p>
-      ) : (
-        <>
-          <div style={gameGridStyle}>
-            {/* User's games */}
-            {userGames.length > 0 &&
-              userGames.map((game) => (
+    <div
+      style={{
+        margin: 0,
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "calc(100vh - 90px)", // Adjusting for header height
+      }}
+    >
+      <div style={{ flex: "1 0 auto", padding: "0 1rem" }}>
+        <h2>Create</h2>
+        {!user || !user.email ? (
+          <p>Login to create games</p>
+        ) : (
+          <>
+            <div style={gameGridStyle}>
+              {/* User's games */}
+              {userGames.length > 0 &&
+                userGames.map((game) => (
+                  <GameCard
+                    key={game.id}
+                    game={game}
+                    linkPrefix="/editor"
+                    showDeleteButton={true}
+                    onDelete={handleDeleteGame}
+                    onClone={handleCloneGame}
+                  />
+                ))}
+
+              {/* Templates - always shown for logged-in users */}
+              {templates.map((template) => (
                 <GameCard
-                  key={game.id}
-                  game={game}
+                  key={template.id}
+                  game={template}
                   linkPrefix="/editor"
-                  showDeleteButton={true}
-                  onDelete={handleDeleteGame}
                   onClone={handleCloneGame}
+                  isTemplate={true}
                 />
               ))}
+            </div>
+          </>
+        )}
 
-            {/* Templates - always shown for logged-in users */}
-            {templates.map((template) => (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "1rem",
+          }}
+        >
+          <h2>Play</h2>
+          <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+            <input
+              type="text"
+              placeholder="Search games..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                padding: "0.5rem",
+                borderRadius: "4px",
+                border: "1px solid #ccc",
+                width: "200px",
+              }}
+            />
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button
+                onClick={() => setSortOption("newest")}
+                style={{
+                  padding: "0.5rem",
+                  borderRadius: "4px",
+                  border: "1px solid #ccc",
+                  backgroundColor:
+                    sortOption === "newest" ? "#0084ff" : "#f5f5f5",
+                  color: sortOption === "newest" ? "white" : "black",
+                  cursor: "pointer",
+                }}
+              >
+                Newest
+              </button>
+              <button
+                onClick={() => setSortOption("oldest")}
+                style={{
+                  padding: "0.5rem",
+                  borderRadius: "4px",
+                  border: "1px solid #ccc",
+                  backgroundColor:
+                    sortOption === "oldest" ? "#0084ff" : "#f5f5f5",
+                  color: sortOption === "oldest" ? "white" : "black",
+                  cursor: "pointer",
+                }}
+              >
+                Oldest
+              </button>
+              <button
+                onClick={() => setSortOption("most_played")}
+                style={{
+                  padding: "0.5rem",
+                  borderRadius: "4px",
+                  border: "1px solid #ccc",
+                  backgroundColor:
+                    sortOption === "most_played" ? "#0084ff" : "#f5f5f5",
+                  color: sortOption === "most_played" ? "white" : "black",
+                  cursor: "pointer",
+                }}
+              >
+                Most Played
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div style={{ textAlign: "center", padding: "2rem" }}>
+            Loading games...
+          </div>
+        ) : publicGames.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "2rem" }}>
+            {searchQuery
+              ? "No games found matching your search."
+              : "No games available."}
+          </div>
+        ) : (
+          <div style={gameGridStyle}>
+            {publicGames.map((game) => (
               <GameCard
-                key={template.id}
-                game={template}
-                linkPrefix="/editor"
+                key={game.id}
+                game={game}
+                linkPrefix="/play"
                 onClone={handleCloneGame}
-                isTemplate={true}
               />
             ))}
           </div>
-        </>
-      )}
+        )}
+      </div>
 
-      <div
+      {/* Footer */}
+      <footer
         style={{
+          width: "100%",
+          borderTop: "1px solid #ccc",
+          padding: "1rem",
+          margin: 0,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "1rem",
+          backgroundColor: "white",
+          boxSizing: "border-box",
+          height: "40px",
         }}
       >
-        <h2>Play</h2>
-        <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-          <input
-            type="text"
-            placeholder="Search games..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              padding: "0.5rem",
-              borderRadius: "4px",
-              border: "1px solid #ccc",
-              width: "200px",
-            }}
-          />
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <button
-              onClick={() => setSortOption("newest")}
-              style={{
-                padding: "0.5rem",
-                borderRadius: "4px",
-                border: "1px solid #ccc",
-                backgroundColor:
-                  sortOption === "newest" ? "#0084ff" : "#f5f5f5",
-                color: sortOption === "newest" ? "white" : "black",
-                cursor: "pointer",
-              }}
+        <div>
+          <span>
+            &copy; 2025{" "}
+            <a
+              href="https://twitter.com/granawkins"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ textDecoration: "none", color: "#0084ff" }}
             >
-              Newest
-            </button>
-            <button
-              onClick={() => setSortOption("oldest")}
-              style={{
-                padding: "0.5rem",
-                borderRadius: "4px",
-                border: "1px solid #ccc",
-                backgroundColor:
-                  sortOption === "oldest" ? "#0084ff" : "#f5f5f5",
-                color: sortOption === "oldest" ? "white" : "black",
-                cursor: "pointer",
-              }}
-            >
-              Oldest
-            </button>
-            <button
-              onClick={() => setSortOption("most_played")}
-              style={{
-                padding: "0.5rem",
-                borderRadius: "4px",
-                border: "1px solid #ccc",
-                backgroundColor:
-                  sortOption === "most_played" ? "#0084ff" : "#f5f5f5",
-                color: sortOption === "most_played" ? "white" : "black",
-                cursor: "pointer",
-              }}
-            >
-              Most Played
-            </button>
-          </div>
+              @granawkins
+            </a>
+          </span>
         </div>
-      </div>
+        <div>
+          <a
+            onClick={() => setShowInfo(true)}
+            style={{ fontSize: "1.5rem", cursor: "pointer" }}
+          >
+            ⓘ
+          </a>
+        </div>
+      </footer>
 
-      {isLoading ? (
-        <div style={{ textAlign: "center", padding: "2rem" }}>
-          Loading games...
-        </div>
-      ) : publicGames.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "2rem" }}>
-          {searchQuery
-            ? "No games found matching your search."
-            : "No games available."}
-        </div>
-      ) : (
-        <div style={gameGridStyle}>
-          {publicGames.map((game) => (
-            <GameCard
-              key={game.id}
-              game={game}
-              linkPrefix="/play"
-              onClone={handleCloneGame}
-            />
-          ))}
-        </div>
-      )}
+      {/* Info modal */}
+      {showInfo && <Info onClose={() => setShowInfo(false)} />}
 
       {/* Clone Game Modal */}
       {gameToClone && (
