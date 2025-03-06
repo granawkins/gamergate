@@ -17,8 +17,8 @@ app = FastAPI()
 price_ids = {
     "gamergate-100-messages": {
         "PROD": "price_1QzVQpL7uUhJKkiA5UOiCuK8",
-        "DEV": "price_1QzUGDQ6WPPiKRLMuML4pvOw",
-        "QA": "price_1QzUGDQ6WPPiKRLMuML4pvOw",
+        "DEV": "price_1QzVi5L7uUhJKkiAHWDtfXrR",
+        "QA": "price_1QzVi5L7uUhJKkiAHWDtfXrR",
     }
 }
 
@@ -59,27 +59,25 @@ async def session_status(request: Request):
     session_id = request.query_params.get("session_id")
     if not session_id:
         raise HTTPException(status_code=400, detail="Missing session_id parameter")
-
     session = await stripe.checkout.Session.retrieve_async(session_id)
     assert hasattr(session, "metadata") and isinstance(session.metadata, dict)
 
+    # Validate the user_id
     user_id = session.metadata.get("user_id")
     _db = await db.get()
-
-    # Initialize transactions dict if it doesn't exist
-    if "transactions" not in _db:
-        _db["transactions"] = {}
+    if not user_id or user_id not in _db["users"]:
+        raise HTTPException(status_code=400, detail="Invalid user ID")
 
     current_time = datetime.now().isoformat()
 
-    # Find or create transaction for this session
-    transaction = None
-    for tx_id, tx in _db["transactions"].items():
-        if tx["session_id"] == session_id:
-            transaction = tx
-            break
-
-    # Create transaction if it doesn't exist
+    # Create or update the transaction record
+    transaction = next(
+        (tx for tx in _db["transactions"].values() if tx["session_id"] == session_id),
+        None,
+    )
+    credit_user = session.status == "complete" and (
+        not transaction or transaction["status"] != "complete"
+    )
     if not transaction:
         transaction_id = str(uuid4())
         transaction = {
@@ -91,33 +89,20 @@ async def session_status(request: Request):
             "updated_at": current_time,
         }
         _db["transactions"][transaction_id] = transaction
-
-    messages_left = None
-
-    # Only update user's message count if:
-    # 1. Session status is complete
-    # 2. Previous transaction status was not complete
-    if session.status == "complete" and transaction["status"] != "complete":
-        if user_id and user_id in _db["users"]:
-            messages_left = _db["users"][user_id]["messages_left"] + 100
-            _db["users"][user_id]["messages_left"] = messages_left
-
-            # Update transaction status
-            transaction["status"] = session.status
-            transaction["updated_at"] = current_time
-
-            await db.set(_db)
-    elif session.status == "complete" and transaction["status"] == "complete":
-        # If transaction already completed, return current messages count
-        if user_id and user_id in _db["users"]:
-            messages_left = _db["users"][user_id]["messages_left"]
-    else:
-        # Update transaction status for non-complete status
+        await db.set(_db)
+    elif credit_user:
         transaction["status"] = session.status
         transaction["updated_at"] = current_time
+        _db["transactions"][transaction["id"]] = transaction
         await db.set(_db)
 
-    # Safely access nested attributes
+    # Update the user's message count if the transaction is complete
+    messages_left = _db["users"][user_id]["messages_left"]
+    if credit_user:
+        messages_left += 100
+        _db["users"][user_id]["messages_left"] = messages_left
+        await db.set(_db)
+    # Get the user's email from stripe
     customer_email = None
     if hasattr(session, "customer_details") and session.customer_details is not None:
         if hasattr(session.customer_details, "email"):

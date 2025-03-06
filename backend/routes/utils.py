@@ -1,6 +1,6 @@
 import os
 
-ENV = os.getenv("ENV", "dev")
+ENV = os.getenv("ENV", "DEV")
 if ENV == "PROD":
     BASE_URL = "https://gamergate.ai"
     FRONTEND_URL = "https://gamergate.ai"

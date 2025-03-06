@@ -9,7 +9,7 @@ import { Navigate } from "react-router-dom";
 import useAuth from "../auth/useAuth";
 import { env } from "../utils";
 
-// Make sure to call `loadStripe` outside of a component’s render to avoid
+// Make sure to call `loadStripe` outside of a component's render to avoid
 // recreating the `Stripe` object on every render.
 // This is your test secret API key.
 let pk;
@@ -18,7 +18,7 @@ if (env() === "PROD") {
     "pk_live_51QzUDlL7uUhJKkiAwv9ZkxpTllA4RszJMPQ75ZnQ2MRhQh89YTfc6MS4YvlauJjWm7cWdAf1SW2ieYGobOsaVOrg00s21nSZm2";
 } else {
   pk =
-    "pk_test_51QzUDsQ6WPPiKRLM1qcKRe1i6P6ob49uQdFIWHWdFLQcp0BzTDtGL2hKKzyA9tGcED5u2T0MHWQXNjDtdfYj79pe005oNhW9Gx";
+    "pk_test_51QzUDlL7uUhJKkiA3fV7AQvNlDgSJzaawMIddY4rgLR6ptApPtjqz8wQasaAhHVciXW8MRuJ7UE2cS2F9ZXV45Sk00UHcKP78y";
 }
 const stripePromise = loadStripe(pk);
 
@@ -57,7 +57,6 @@ export const StripeReturn = () => {
     const queryString = window.location.search;
     const urlParams = new URLSearchParams(queryString);
     const sessionId = urlParams.get("session_id");
-    console.log(sessionId);
 
     fetch(`/api/stripe/session-status?session_id=${sessionId}`, {
       credentials: "include",
@@ -70,7 +69,8 @@ export const StripeReturn = () => {
           setUser({ ...user, messages_left: data.messages_left });
         }
       });
-  }, [user, setUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (status === "open") {
     return <Navigate to="/checkout" />;
