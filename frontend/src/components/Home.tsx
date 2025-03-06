@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Footer } from "./Footer";
+import { Info } from "./Info";
 import useAuth from "../auth/useAuth";
 import { Game } from "../types";
 
@@ -249,6 +249,7 @@ export const Home = () => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortOption, setSortOption] = useState<string>("newest");
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [showInfo, setShowInfo] = useState(false);
 
   const fetchGames = async (query = "", sort = "newest") => {
     setIsLoading(true);
@@ -479,7 +480,43 @@ export const Home = () => {
         )}
       </div>
 
-      <Footer />
+      {/* Footer */}
+      <footer
+        style={{
+          width: "100%",
+          borderTop: "1px solid #ccc",
+          padding: "1rem",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          backgroundColor: "white",
+        }}
+      >
+        <div>
+          <span>
+            &copy; 2025{" "}
+            <a
+              href="https://twitter.com/granawkins"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ textDecoration: "none", color: "#0084ff" }}
+            >
+              @granawkins
+            </a>
+          </span>
+        </div>
+        <div>
+          <a
+            onClick={() => setShowInfo(true)}
+            style={{ fontSize: "1.5rem", cursor: "pointer" }}
+          >
+            ⓘ
+          </a>
+        </div>
+      </footer>
+
+      {/* Info modal */}
+      {showInfo && <Info onClose={() => setShowInfo(false)} />}
 
       {/* Clone Game Modal */}
       {gameToClone && (
