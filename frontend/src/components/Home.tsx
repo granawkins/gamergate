@@ -348,9 +348,10 @@ export const Home = () => {
   return (
     <div
       style={{
+        margin: 0,
         display: "flex",
         flexDirection: "column",
-        minHeight: "calc(100vh - 60px)", // Adjusting for header height
+        minHeight: "calc(100vh - 90px)", // Adjusting for header height
       }}
     >
       <div style={{ flex: "1 0 auto", padding: "0 1rem" }}>
@@ -486,10 +487,13 @@ export const Home = () => {
           width: "100%",
           borderTop: "1px solid #ccc",
           padding: "1rem",
+          margin: 0,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           backgroundColor: "white",
+          boxSizing: "border-box",
+          height: "40px",
         }}
       >
         <div>
