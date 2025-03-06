@@ -117,11 +117,15 @@ async def session_status(request: Request):
         transaction["updated_at"] = current_time
         await db.set(_db)
 
+    # Safely access nested attributes
+    customer_email = None
+    if hasattr(session, "customer_details") and session.customer_details is not None:
+        if hasattr(session.customer_details, "email"):
+            customer_email = session.customer_details.email
+
     return {
         "status": session.status,
-        "customer_email": session.customer_details.email
-        if hasattr(session, "customer_details")
-        else None,
+        "customer_email": customer_email,
         "session_id": session.id,
         "messages_left": messages_left,
     }
