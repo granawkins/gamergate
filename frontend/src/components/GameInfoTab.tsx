@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Game } from "../types";
 
+import { backendUrl } from "../utils";
+
 // EditableField component for handling field editing functionality
 const EditableField = ({
   initialValue,
@@ -244,6 +246,16 @@ export const GameInfoTab = ({
     return date.toLocaleString();
   };
 
+  const handleDownload = () => {
+    if (!gameInfo?.name) return;
+
+    // Create a link to the download endpoint and click it
+    const downloadUrl = `${backendUrl()}/api/games/${gameInfo.name}/download`;
+
+    // Open in a new tab/window to avoid disrupting the current page
+    window.open(downloadUrl, "_blank");
+  };
+
   const gameFields = [
     {
       label: "Name",
@@ -304,6 +316,42 @@ export const GameInfoTab = ({
     {
       label: "Updated At",
       content: formatDate(gameInfo?.updated_at || ""),
+    },
+    {
+      label: "Actions",
+      content: (
+        <button
+          onClick={handleDownload}
+          style={{
+            padding: "8px 16px",
+            backgroundColor: "#0084ff",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            fontWeight: "500",
+          }}
+          disabled={!gameInfo?.name}
+          title="Download game files as a ZIP archive"
+        >
+          <span style={{ display: "flex", alignItems: "center" }}>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              style={{ marginRight: "8px" }}
+            >
+              <path d="M8 12l-4-4h2.5V3h3v5H12L8 12z" />
+              <path d="M14 13v1H2v-1h12z" />
+            </svg>
+            Download Game
+          </span>
+        </button>
+      ),
     },
   ];
 
