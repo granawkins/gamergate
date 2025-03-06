@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import RedirectResponse, Response
 from fastapi.security import APIKeyCookie
 
-from db import db, User
+from db import db, User, ADMIN_EMAIL
 
 load_dotenv()
 

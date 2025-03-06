@@ -34,11 +34,11 @@ export const Admin = () => {
     try {
       setIsLoading(true);
       const response = await fetch("/api/admin/stats");
-      
+
       if (!response.ok) {
         throw new Error("Failed to fetch user statistics");
       }
-      
+
       const data = await response.json();
       setUserStats(data.users);
       setError(null);
@@ -106,7 +106,7 @@ export const Admin = () => {
     <div className="admin-container">
       <h1>Admin Dashboard</h1>
       <h2>User Statistics</h2>
-      
+
       <div className="table-responsive">
         <table className="user-stats-table">
           <thead>
@@ -134,10 +134,12 @@ export const Admin = () => {
                     <input
                       type="number"
                       value={updatingUserId === user.id ? messagesToAdd : 0}
-                      onChange={(e) => setMessagesToAdd(parseInt(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setMessagesToAdd(parseInt(e.target.value) || 0)
+                      }
                       placeholder="Messages to add"
                     />
-                    <button 
+                    <button
                       onClick={() => updateUserMessages(user.id)}
                       disabled={updatingUserId !== null}
                     >
