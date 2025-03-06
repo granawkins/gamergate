@@ -11,9 +11,19 @@ interface UserStats {
   n_projects: number;
 }
 
+interface Transaction {
+  id: string;
+  user_id: string;
+  email?: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export const Admin = () => {
   const { loading, user } = useAuth();
   const [userStats, setUserStats] = useState<UserStats[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
@@ -41,6 +51,7 @@ export const Admin = () => {
 
       const data = await response.json();
       setUserStats(data.users);
+      setTransactions(data.transactions);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -105,8 +116,8 @@ export const Admin = () => {
   return (
     <div className="admin-container">
       <h1>Admin Dashboard</h1>
-      <h2>User Statistics</h2>
 
+      <h2>User Statistics</h2>
       <div className="table-responsive">
         <table
           className="user-stats-table"
@@ -114,6 +125,7 @@ export const Admin = () => {
             width: "100%",
             borderCollapse: "collapse",
             border: "1px solid #ddd",
+            marginBottom: "2rem",
           }}
         >
           <thead>
@@ -241,6 +253,83 @@ export const Admin = () => {
                 </td>
               </tr>
             ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Transactions</h2>
+      <div className="table-responsive">
+        <table
+          className="transactions-table"
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            border: "1px solid #ddd",
+          }}
+        >
+          <thead>
+            <tr>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                Email
+              </th>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                Updated At
+              </th>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                Status
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {transactions.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={3}
+                  style={{
+                    border: "1px solid #ddd",
+                    padding: "8px",
+                    textAlign: "center",
+                  }}
+                >
+                  No transactions found
+                </td>
+              </tr>
+            ) : (
+              transactions.map((transaction) => (
+                <tr key={transaction.id}>
+                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                    {transaction.email || "N/A"}
+                  </td>
+                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                    {formatDate(transaction.updated_at)}
+                  </td>
+                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                    {transaction.status}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
