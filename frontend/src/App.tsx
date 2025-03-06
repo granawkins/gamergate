@@ -49,6 +49,14 @@ function App() {
                   </div>
                 }
               />
+              <Route
+                path="/admin"
+                element={
+                  <div style={{ padding: "1rem" }}>
+                    <Admin />
+                  </div>
+                }
+              />
             </Routes>
           </main>
         </div>

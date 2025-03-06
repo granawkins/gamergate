@@ -101,6 +101,7 @@ async def user_me(request: Request):
             "username": None,
             "email": None,
             "avatar_id": None,
+            "admin": False,
         }
 
         # Store the dummy user in the database
@@ -194,6 +195,9 @@ async def user_google_callback(request: Request):
         (u for u in _db["users"].values() if u.get("email") == email), None
     )
 
+    # Check if this is an admin email
+    is_admin = email == ADMIN_EMAIL
+
     # Variable to store the user ID for the token
     user_id: str
 
@@ -202,9 +206,16 @@ async def user_google_callback(request: Request):
         user_id = existing_user["id"]
         user = existing_user
 
-        # Update avatar if needed
+        # Update avatar if needed or admin status if needed
+        update_needed = False
         if "avatar_id" not in user or user["avatar_id"] != avatar_id:
             user["avatar_id"] = avatar_id if avatar_id else None
+            update_needed = True
+        if "admin" not in user or user["admin"] != is_admin:
+            user["admin"] = is_admin
+            update_needed = True
+
+        if update_needed:
             _db["users"][user_id] = user
             await db.set(_db)
     elif dummy_user_id and dummy_user_id in _db["users"]:
@@ -216,6 +227,9 @@ async def user_google_callback(request: Request):
         dummy_user["email"] = email
         dummy_user["username"] = email.split("@")[0]
         dummy_user["avatar_id"] = avatar_id if avatar_id else None
+
+        # Set admin status based on email
+        dummy_user["admin"] = email == ADMIN_EMAIL
 
         # Set messages_left to 10 for first-time login
         dummy_user["messages_left"] = 10
@@ -232,6 +246,7 @@ async def user_google_callback(request: Request):
             "created_at": datetime.now().isoformat(),
             "avatar_id": avatar_id if avatar_id else None,
             "messages_left": 10,
+            "admin": email == ADMIN_EMAIL,
         }
 
         _db["users"][user_id] = new_user

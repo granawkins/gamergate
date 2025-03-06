@@ -15,6 +15,7 @@ class User(TypedDict):
     username: Optional[str]
     email: Optional[str]
     avatar_id: Optional[str]
+    admin: bool
 
 
 class Message(TypedDict, total=False):
@@ -62,6 +63,7 @@ class DB:
                 "created_at": datetime.now().isoformat(),
                 "avatar_id": None,
                 "messages_left": 10,
+                "admin": True,
             }
 
             for dir in GAMES_PATH.iterdir():
