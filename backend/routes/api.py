@@ -11,7 +11,7 @@ import subprocess
 import shutil
 from uuid import uuid4
 
-from db import db, GAMES_PATH, Message, User
+from db import db, GAMES_PATH, Message, User, PlaySession
 from routes.user import app as user_app, get_current_user
 from routes.admin import app as admin_app
 from routes.stripe import app as stripe_app
@@ -56,6 +56,16 @@ async def get_games(search: str = "", sort: str = "newest"):
     """
     _db = await db.get()
     games = list(_db["games"].values())
+    play_sessions = _db.get("play_sessions", [])
+
+    # Calculate total play time for each game
+    game_play_times = {}
+    for game_id in _db["games"]:
+        game_sessions = [
+            session for session in play_sessions if session["game_id"] == game_id
+        ]
+        total_seconds = sum(session["seconds"] for session in game_sessions)
+        game_play_times[game_id] = total_seconds
 
     # Filter by search query if provided
     if search:
@@ -71,14 +81,18 @@ async def get_games(search: str = "", sort: str = "newest"):
     play_games = [game for game in games if game["owner_id"] != ""]
     template_games = [game for game in games if game["owner_id"] == ""]
 
+    # Add seconds_played to each game
+    for game in play_games + template_games:
+        game["seconds_played"] = game_play_times.get(game["id"], 0)
+
     # Sort the play games based on the sort parameter
     if sort == "newest":
         play_games.sort(key=lambda x: x["created_at"], reverse=True)
     elif sort == "oldest":
         play_games.sort(key=lambda x: x["created_at"])
     elif sort == "most_played":
-        # For now, we'll sort by updated_at as a proxy for popularity
-        play_games.sort(key=lambda x: x["updated_at"], reverse=True)
+        # Sort by total seconds played
+        play_games.sort(key=lambda x: x["seconds_played"], reverse=True)
 
     return {"play": play_games, "templates": template_games}
 
@@ -121,11 +135,23 @@ async def update_game_info(request: Request):
 
 
 @app.get("/games/{game_name}/play")
-async def serve_game(game_name: str):
+async def serve_game(game_name: str, request: Request):
     """Serve the HTML file for a specific game with added resize handling."""
     # Find the game ID from the name in the database
     _db = await db.get()
     game_id = None
+    user_id = None
+
+    # Get the current user ID if they're logged in
+    token = request.cookies.get("session_token")
+    if token:
+        try:
+            from routes.user import verify_session_token
+
+            user_id = verify_session_token(token)
+        except:
+            # If there's an error with the token, proceed without user_id
+            pass
 
     for id, game in _db["games"].items():
         if game["name"] == game_name:
@@ -286,7 +312,7 @@ async def get_chat_messages(
     Get all chat messages and game info for a specific game.
     """
     _db = await db.get()
-    for game in _db["games"].values():
+    for game_id, game in _db["games"].items():
         if game["name"] == game_name:
             if current_user["id"] != game["owner_id"]:
                 raise HTTPException(
@@ -305,6 +331,15 @@ async def get_chat_messages(
             game["parent_name"] = (
                 None if parent_id is None else _db["games"][parent_id].get("name", None)
             )
+
+            # Calculate total play time for this game
+            play_sessions = _db.get("play_sessions", [])
+            game_sessions = [
+                session for session in play_sessions if session["game_id"] == game_id
+            ]
+            total_seconds = sum(session["seconds"] for session in game_sessions)
+            game["seconds_played"] = total_seconds
+
             return {"messages": messages, "gameInfo": game}
 
     raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
@@ -557,6 +592,38 @@ async def download_game(
     return FileResponse(
         path=temp_path, filename=f"{game_name}.zip", media_type="application/zip"
     )
+
+
+class PlaySessionRecord(BaseModel):
+    game_id: str
+    seconds: int
+    user_id: str
+
+
+@app.post("/play-sessions")
+async def record_play_session(session: PlaySessionRecord):
+    """
+    Record a play session for a game.
+    """
+    _db = await db.get()
+
+    # Create a new play session
+    new_session: PlaySession = {
+        "id": str(uuid4()),
+        "game_id": session.game_id,
+        "user_id": session.user_id,
+        "created_at": datetime.now().isoformat(),
+        "seconds": session.seconds,
+    }
+
+    # Add the session to the database
+    if "play_sessions" not in _db:
+        _db["play_sessions"] = []
+
+    _db["play_sessions"].append(new_session)
+    await db.set(_db)
+
+    return {"success": True, "session_id": new_session["id"]}
 
 
 @app.get("/{full_path:path}")
