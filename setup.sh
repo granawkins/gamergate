@@ -18,9 +18,16 @@ if [ "$ENVIRONMENT" != "dev" ]; then
     npm run build
 fi
 
-# START SERVICES
+# CONFIGURE GIT CREDENTIALS
+# This ensures git operations don't fail due to missing user identity
 
 cd ..
+echo "Configuring git credentials..."
+git config --global user.email "granthawkins88@gmail.com"
+git config --global user.name "Gamergate"
+
+# START SERVICES
+
 pm2 delete "gamergate*" || true
 pm2 start ecosystem.${ENVIRONMENT}.config.js
 
