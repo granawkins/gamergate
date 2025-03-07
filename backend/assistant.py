@@ -7,36 +7,24 @@ from typing import (
     List,
     Tuple,
     Callable,
-    Optional,
     Dict,
+    Coroutine,
+    Any,
 )
 
 from anthropic import AsyncAnthropic, AnthropicError
 from anthropic.types import MessageParam
-
+from openai import OpenAIError, AsyncOpenAI
+from openai.types.chat import (
+    ChatCompletionAssistantMessageParam,
+    ChatCompletionUserMessageParam,
+    ChatCompletionSystemMessageParam,
+)
 from db import db, GAMES_PATH
-
-# Global flag for OpenAI availability
-HAS_OPENAI = False
-try:
-    import openai  # noqa: F401 - used for error type checking later
-
-    HAS_OPENAI = True
-except ImportError:
-    pass
 
 # Initialize Anthropic client
 anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-
-# Initialize OpenAI client if available
-openai_client = None
-if HAS_OPENAI:
-    try:
-        from openai import AsyncOpenAI
-
-        openai_client = AsyncOpenAI()
-    except (ImportError, AttributeError):
-        pass
+openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 DEFAULT_MODEL = "claude-3-5-sonnet-20241022"
 RETRIES = 3
@@ -182,7 +170,7 @@ async def anthropic_completion(
     messages: List[Dict[str, str]],
     model: str,
     system_prompt: str,
-    streaming_callback: Callable[[str, Optional[Dict[str, int]]], None],
+    streaming_callback: Callable[[str], Coroutine[Any, Any, None]],
 ) -> float:
     """
     Generate a completion using Anthropic's API.
@@ -225,7 +213,7 @@ async def anthropic_completion(
         # Get text
         if event.type == "content_block_delta" and event.delta.type == "text_delta":
             full_response += event.delta.text
-            streaming_callback(full_response, usage)
+            await streaming_callback(full_response)
 
     return total_cost
 
@@ -234,55 +222,48 @@ async def openai_completion(
     messages: List[Dict[str, str]],
     model: str,
     system_prompt: str,
-    streaming_callback: Callable[[str, Optional[Dict[str, int]]], None],
+    streaming_callback: Callable[[str], Coroutine[Any, Any, None]],
 ) -> float:
     """
     Generate a completion using OpenAI's API.
     Returns the total cost in cents.
     """
-    if not HAS_OPENAI or openai_client is None:
-        raise ImportError("OpenAI package is not installed or client not initialized")
-
     total_cost = 0.0
 
     # Convert messages to OpenAI format and add system message
-    openai_messages = [{"role": "system", "content": system_prompt}]
-
-    for msg in messages:
-        # Ensure role is valid for OpenAI
-        role = str(msg["role"])
-        if role not in ["user", "assistant", "system"]:
-            role = "user"  # Default to user for safety
-        openai_messages.append({"role": role, "content": str(msg["content"])})
+    openai_messages = [
+        ChatCompletionSystemMessageParam(role="system", content=system_prompt),
+        *[
+            ChatCompletionUserMessageParam(role="user", content=str(msg["content"]))
+            if msg["role"] == "user"
+            else ChatCompletionAssistantMessageParam(
+                role="assistant", content=str(msg["content"])
+            )
+            for msg in messages
+        ],
+    ]
 
     # Use the OpenAI client dynamically to avoid type checking issues
-    if hasattr(openai_client, "chat") and hasattr(openai_client.chat, "completions"):
-        completion_create = getattr(openai_client.chat.completions, "create")
-        stream = await completion_create(
-            model=model,
-            messages=openai_messages,
-            stream=True,
-        )
+    stream = await openai_client.chat.completions.create(
+        model=model,
+        messages=openai_messages,
+        stream=True,
+    )
 
-        full_response = ""
-        async for chunk in stream:
-            if hasattr(chunk, "choices") and len(chunk.choices) > 0:
-                if hasattr(chunk.choices[0], "delta") and hasattr(
-                    chunk.choices[0].delta, "content"
-                ):
-                    content = chunk.choices[0].delta.content
-                    if content:
-                        full_response += content
-                        streaming_callback(
-                            full_response, None
-                        )  # OpenAI doesn't provide per-chunk token counts
-    else:
-        raise ImportError("OpenAI client does not have expected attributes")
+    full_response = ""
+    async for chunk in stream:
+        if hasattr(chunk, "choices") and len(chunk.choices) > 0:
+            if hasattr(chunk.choices[0], "delta") and hasattr(
+                chunk.choices[0].delta, "content"
+            ):
+                content = chunk.choices[0].delta.content
+                if content:
+                    full_response += content
+                    await streaming_callback(full_response)
 
     # Calculate the cost after completion
-    # We need to estimate token counts
     input_tokens = sum(
-        len(str(m["content"])) // 4 for m in openai_messages
+        len(str(m.get("content", ""))) // 4 for m in openai_messages
     )  # Rough estimate
     output_tokens = len(full_response) // 4  # Rough estimate
 
@@ -336,33 +317,24 @@ async def generate_completion(game_id: str):
         full_response = ""
         try:
             # Define streaming callback
-            def streaming_callback(
-                response_text: str, usage: Optional[Dict[str, int]]
-            ) -> None:
+            async def streaming_callback(response_text: str) -> None:
                 nonlocal full_response
                 full_response = response_text
                 last_message["text"] = full_response
-                if usage is not None:
-                    last_message["cost"] += get_cost(model, usage)
                 _db["games"][game_id]["messages"][-1] = last_message
-                # Create a task to set the DB asynchronously without awaiting
-                asyncio.create_task(db.set(_db))
+                await db.set(_db)
 
             # Choose the appropriate completion function based on the model
             if model.startswith("claude"):
-                last_message["cost"] += await anthropic_completion(
-                    messages_for_llm, model, system_prompt, streaming_callback
-                )
+                completion_function = anthropic_completion
             elif model.startswith("gpt"):
-                if not HAS_OPENAI:
-                    raise ImportError(
-                        "OpenAI package is not installed but required for GPT models"
-                    )
-                last_message["cost"] += await openai_completion(
-                    messages_for_llm, model, system_prompt, streaming_callback
-                )
+                completion_function = openai_completion
             else:
                 raise ValueError(f"Unsupported model: {model}")
+            cost = await completion_function(
+                messages_for_llm, model, system_prompt, streaming_callback
+            )
+            last_message["cost"] += cost
 
             # Check that message and edits are valid
             extract_message(full_response)
@@ -414,17 +386,11 @@ async def generate_completion(game_id: str):
                     _db["users"][user_id]["messages_left"] -= 1
                     await db.set(_db)
             break
-        except AnthropicError as e:
+        except (AnthropicError, OpenAIError) as e:
             last_message["text"] += f"Error generating response: {str(e)}"
             last_message["status"] = "error"
             break
         except Exception as e:
-            # Check if it's an OpenAI error
-            if HAS_OPENAI and "openai" in str(type(e)).lower():
-                last_message["text"] += f"Error generating response: {str(e)}"
-                last_message["status"] = "error"
-                break
-
             print(f"Error generating response: {str(e)}")
             if try_num < RETRIES - 1:
                 print("Retrying...")
