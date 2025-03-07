@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Game } from "../types";
 
@@ -256,6 +256,76 @@ export const GameInfoTab = ({
     window.open(downloadUrl, "_blank");
   };
 
+  // Image upload handler
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCoverImageUpload = async () => {
+    if (
+      fileInputRef.current &&
+      fileInputRef.current.files &&
+      fileInputRef.current.files.length > 0
+    ) {
+      const file = fileInputRef.current.files[0];
+
+      // Validate file is an image
+      if (!file.type.startsWith("image/")) {
+        alert("Please upload an image file.");
+        return;
+      }
+
+      // Validate file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        alert("Image size should be less than 2MB.");
+        return;
+      }
+
+      // Convert image to base64
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64String = e.target?.result as string;
+
+        try {
+          const response = await fetch("/api/games/update-info", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              cover_image: base64String,
+              current_game_id: gameInfo?.id,
+              field: "cover_image",
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to upload cover image");
+          }
+
+          const data = await response.json();
+
+          if (data.successful) {
+            if (onGameInfoUpdate && gameInfo) {
+              onGameInfoUpdate({ ...gameInfo, cover_image: base64String });
+            }
+            alert("Cover image uploaded successfully!");
+          } else {
+            alert("Failed to upload cover image. Please try again.");
+          }
+        } catch (error) {
+          console.error("Error uploading cover image:", error);
+          alert("Failed to upload cover image. Please try again.");
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   const gameFields = [
     {
       label: "Name",
@@ -291,6 +361,47 @@ export const GameInfoTab = ({
             }
           }}
         />
+      ),
+    },
+    {
+      label: "Cover Image",
+      content: (
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          {gameInfo?.cover_image ? (
+            <div style={{ maxWidth: "300px", marginBottom: "10px" }}>
+              <img
+                src={gameInfo.cover_image}
+                alt="Game cover"
+                style={{ width: "100%", borderRadius: "4px" }}
+              />
+            </div>
+          ) : (
+            <div style={{ color: "#888", marginBottom: "10px" }}>
+              <em>No cover image set</em>
+            </div>
+          )}
+          <div>
+            <input
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              ref={fileInputRef}
+              onChange={handleCoverImageUpload}
+            />
+            <button
+              onClick={triggerFileInput}
+              style={{
+                padding: "6px 12px",
+                backgroundColor: "#f0f0f0",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              Upload Cover Image
+            </button>
+          </div>
+        </div>
       ),
     },
     {
