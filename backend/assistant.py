@@ -3,12 +3,13 @@ import os
 import re
 import subprocess
 from datetime import datetime
-from typing import List, Tuple, Callable, Optional
+from typing import List, Tuple, Callable, Optional, Dict
 
 from anthropic import AsyncAnthropic, AnthropicError
 from anthropic.types import MessageParam
 import openai
 from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionMessageParam
 
 from db import db, GAMES_PATH
 
@@ -159,19 +160,25 @@ def apply_edit(code: str, find: str, replace: str) -> str:
 
 
 async def anthropic_completion(
-    messages: List[MessageParam],
+    messages: List[Dict[str, str]],
     model: str,
     system_prompt: str,
-    streaming_callback: Callable[[str, Optional[dict]], None],
+    streaming_callback: Callable[[str, Optional[Dict[str, int]]], None],
 ) -> float:
     """
     Generate a completion using Anthropic's API.
     Returns the total cost in cents.
     """
     total_cost = 0.0
+
+    # Convert messages to Anthropic's MessageParam format
+    anthropic_messages = [
+        MessageParam(role=msg["role"], content=msg["content"]) for msg in messages
+    ]
+
     stream = await anthropic_client.messages.create(
         max_tokens=8192,
-        messages=messages,
+        messages=anthropic_messages,
         model=model,
         stream=True,
         system=system_prompt,
@@ -201,10 +208,10 @@ async def anthropic_completion(
 
 
 async def openai_completion(
-    messages: List[dict],
+    messages: List[Dict[str, str]],
     model: str,
     system_prompt: str,
-    streaming_callback: Callable[[str, Optional[dict]], None],
+    streaming_callback: Callable[[str, Optional[Dict[str, int]]], None],
 ) -> float:
     """
     Generate a completion using OpenAI's API.
@@ -218,9 +225,16 @@ async def openai_completion(
     for msg in messages:
         openai_messages.append({"role": msg["role"], "content": msg["content"]})
 
+    # Convert to proper OpenAI types
+    typed_messages = []
+    for msg in openai_messages:
+        typed_messages.append(
+            ChatCompletionMessageParam(role=msg["role"], content=msg["content"])
+        )
+
     stream = await openai_client.chat.completions.create(
         model=model,
-        messages=openai_messages,
+        messages=typed_messages,
         stream=True,
     )
 
@@ -280,7 +294,7 @@ async def generate_completion(game_id: str):
 
     # Format messages for the LLM
     messages_for_llm = [
-        MessageParam(role=message["role"], content=message["text"])
+        {"role": message["role"], "content": message["text"]}
         for message in messages[
             -(MOST_RECENT_N_MESSAGES + 1) : -1
         ]  # Last message is placeholder for assistant response
@@ -290,14 +304,17 @@ async def generate_completion(game_id: str):
         full_response = ""
         try:
             # Define streaming callback
-            async def streaming_callback(response_text, usage):
+            def streaming_callback(
+                response_text: str, usage: Optional[Dict[str, int]]
+            ) -> None:
                 nonlocal full_response
                 full_response = response_text
                 last_message["text"] = full_response
                 if usage is not None:
                     last_message["cost"] += get_cost(model, usage)
                 _db["games"][game_id]["messages"][-1] = last_message
-                await db.set(_db)
+                # Create a task to set the DB asynchronously without awaiting
+                asyncio.create_task(db.set(_db))
 
             # Choose the appropriate completion function based on the model
             if model.startswith("claude"):
@@ -305,12 +322,8 @@ async def generate_completion(game_id: str):
                     messages_for_llm, model, system_prompt, streaming_callback
                 )
             elif model.startswith("gpt"):
-                # Convert to OpenAI format
-                openai_messages = []
-                for msg in messages_for_llm:
-                    openai_messages.append({"role": msg.role, "content": msg.content})
                 last_message["cost"] += await openai_completion(
-                    openai_messages, model, system_prompt, streaming_callback
+                    messages_for_llm, model, system_prompt, streaming_callback
                 )
             else:
                 raise ValueError(f"Unsupported model: {model}")

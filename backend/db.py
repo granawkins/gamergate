@@ -25,6 +25,7 @@ class Message(TypedDict, total=False):
     cost: Optional[float]
     status: Literal["processing", "completed", "error"]
     commit_sha: Optional[str]
+    model: Optional[str]
 
 
 class Game(TypedDict):
