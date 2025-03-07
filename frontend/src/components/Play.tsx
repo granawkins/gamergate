@@ -1,22 +1,18 @@
-import { useParams, Navigate, useNavigate } from "react-router-dom";
+import { useParams, Navigate } from "react-router-dom";
 import { useEffect, useRef } from "react";
 import { GameFrame } from "./GameFrame";
 import useAuth from "../auth/useAuth";
 
 export const Play = () => {
   const { gameName } = useParams();
-  const navigate = useNavigate();
   const { user } = useAuth();
   const startTimeRef = useRef<number>(Date.now());
   const gameIdRef = useRef<string | null>(null);
 
-  // Redirect to home if no gameName is provided
-  if (!gameName) {
-    return <Navigate to="/" replace />;
-  }
-
   // Fetch the game info to get the game ID
   useEffect(() => {
+    if (!gameName) return;
+
     const fetchGameId = async () => {
       try {
         const response = await fetch(`/api/games?search=${gameName}`);
@@ -38,6 +34,8 @@ export const Play = () => {
 
   // Record the play session when user leaves the page
   useEffect(() => {
+    if (!gameName) return;
+
     const recordPlaySession = async () => {
       if (!gameIdRef.current) return;
 
@@ -69,7 +67,12 @@ export const Play = () => {
     return () => {
       recordPlaySession();
     };
-  }, [user?.id]);
+  }, [gameName, user?.id]);
+
+  // Redirect to home if no gameName is provided
+  if (!gameName) {
+    return <Navigate to="/" replace />;
+  }
 
   return <GameFrame gameName={gameName} title={gameName} />;
 };
