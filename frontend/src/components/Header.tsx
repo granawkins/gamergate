@@ -1,9 +1,43 @@
+import { useState, useEffect } from "react";
+import { useLocation, useParams } from "react-router-dom";
 import { Avatar } from "./Avatar";
 import useAuth from "../auth/useAuth";
 import { backendUrl } from "../utils";
+import { Game } from "../types";
+import { GameInfoModal } from "./GameInfoModal";
 
 export const Header = () => {
   const { loading, user } = useAuth();
+  const location = useLocation();
+  const { gameName } = useParams<{ gameName?: string }>();
+  const [gameInfo, setGameInfo] = useState<Game | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showGameInfo, setShowGameInfo] = useState(false);
+
+  const isPlayScreen = location.pathname.startsWith("/play/") && gameName;
+
+  useEffect(() => {
+    const fetchGameInfo = async () => {
+      if (!isPlayScreen || !gameName) return;
+
+      setIsLoading(true);
+      try {
+        const response = await fetch(`/api/games/${gameName}/info`);
+        if (response.ok) {
+          const data = await response.json();
+          setGameInfo(data);
+        } else {
+          console.error("Failed to fetch game info");
+        }
+      } catch (error) {
+        console.error("Error fetching game info:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchGameInfo();
+  }, [isPlayScreen, gameName]);
 
   const loginWithGoogle = () => {
     window.location.href = `${backendUrl()}/api/user/login`;
@@ -32,6 +66,40 @@ export const Header = () => {
       >
         <h1>GAMERGATE</h1>
       </a>
+
+      {/* Center game title and info icon when on play screen */}
+      {isPlayScreen && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            position: "absolute",
+            left: "50%",
+            transform: "translateX(-50%)",
+          }}
+        >
+          <h2 style={{ margin: 0 }}>
+            {isLoading ? "Loading..." : gameInfo?.name || gameName}
+          </h2>
+          <button
+            onClick={() => setShowGameInfo(true)}
+            style={{
+              background: "none",
+              border: "none",
+              fontSize: "1.2rem",
+              cursor: "pointer",
+              marginLeft: "0.5rem",
+              display: "flex",
+              alignItems: "center",
+            }}
+            title="Game Information"
+          >
+            ⓘ
+          </button>
+        </div>
+      )}
+
       {user && user.email ? (
         <a
           href="/user"
@@ -56,6 +124,13 @@ export const Header = () => {
           Login
         </a>
       )}
+
+      {/* Game info modal */}
+      <GameInfoModal
+        isOpen={showGameInfo}
+        onClose={() => setShowGameInfo(false)}
+        game={gameInfo}
+      />
     </header>
   );
 };

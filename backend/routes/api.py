@@ -120,6 +120,50 @@ async def update_game_info(request: Request):
     return {"available": True}
 
 
+@app.get("/games/{game_name}/info")
+async def get_game_info(game_name: str):
+    """Get game information including the owner username."""
+    _db = await db.get()
+    game_id = None
+    game = None
+
+    # Find the game by name
+    for id, g in _db["games"].items():
+        if g["name"] == game_name:
+            game_id = id
+            game = g
+            break
+
+    if game_id is None or game is None:
+        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+
+    # Get the owner's username
+    owner_username = None
+    if game["owner_id"]:
+        for user_id, user in _db["users"].items():
+            if user_id == game["owner_id"]:
+                owner_username = user.get("username", "Anonymous")
+                break
+
+    # Create a copy of the game info with the owner username
+    game_info = {
+        "id": game["id"],
+        "name": game["name"],
+        "description": game.get("description", ""),
+        "owner_id": game["owner_id"],
+        "owner_username": owner_username,
+        "created_at": game["created_at"],
+        "updated_at": game["updated_at"],
+    }
+
+    # Add parent name if applicable
+    parent_id = game.get("parent_id")
+    if parent_id and parent_id in _db["games"]:
+        game_info["parent_name"] = _db["games"][parent_id]["name"]
+
+    return game_info
+
+
 @app.get("/games/{game_name}/play")
 async def serve_game(game_name: str):
     """Serve the HTML file for a specific game with added resize handling."""
