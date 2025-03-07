@@ -149,9 +149,9 @@ export const Editor = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           message: inputText,
-          model: model
+          model: model,
         }),
       });
 

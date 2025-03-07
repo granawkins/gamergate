@@ -19,7 +19,7 @@ from db import db, GAMES_PATH
 # Global flag for OpenAI availability
 HAS_OPENAI = False
 try:
-    import openai
+    import openai  # noqa: F401 - used for error type checking later
 
     HAS_OPENAI = True
 except ImportError:

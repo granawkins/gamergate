@@ -97,7 +97,9 @@ export const ConversationTab = ({
   messagesLeft?: number;
 }) => {
   const [inputText, setInputText] = useState("");
-  const [selectedModel, setSelectedModel] = useState("claude-3-5-sonnet-20241022");
+  const [selectedModel, setSelectedModel] = useState(
+    "claude-3-5-sonnet-20241022",
+  );
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const models = [
@@ -220,7 +222,7 @@ export const ConversationTab = ({
             Send
           </button>
         </div>
-        
+
         {/* Model selector and messages left counter */}
         <div
           style={{
@@ -256,11 +258,9 @@ export const ConversationTab = ({
               ))}
             </select>
           </div>
-          
+
           {messagesLeft !== undefined && (
-            <div>
-              Messages left: {messagesLeft}
-            </div>
+            <div>Messages left: {messagesLeft}</div>
           )}
         </div>
       </div>
