@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { Avatar } from "./Avatar";
 import useAuth from "../auth/useAuth";
 import { backendUrl } from "../utils";
@@ -9,12 +9,12 @@ import { GameInfoModal } from "./GameInfoModal";
 export const Header = () => {
   const { loading, user } = useAuth();
   const location = useLocation();
-  const { gameName } = useParams<{ gameName?: string }>();
   const [gameInfo, setGameInfo] = useState<Game | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showGameInfo, setShowGameInfo] = useState(false);
 
-  const isPlayScreen = location.pathname.startsWith("/play/") && gameName;
+  const isPlayScreen = location.pathname.startsWith("/play/");
+  const gameName = isPlayScreen ? location.pathname.split("/")[2] : null;
 
   useEffect(() => {
     const fetchGameInfo = async () => {
