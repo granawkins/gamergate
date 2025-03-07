@@ -10,3 +10,5 @@ export * from "./GameInfoTab";
 export * from "./Avatar";
 export * from "./Admin";
 export * from "./Stripe";
+export * from "./Modal";
+export * from "./GameInfoModal";

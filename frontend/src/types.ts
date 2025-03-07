@@ -14,6 +14,7 @@ export interface Game {
   description?: string;
   path: string;
   owner_id: string;
+  owner_username?: string;
   created_at: string;
   updated_at: string;
   parent_name: string | null;
