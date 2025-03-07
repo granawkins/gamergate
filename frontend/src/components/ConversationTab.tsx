@@ -92,17 +92,24 @@ export const ConversationTab = ({
   isLoading: boolean;
   isPolling?: boolean;
   error?: string;
-  onSendMessage: (message: string) => Promise<void>;
+  onSendMessage: (message: string, model: string) => Promise<void>;
   onUndo?: (message: MessageType) => Promise<void>;
   messagesLeft?: number;
 }) => {
   const [inputText, setInputText] = useState("");
+  const [selectedModel, setSelectedModel] = useState("claude-3-5-sonnet-20241022");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const models = [
+    { id: "claude-3-5-sonnet-20240620", name: "Claude 3.5" },
+    { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 New" },
+    { id: "gpt-4o", name: "GPT-4o" },
+  ];
 
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
 
-    await onSendMessage(inputText);
+    await onSendMessage(inputText, selectedModel);
     setInputText("");
   };
 
@@ -213,18 +220,49 @@ export const ConversationTab = ({
             Send
           </button>
         </div>
-        {messagesLeft !== undefined && (
-          <div
-            style={{
-              fontSize: "12px",
-              color: "#666",
-              padding: "4px 8px",
-              textAlign: "center",
-            }}
-          >
-            Messages left: {messagesLeft}
+        
+        {/* Model selector and messages left counter */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontSize: "12px",
+            color: "#666",
+            padding: "4px 8px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <label htmlFor="model-select" style={{ marginRight: "8px" }}>
+              Model:
+            </label>
+            <select
+              id="model-select"
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              style={{
+                padding: "2px 4px",
+                fontSize: "12px",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                background: "white",
+              }}
+              disabled={textDisabled}
+            >
+              {models.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
+          
+          {messagesLeft !== undefined && (
+            <div>
+              Messages left: {messagesLeft}
+            </div>
+          )}
+        </div>
       </div>
     </>
   );

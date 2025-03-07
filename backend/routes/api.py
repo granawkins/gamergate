@@ -392,6 +392,7 @@ async def handle_chat(
     game = None
     body = await request.json()
     user_message_text = body["message"]
+    model = body.get("model", "claude-3-5-sonnet-20241022")  # Get model from request
 
     # Find the game by name
     for id, g in _db["games"].items():
@@ -424,6 +425,7 @@ async def handle_chat(
         "timestamp": datetime.now().isoformat(),
         "cost": 0,
         "status": "processing",
+        "model": model,  # Include the model in the assistant message
     }
     _db["games"][game_id]["messages"].append(assistant_message)
     await db.set(_db)

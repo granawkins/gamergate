@@ -132,7 +132,7 @@ export const Editor = () => {
     [gameName, fetchUserData],
   );
 
-  const handleSendMessage = async (inputText: string) => {
+  const handleSendMessage = async (inputText: string, model: string) => {
     if (!inputText.trim()) return;
 
     const userMessage: Message = {
@@ -149,7 +149,10 @@ export const Editor = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message: inputText }),
+        body: JSON.stringify({ 
+          message: inputText,
+          model: model
+        }),
       });
 
       if (!response.ok) {

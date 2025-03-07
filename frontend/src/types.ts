@@ -29,4 +29,5 @@ export interface Message {
   cost?: number;
   status?: "processing" | "completed" | "error";
   commit_sha?: string;
+  model?: string;
 }
