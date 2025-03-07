@@ -1,0 +1,52 @@
+import { useParams, Navigate } from "react-router-dom";
+import { useEffect, useRef } from "react";
+import { GameFrame } from "./GameFrame";
+import useAuth from "../auth/useAuth";
+
+export const Play = () => {
+  const { gameName } = useParams();
+  const { user } = useAuth();
+  const startTimeRef = useRef<number>(Date.now());
+
+  // Record the play session when user leaves the page
+  useEffect(() => {
+    if (!gameName) return;
+    
+    const recordPlaySession = async () => {
+      const endTime = Date.now();
+      const sessionDuration = Math.round(
+        (endTime - startTimeRef.current) / 1000,
+      ); // Convert to seconds
+
+      if (sessionDuration < 1) return; // Don't record sessions less than 1 second
+
+      try {
+        await fetch("/api/play-sessions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            game_name: gameName,
+            seconds: sessionDuration,
+            user_id: user?.id || "anonymous",
+          }),
+        });
+      } catch (error) {
+        console.error("Error recording play session:", error);
+      }
+    };
+
+    // Record session when component unmounts
+    return () => {
+      recordPlaySession();
+    };
+  }, [gameName, user?.id]);
+
+  // Redirect to home if no gameName is provided
+  if (!gameName) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <GameFrame gameName={gameName} title={gameName} />;
+};

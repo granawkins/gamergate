@@ -135,8 +135,6 @@ async def update_game_info(request: Request):
 
 
 @app.get("/games/{game_name}/play")
-async def serve_game(game_name: str, request: Request):
-@app.get("/games/{game_name}/play")
 async def serve_game(
     game_name: str, current_user: User = Depends(get_current_user)
 ):
@@ -144,13 +142,6 @@ async def serve_game(
     # Find the game ID from the name in the database
     _db = await db.get()
     game_id = None
-    # if token:
-    #     try:
-    #         from routes.user import verify_session_token, AuthError
-    #         user_id = verify_session_token(token)
-    #     except AuthError:
-    #         # If there's an error with the token, proceed without user_id
-    #         pass
 
     for id, game in _db["games"].items():
         if game["name"] == game_name:
@@ -311,7 +302,7 @@ async def get_chat_messages(
     Get all chat messages and game info for a specific game.
     """
     _db = await db.get()
-    for game_id, game in _db["games"].items():
+    for game in _db["games"].values():
         if game["name"] == game_name:
             if current_user["id"] != game["owner_id"]:
                 raise HTTPException(
@@ -587,15 +578,14 @@ async def download_game(
     # Add task to delete temporary file after response is sent
     background_tasks.add_task(os.unlink, temp_path)
 
+    # Return the zip file as a download
+    return FileResponse(
+        path=temp_path, filename=f"{game_name}.zip", media_type="application/zip"
+    )
+
+
 class PlaySessionRecord(BaseModel):
     game_name: str
-    seconds: int
-    user_id: str
-
-
-@app.post("/play-sessions")
-class PlaySessionRecord(BaseModel):
-    game_id: str
     seconds: int
     user_id: str
 
@@ -606,11 +596,21 @@ async def record_play_session(session: PlaySessionRecord):
     Record a play session for a game.
     """
     _db = await db.get()
-
+    
+    # Find the game ID from the name
+    game_id = None
+    for id, game in _db["games"].items():
+        if game["name"] == session.game_name:
+            game_id = id
+            break
+    
+    if not game_id:
+        raise HTTPException(status_code=404, detail=f"Game '{session.game_name}' not found")
+    
     # Create a new play session
     new_session: PlaySession = {
         "id": str(uuid4()),
-        "game_id": session.game_id,
+        "game_id": game_id,
         "user_id": session.user_id,
         "created_at": datetime.now().isoformat(),
         "seconds": session.seconds,
