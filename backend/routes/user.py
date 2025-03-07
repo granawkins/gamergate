@@ -5,13 +5,14 @@ import uuid
 from datetime import datetime, timedelta, UTC
 from dotenv import load_dotenv
 from urllib.parse import urlencode
+from typing import cast
 
 import jwt
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import RedirectResponse, Response
 from fastapi.security import APIKeyCookie
 
-from db import db, User
+from db import db, User, ADMIN_EMAIL
 from routes.utils import BASE_URL, FRONTEND_URL
 
 load_dotenv()
@@ -65,7 +66,13 @@ async def get_current_user(request: Request) -> User:
         user = _db["users"].get(user_id)
         if user is None:
             raise AuthError("User not found")
-        return user
+
+        # Add admin field to the user object, determined by email
+        user_with_admin = dict(user)
+        user_with_admin["admin"] = user.get("email") == ADMIN_EMAIL
+
+        # Cast back to User type to satisfy the type checker
+        return cast(User, user_with_admin)
     except AuthError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -110,8 +117,13 @@ async def user_me(request: Request):
 
         # Create a session token for the dummy user
         auth_token = create_session_token(dummy_id)
+
+        # Add admin field to the dummy user (will be False)
+        dummy_user_with_admin = dict(dummy_user)
+        dummy_user_with_admin["admin"] = False
+
         response = {
-            "user": dummy_user,
+            "user": dummy_user_with_admin,
             "games": [],
         }
 
@@ -129,9 +141,13 @@ async def user_me(request: Request):
         )
         return return_response
 
-    # Return existing user data
+    # Add admin field to the user object for existing users
+    user_with_admin = dict(user)
+    user_with_admin["admin"] = user.get("email") == ADMIN_EMAIL
+
+    # Return existing user data with admin field
     return {
-        "user": user,
+        "user": user_with_admin,
         "games": [g for g in _db["games"].values() if g["owner_id"] == user["id"]],
     }
 

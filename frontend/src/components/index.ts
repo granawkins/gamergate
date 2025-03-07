@@ -8,4 +8,5 @@ export * from "./GameFrame";
 export * from "./ConversationTab";
 export * from "./GameInfoTab";
 export * from "./Avatar";
+export * from "./Admin";
 export * from "./Stripe";

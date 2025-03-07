@@ -13,12 +13,14 @@ from uuid import uuid4
 
 from db import db, GAMES_PATH, Message, User
 from routes.user import app as user_app, get_current_user
+from routes.admin import app as admin_app
 from routes.stripe import app as stripe_app
 from assistant import get_completion_background, extract_message
 
 app = FastAPI()
 
 app.mount("/user", user_app)
+app.mount("/admin", admin_app)
 app.mount("/stripe", stripe_app)
 
 app.add_middleware(

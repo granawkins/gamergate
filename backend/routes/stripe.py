@@ -87,12 +87,18 @@ async def session_status(request: Request):
             "status": session.status,
             "created_at": current_time,
             "updated_at": current_time,
+            "amount": 100,
+            "description": "Stripe purchase",
         }
         _db["transactions"][transaction_id] = transaction
         await db.set(_db)
     elif credit_user:
         transaction["status"] = session.status
         transaction["updated_at"] = current_time
+        if "amount" not in transaction:
+            transaction["amount"] = 100
+        if "description" not in transaction:
+            transaction["description"] = "Stripe purchase"
         _db["transactions"][transaction["id"]] = transaction
         await db.set(_db)
 

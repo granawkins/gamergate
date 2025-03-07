@@ -5,6 +5,7 @@ export interface User {
   email?: string;
   username?: string;
   avatar_id?: string;
+  admin?: boolean;
 }
 
 export interface Game {

@@ -45,6 +45,8 @@ class Transaction(TypedDict):
     status: str
     created_at: str
     updated_at: str
+    amount: int
+    description: str
 
 
 class Database(TypedDict):

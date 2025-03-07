@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import {
+  Admin,
   Header,
   User,
   Home,
@@ -36,6 +37,7 @@ function App() {
               <Route path="/editor/:gameName" element={<Editor />} />
               <Route path="/play/:gameName" element={<Play />} />
               <Route path="/user" element={<User />} />
+              <Route path="/admin" element={<Admin />} />
               <Route path="/checkout" element={<StripeCheckout />} />
               <Route path="/return" element={<StripeReturn />} />
             </Routes>
