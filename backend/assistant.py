@@ -3,23 +3,35 @@ import os
 import re
 import subprocess
 from datetime import datetime
-from typing import List, Tuple
+from typing import (
+    List,
+    Tuple,
+    Callable,
+    Dict,
+    Coroutine,
+    Any,
+)
 
 from anthropic import AsyncAnthropic, AnthropicError
 from anthropic.types import MessageParam
-
+from openai import OpenAIError, AsyncOpenAI
+from openai.types.chat import (
+    ChatCompletionAssistantMessageParam,
+    ChatCompletionUserMessageParam,
+    ChatCompletionSystemMessageParam,
+)
 from db import db, GAMES_PATH
 
+# Initialize Anthropic client
+anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-
-
-MODEL = "claude-3-5-sonnet-20241022"
+DEFAULT_MODEL = "claude-3-5-sonnet-20241022"
 RETRIES = 3
 MOST_RECENT_N_MESSAGES = 5
 
-
 model_costs = {
+    # Anthropic models
     "claude-3-5-sonnet-20240620": {
         "cache_creation_input_tokens": 0.00015,
         "cache_read_input_tokens": 0.00001,
@@ -31,6 +43,11 @@ model_costs = {
         "cache_read_input_tokens": 0.00001,
         "input_tokens": 0.00015,
         "output_tokens": 0.0006,
+    },
+    # OpenAI models
+    "gpt-4o": {
+        "input_tokens": 0.00005,
+        "output_tokens": 0.00015,
     },
 }
 
@@ -149,6 +166,113 @@ def apply_edit(code: str, find: str, replace: str) -> str:
     return code.replace(find, replace)
 
 
+async def anthropic_completion(
+    messages: List[Dict[str, str]],
+    model: str,
+    system_prompt: str,
+    streaming_callback: Callable[[str], Coroutine[Any, Any, None]],
+) -> float:
+    """
+    Generate a completion using Anthropic's API.
+    Returns the total cost in cents.
+    """
+    total_cost = 0.0
+
+    # Convert messages to Anthropic's MessageParam format
+    anthropic_messages = []
+    for msg in messages:
+        # Convert the role to a valid Anthropic role
+        msg_role = str(msg["role"])
+        role = "assistant" if msg_role == "assistant" else "user"
+
+        anthropic_messages.append(MessageParam(role=role, content=str(msg["content"])))
+
+    stream = await anthropic_client.messages.create(
+        max_tokens=8192,
+        messages=anthropic_messages,
+        model=model,
+        stream=True,
+        system=system_prompt,
+    )
+
+    full_response = ""
+    async for event in stream:
+        # Update cost
+        chunk_dict = event.model_dump() if hasattr(event, "model_dump") else dict(event)
+        usage = None
+        if "message" in chunk_dict and "usage" in chunk_dict["message"]:
+            usage = chunk_dict["message"]["usage"]
+        elif "usage" in chunk_dict:
+            usage = chunk_dict["usage"]
+        elif "delta" in chunk_dict and "usage" in chunk_dict["delta"]:
+            usage = chunk_dict["delta"]["usage"]
+
+        if usage is not None:
+            total_cost += get_cost(model, usage)
+
+        # Get text
+        if event.type == "content_block_delta" and event.delta.type == "text_delta":
+            full_response += event.delta.text
+            await streaming_callback(full_response)
+
+    return total_cost
+
+
+async def openai_completion(
+    messages: List[Dict[str, str]],
+    model: str,
+    system_prompt: str,
+    streaming_callback: Callable[[str], Coroutine[Any, Any, None]],
+) -> float:
+    """
+    Generate a completion using OpenAI's API.
+    Returns the total cost in cents.
+    """
+    total_cost = 0.0
+
+    # Convert messages to OpenAI format and add system message
+    openai_messages = [
+        ChatCompletionSystemMessageParam(role="system", content=system_prompt),
+        *[
+            ChatCompletionUserMessageParam(role="user", content=str(msg["content"]))
+            if msg["role"] == "user"
+            else ChatCompletionAssistantMessageParam(
+                role="assistant", content=str(msg["content"])
+            )
+            for msg in messages
+        ],
+    ]
+
+    # Use the OpenAI client dynamically to avoid type checking issues
+    stream = await openai_client.chat.completions.create(
+        model=model,
+        messages=openai_messages,
+        stream=True,
+    )
+
+    full_response = ""
+    async for chunk in stream:
+        if hasattr(chunk, "choices") and len(chunk.choices) > 0:
+            if hasattr(chunk.choices[0], "delta") and hasattr(
+                chunk.choices[0].delta, "content"
+            ):
+                content = chunk.choices[0].delta.content
+                if content:
+                    full_response += content
+                    await streaming_callback(full_response)
+
+    # Calculate the cost after completion
+    input_tokens = sum(
+        len(str(m.get("content", ""))) // 4 for m in openai_messages
+    )  # Rough estimate
+    output_tokens = len(full_response) // 4  # Rough estimate
+
+    usage = {"input_tokens": input_tokens, "output_tokens": output_tokens}
+
+    total_cost = get_cost(model, usage)
+    return total_cost
+
+
 async def generate_completion(game_id: str):
     """
     Generate a completion for the last assistant message in the game.
@@ -157,7 +281,6 @@ async def generate_completion(game_id: str):
     Applies edits to the codebase.
     Updates the message with the completion text, diff, commit sha, cost, and status.
     """
-
     _db = await db.get()
     game = _db["games"].get(game_id)
     if game is None:
@@ -178,8 +301,13 @@ async def generate_completion(game_id: str):
         raise BadRequestError("Last message must be an assistant message")
     if last_message["text"]:
         raise BadRequestError("Last message must be empty")
-    messages = [
-        MessageParam(role=message["role"], content=message["text"])
+
+    # Check if model parameter exists, otherwise use default
+    model = last_message.get("model", DEFAULT_MODEL)
+
+    # Format messages for the LLM
+    messages_for_llm = [
+        {"role": message["role"], "content": message["text"]}
         for message in messages[
             -(MOST_RECENT_N_MESSAGES + 1) : -1
         ]  # Last message is placeholder for assistant response
@@ -188,38 +316,25 @@ async def generate_completion(game_id: str):
     for try_num in range(RETRIES):
         full_response = ""
         try:
-            # Stream response directly into db
-            stream = await client.messages.create(
-                max_tokens=8192,
-                messages=messages,
-                model=MODEL,
-                stream=True,
-                system=system_prompt,
-            )
-            async for event in stream:  # type: ignore
-                # Update cost
-                chunk_dict = (
-                    event.model_dump() if hasattr(event, "model_dump") else dict(event)
-                )
-                usage = None
-                if "message" in chunk_dict and "usage" in chunk_dict["message"]:
-                    usage = chunk_dict["message"]["usage"]
-                elif "usage" in chunk_dict:
-                    usage = chunk_dict["usage"]
-                elif "delta" in chunk_dict and "usage" in chunk_dict["delta"]:
-                    usage = chunk_dict["delta"]["usage"]
-                if usage is not None:
-                    last_message["cost"] += get_cost(MODEL, usage)
+            # Define streaming callback
+            async def streaming_callback(response_text: str) -> None:
+                nonlocal full_response
+                full_response = response_text
+                last_message["text"] = full_response
+                _db["games"][game_id]["messages"][-1] = last_message
+                await db.set(_db)
 
-                # Get text
-                if (
-                    event.type == "content_block_delta"
-                    and event.delta.type == "text_delta"
-                ):
-                    full_response += event.delta.text
-                    last_message["text"] = full_response
-                    _db["games"][game_id]["messages"][-1] = last_message
-                    await db.set(_db)
+            # Choose the appropriate completion function based on the model
+            if model.startswith("claude"):
+                completion_function = anthropic_completion
+            elif model.startswith("gpt"):
+                completion_function = openai_completion
+            else:
+                raise ValueError(f"Unsupported model: {model}")
+            cost = await completion_function(
+                messages_for_llm, model, system_prompt, streaming_callback
+            )
+            last_message["cost"] += cost
 
             # Check that message and edits are valid
             extract_message(full_response)
@@ -271,7 +386,7 @@ async def generate_completion(game_id: str):
                     _db["users"][user_id]["messages_left"] -= 1
                     await db.set(_db)
             break
-        except AnthropicError as e:
+        except (AnthropicError, OpenAIError) as e:
             last_message["text"] += f"Error generating response: {str(e)}"
             last_message["status"] = "error"
             break

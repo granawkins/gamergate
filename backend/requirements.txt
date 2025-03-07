@@ -1,5 +1,6 @@
 anthropic
 fastapi
+openai
 PyJWT
 pyright
 pytest
