@@ -140,18 +140,17 @@ async def serve_game(game_name: str, request: Request):
     # Find the game ID from the name in the database
     _db = await db.get()
     game_id = None
-    user_id = None
 
-    # Get the current user ID if they're logged in
-    token = request.cookies.get("session_token")
-    if token:
-        try:
-            from routes.user import verify_session_token
-
-            user_id = verify_session_token(token)
-        except:
-            # If there's an error with the token, proceed without user_id
-            pass
+    # We don't need to get the user ID here since we're not using it
+    # But we might need it for future features, so leaving as comment
+    # token = request.cookies.get("session_token")
+    # if token:
+    #     try:
+    #         from routes.user import verify_session_token, AuthError
+    #         user_id = verify_session_token(token)
+    #     except AuthError:
+    #         # If there's an error with the token, proceed without user_id
+    #         pass
 
     for id, game in _db["games"].items():
         if game["name"] == game_name:

@@ -319,7 +319,7 @@ export const GameInfoTab = ({
     },
     {
       label: "Total Play Time",
-      content: gameInfo?.seconds_played 
+      content: gameInfo?.seconds_played
         ? `${Math.floor(gameInfo.seconds_played / 60)} min ${gameInfo.seconds_played % 60} sec`
         : "0 min 0 sec",
     },

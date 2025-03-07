@@ -21,8 +21,10 @@ export const Play = () => {
       try {
         const response = await fetch(`/api/games?search=${gameName}`);
         const data = await response.json();
-        
-        const game = [...data.play, ...data.templates].find(g => g.name === gameName);
+
+        const game = [...data.play, ...data.templates].find(
+          (g) => g.name === gameName,
+        );
         if (game) {
           gameIdRef.current = game.id;
         }
@@ -38,22 +40,24 @@ export const Play = () => {
   useEffect(() => {
     const recordPlaySession = async () => {
       if (!gameIdRef.current) return;
-      
+
       const endTime = Date.now();
-      const sessionDuration = Math.round((endTime - startTimeRef.current) / 1000); // Convert to seconds
-      
+      const sessionDuration = Math.round(
+        (endTime - startTimeRef.current) / 1000,
+      ); // Convert to seconds
+
       if (sessionDuration < 1) return; // Don't record sessions less than 1 second
-      
+
       try {
-        await fetch('/api/play-sessions', {
-          method: 'POST',
+        await fetch("/api/play-sessions", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             game_id: gameIdRef.current,
             seconds: sessionDuration,
-            user_id: user?.id || 'anonymous'
+            user_id: user?.id || "anonymous",
           }),
         });
       } catch (error) {
