@@ -37,6 +37,7 @@ class Game(TypedDict):
     created_at: str  # ISO format string of datetime
     updated_at: str  # ISO format string of datetime
     messages: List[Message]
+    cover_image: Optional[str]  # Base64 encoded image string
 
 
 class Transaction(TypedDict):
@@ -97,6 +98,7 @@ class DB:
                     "created_at": datetime.now().isoformat(),
                     "updated_at": datetime.now().isoformat(),
                     "messages": [],
+                    "cover_image": "",
                 }
 
                 # Create a new directory with the game_id and copy the contents

@@ -89,10 +89,11 @@ async def get_games(search: str = "", sort: str = "newest"):
 
 @app.post("/games/update-info")
 async def update_game_info(request: Request):
-    """Update the game info (name and/or description)."""
+    """Update the game info (name, description, and/or cover image)."""
     data = await request.json()
     name = data.get("name")
     description = data.get("description")
+    cover_image = data.get("cover_image")
     current_game_id = data.get("current_game_id")
     field_to_update = data.get(
         "field", "name"
@@ -115,6 +116,8 @@ async def update_game_info(request: Request):
             _db["games"][current_game_id]["name"] = name
         elif field_to_update == "description" and description is not None:
             _db["games"][current_game_id]["description"] = description
+        elif field_to_update == "cover_image" and cover_image is not None:
+            _db["games"][current_game_id]["cover_image"] = cover_image
 
         _db["games"][current_game_id]["updated_at"] = datetime.now().isoformat()
         await db.set(_db)
@@ -158,6 +161,7 @@ async def get_game_info(game_name: str):
         "owner_username": owner_username,
         "created_at": game["created_at"],
         "updated_at": game["updated_at"],
+        "cover_image": game.get("cover_image", ""),
     }
 
     # Add parent name if applicable
@@ -298,6 +302,9 @@ async def clone_game(
         "created_at": now,
         "updated_at": now,
         "messages": [],
+        "cover_image": source_game.get(
+            "cover_image", ""
+        ),  # Copy cover image from source game
     }
 
     # Copy the game directory

@@ -194,12 +194,67 @@ const GameCard = ({
         width: "180px",
         border: "1px solid black",
         display: "flex",
-        justifyContent: "center",
+        flexDirection: "column",
+        justifyContent: "space-between",
         alignItems: "center",
         cursor: isTemplate ? "pointer" : "default",
+        overflow: "hidden",
+        textDecoration: "none",
+        color: "inherit",
       }}
     >
-      <h3>{game.name}</h3>
+      {game.cover_image ? (
+        <div
+          style={{
+            width: "100%",
+            height: "120px",
+            overflow: "hidden",
+            position: "relative",
+          }}
+        >
+          <img
+            src={game.cover_image}
+            alt={`Cover for ${game.name}`}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+            }}
+          />
+        </div>
+      ) : (
+        <div
+          style={{
+            width: "100%",
+            height: "120px",
+            backgroundColor: "#f0f0f0",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <span style={{ fontSize: "2rem", color: "#ccc" }}>🎮</span>
+        </div>
+      )}
+      <div
+        style={{
+          padding: "8px",
+          textAlign: "center",
+          width: "100%",
+          backgroundColor: "rgba(255, 255, 255, 0.9)",
+        }}
+      >
+        <h3
+          style={{
+            margin: "0",
+            fontSize: "16px",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {game.name}
+        </h3>
+      </div>
       {/* Clone button (remix icon) - not shown for templates */}
       {!isTemplate && (
         <button
@@ -208,11 +263,17 @@ const GameCard = ({
             position: "absolute",
             top: "8px",
             right: "8px",
-            background: "none",
+            background: "rgba(255, 255, 255, 0.8)",
             border: "none",
+            borderRadius: "50%",
             cursor: "pointer",
             fontSize: "1.2rem",
             padding: "4px",
+            width: "30px",
+            height: "30px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
           title="Clone game"
         >
@@ -226,11 +287,17 @@ const GameCard = ({
             position: "absolute",
             bottom: "8px",
             right: "8px",
-            background: "none",
+            background: "rgba(255, 255, 255, 0.8)",
             border: "none",
+            borderRadius: "50%",
             cursor: "pointer",
             fontSize: "1.2rem",
             padding: "4px",
+            width: "30px",
+            height: "30px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
           title="Delete game"
         >
