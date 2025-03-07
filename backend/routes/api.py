@@ -496,7 +496,13 @@ async def undo_last_commit(
 
     await db.set(_db)
 
-    return {"success": True, "messages": _db["games"][game_id]["messages"]}
+    # Process the remaining messages to extract human-readable text from assistant messages
+    remaining_messages = _db["games"][game_id]["messages"]
+    for message in remaining_messages:
+        if message.get("role") == "assistant" and message.get("status") != "error":
+            message["text"] = extract_message(message["text"], allow_incomplete=True)
+
+    return {"success": True, "messages": remaining_messages}
 
 
 @app.get("/games/{game_name}/download")
