@@ -3,19 +3,40 @@ import os
 import re
 import subprocess
 from datetime import datetime
-from typing import List, Tuple, Callable, Optional, Dict
+from typing import List, Tuple, Callable, Optional, Dict, Literal, cast
 
 from anthropic import AsyncAnthropic, AnthropicError
 from anthropic.types import MessageParam
-import openai
-from openai import AsyncOpenAI
-from openai.types.chat import ChatCompletionMessageParam
+
+# Try to import OpenAI, but handle the case where it's not installed
+try:
+    import openai
+    from openai import AsyncOpenAI
+    from openai.types.chat import ChatCompletionMessageParam
+
+    HAS_OPENAI = True
+except ImportError:
+    HAS_OPENAI = False
+
+    # Create dummy classes for type checking
+    class AsyncOpenAI:
+        pass
+
+    class ChatCompletionMessageParam:
+        def __init__(self, role: str, content: str):
+            self.role = role
+            self.content = content
+
 
 from db import db, GAMES_PATH
 
 
 anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Initialize OpenAI client only if the library is available
+if HAS_OPENAI:
+    openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+else:
+    openai_client = None
 
 
 DEFAULT_MODEL = "claude-3-5-sonnet-20241022"
@@ -171,10 +192,21 @@ async def anthropic_completion(
     """
     total_cost = 0.0
 
-    # Convert messages to Anthropic's MessageParam format
-    anthropic_messages = [
-        MessageParam(role=msg["role"], content=msg["content"]) for msg in messages
-    ]
+    # Convert messages to Anthropic's MessageParam format ensuring proper types
+    anthropic_messages = []
+    for msg in messages:
+        # Ensure role is one of the allowed values: "user" or "assistant"
+        # Type casting to handle TypedDict access patterns
+        msg_role = cast(str, msg["role"])
+
+        # Force type to be one of the valid literals
+        role: Literal["user", "assistant"]
+        if msg_role == "assistant":
+            role = "assistant"
+        else:
+            role = "user"
+
+        anthropic_messages.append(MessageParam(role=role, content=msg["content"]))
 
     stream = await anthropic_client.messages.create(
         max_tokens=8192,
@@ -217,24 +249,26 @@ async def openai_completion(
     Generate a completion using OpenAI's API.
     Returns the total cost in cents.
     """
+    if not HAS_OPENAI or openai_client is None:
+        raise ImportError("OpenAI package is not installed or client not initialized")
+
     total_cost = 0.0
 
     # Convert messages to OpenAI format and add system message
     openai_messages = [{"role": "system", "content": system_prompt}]
 
     for msg in messages:
-        openai_messages.append({"role": msg["role"], "content": msg["content"]})
+        # Ensure role is valid for OpenAI
+        role = msg["role"]
+        if role not in ["user", "assistant", "system"]:
+            role = "user"  # Default to user for safety
+        openai_messages.append({"role": role, "content": msg["content"]})
 
-    # Convert to proper OpenAI types
-    typed_messages = []
-    for msg in openai_messages:
-        typed_messages.append(
-            ChatCompletionMessageParam(role=msg["role"], content=msg["content"])
-        )
-
+    # For type safety, pass messages as a list of dicts instead of trying to construct
+    # ChatCompletionMessageParam objects - the OpenAI client will handle this
     stream = await openai_client.chat.completions.create(
         model=model,
-        messages=typed_messages,
+        messages=openai_messages,
         stream=True,
     )
 
@@ -322,6 +356,10 @@ async def generate_completion(game_id: str):
                     messages_for_llm, model, system_prompt, streaming_callback
                 )
             elif model.startswith("gpt"):
+                if not HAS_OPENAI:
+                    raise ImportError(
+                        "OpenAI package is not installed but required for GPT models"
+                    )
                 last_message["cost"] += await openai_completion(
                     messages_for_llm, model, system_prompt, streaming_callback
                 )
