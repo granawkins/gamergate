@@ -67,6 +67,11 @@ export const GameInfoModal: React.FC<GameInfoModalProps> = ({
       </div>
 
       <div style={{ marginBottom: "1.5rem" }}>
+        <h3 style={{ marginBottom: "0.5rem" }}>Seconds Played</h3>
+        <p>{game.seconds_played || "None"}</p>
+      </div>
+
+      <div style={{ marginBottom: "1.5rem" }}>
         <h3 style={{ marginBottom: "0.5rem" }}>Created By</h3>
         <p>{game.owner_username || "Anonymous"}</p>
       </div>

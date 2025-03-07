@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Avatar } from "./Avatar";
 import useAuth from "../auth/useAuth";
 import { backendUrl } from "../utils";
@@ -9,6 +9,7 @@ import { GameInfoModal } from "./GameInfoModal";
 export const Header = () => {
   const { loading, user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [gameInfo, setGameInfo] = useState<Game | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showGameInfo, setShowGameInfo] = useState(false);
@@ -63,7 +64,7 @@ export const Header = () => {
         }}
       >
         <a
-          href="/"
+          onClick={() => navigate("/")}
           style={{
             textDecoration: "none",
             color: "inherit",

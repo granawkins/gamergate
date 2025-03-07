@@ -55,7 +55,11 @@ async def get_games(search: str = "", sort: str = "newest"):
     - templates: games where owner_id is empty
     """
     _db = await db.get()
-    games = list(_db["games"].values())
+    games = [{**game, "seconds_played": 0} for game in _db["games"].values()]
+    for play_session in _db["play_sessions"]:
+        for game in games:
+            if game["id"] == play_session["game_id"]:
+                game["seconds_played"] += play_session["seconds"]
 
     # Filter by search query if provided
     if search:
@@ -78,7 +82,7 @@ async def get_games(search: str = "", sort: str = "newest"):
         play_games.sort(key=lambda x: x["created_at"])
     elif sort == "most_played":
         # For now, we'll sort by updated_at as a proxy for popularity
-        play_games.sort(key=lambda x: x["updated_at"], reverse=True)
+        play_games.sort(key=lambda x: x["seconds_played"], reverse=True)
 
     return {"play": play_games, "templates": template_games}
 
@@ -160,6 +164,13 @@ async def get_game_info(game_name: str):
     parent_id = game.get("parent_id")
     if parent_id and parent_id in _db["games"]:
         game_info["parent_name"] = _db["games"][parent_id]["name"]
+
+    # Add seconds played if applicable
+    seconds_played = 0
+    for play_session in _db["play_sessions"]:
+        if play_session["game_id"] == game_id:
+            seconds_played += play_session["seconds"]
+    game_info["seconds_played"] = seconds_played
 
     return game_info
 
@@ -349,6 +360,10 @@ async def get_chat_messages(
             game["parent_name"] = (
                 None if parent_id is None else _db["games"][parent_id].get("name", None)
             )
+            game["seconds_played"] = 0
+            for play_session in _db["play_sessions"]:
+                if play_session["game_id"] == game["id"]:
+                    game["seconds_played"] += play_session["seconds"]
             return {"messages": messages, "gameInfo": game}
 
     raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
@@ -601,6 +616,42 @@ async def download_game(
     return FileResponse(
         path=temp_path, filename=f"{game_name}.zip", media_type="application/zip"
     )
+
+
+@app.post("/record-play-session")
+async def record_play_session(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Record a play session for a game.
+    """
+    data = await request.json()
+    game_name = data.get("game_name")
+    seconds = data.get("seconds")
+    _db = await db.get()
+
+    # Check if the game exists
+    game = next((g for g in _db["games"].values() if g["name"] == game_name), None)
+    if game is None:
+        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+
+    # Check if the user exists
+    if current_user["id"] not in _db["users"]:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Record the play session
+    _db["play_sessions"].append(
+        {
+            "id": str(uuid4()),
+            "user_id": current_user["id"],
+            "game_id": game["id"],
+            "created_at": datetime.now().isoformat(),
+            "seconds": seconds,
+        }
+    )
+    await db.set(_db)
+    return {"success": True}
 
 
 @app.get("/{full_path:path}")
