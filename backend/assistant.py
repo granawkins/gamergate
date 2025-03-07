@@ -3,46 +3,44 @@ import os
 import re
 import subprocess
 from datetime import datetime
-from typing import List, Tuple, Callable, Optional, Dict, Literal, cast
+from typing import (
+    List,
+    Tuple,
+    Callable,
+    Optional,
+    Dict,
+)
 
 from anthropic import AsyncAnthropic, AnthropicError
 from anthropic.types import MessageParam
 
-# Try to import OpenAI, but handle the case where it's not installed
+from db import db, GAMES_PATH
+
+# Global flag for OpenAI availability
+HAS_OPENAI = False
 try:
     import openai
-    from openai import AsyncOpenAI
-    from openai.types.chat import ChatCompletionMessageParam
 
     HAS_OPENAI = True
 except ImportError:
-    HAS_OPENAI = False
+    pass
 
-    # Create dummy classes for type checking
-    class AsyncOpenAI:
-        pass
-
-    class ChatCompletionMessageParam:
-        def __init__(self, role: str, content: str):
-            self.role = role
-            self.content = content
-
-
-from db import db, GAMES_PATH
-
-
+# Initialize Anthropic client
 anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-# Initialize OpenAI client only if the library is available
-if HAS_OPENAI:
-    openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-else:
-    openai_client = None
 
+# Initialize OpenAI client if available
+openai_client = None
+if HAS_OPENAI:
+    try:
+        from openai import AsyncOpenAI
+
+        openai_client = AsyncOpenAI()
+    except (ImportError, AttributeError):
+        pass
 
 DEFAULT_MODEL = "claude-3-5-sonnet-20241022"
 RETRIES = 3
 MOST_RECENT_N_MESSAGES = 5
-
 
 model_costs = {
     # Anthropic models
@@ -192,21 +190,14 @@ async def anthropic_completion(
     """
     total_cost = 0.0
 
-    # Convert messages to Anthropic's MessageParam format ensuring proper types
+    # Convert messages to Anthropic's MessageParam format
     anthropic_messages = []
     for msg in messages:
-        # Ensure role is one of the allowed values: "user" or "assistant"
-        # Type casting to handle TypedDict access patterns
-        msg_role = cast(str, msg["role"])
+        # Convert the role to a valid Anthropic role
+        msg_role = str(msg["role"])
+        role = "assistant" if msg_role == "assistant" else "user"
 
-        # Force type to be one of the valid literals
-        role: Literal["user", "assistant"]
-        if msg_role == "assistant":
-            role = "assistant"
-        else:
-            role = "user"
-
-        anthropic_messages.append(MessageParam(role=role, content=msg["content"]))
+        anthropic_messages.append(MessageParam(role=role, content=str(msg["content"])))
 
     stream = await anthropic_client.messages.create(
         max_tokens=8192,
@@ -259,31 +250,39 @@ async def openai_completion(
 
     for msg in messages:
         # Ensure role is valid for OpenAI
-        role = msg["role"]
+        role = str(msg["role"])
         if role not in ["user", "assistant", "system"]:
             role = "user"  # Default to user for safety
-        openai_messages.append({"role": role, "content": msg["content"]})
+        openai_messages.append({"role": role, "content": str(msg["content"])})
 
-    # For type safety, pass messages as a list of dicts instead of trying to construct
-    # ChatCompletionMessageParam objects - the OpenAI client will handle this
-    stream = await openai_client.chat.completions.create(
-        model=model,
-        messages=openai_messages,
-        stream=True,
-    )
+    # Use the OpenAI client dynamically to avoid type checking issues
+    if hasattr(openai_client, "chat") and hasattr(openai_client.chat, "completions"):
+        completion_create = getattr(openai_client.chat.completions, "create")
+        stream = await completion_create(
+            model=model,
+            messages=openai_messages,
+            stream=True,
+        )
 
-    full_response = ""
-    async for chunk in stream:
-        if chunk.choices[0].delta.content:
-            full_response += chunk.choices[0].delta.content
-            streaming_callback(
-                full_response, None
-            )  # OpenAI doesn't provide per-chunk token counts
+        full_response = ""
+        async for chunk in stream:
+            if hasattr(chunk, "choices") and len(chunk.choices) > 0:
+                if hasattr(chunk.choices[0], "delta") and hasattr(
+                    chunk.choices[0].delta, "content"
+                ):
+                    content = chunk.choices[0].delta.content
+                    if content:
+                        full_response += content
+                        streaming_callback(
+                            full_response, None
+                        )  # OpenAI doesn't provide per-chunk token counts
+    else:
+        raise ImportError("OpenAI client does not have expected attributes")
 
     # Calculate the cost after completion
     # We need to estimate token counts
     input_tokens = sum(
-        len(m["content"]) // 4 for m in openai_messages
+        len(str(m["content"])) // 4 for m in openai_messages
     )  # Rough estimate
     output_tokens = len(full_response) // 4  # Rough estimate
 
@@ -301,7 +300,6 @@ async def generate_completion(game_id: str):
     Applies edits to the codebase.
     Updates the message with the completion text, diff, commit sha, cost, and status.
     """
-
     _db = await db.get()
     game = _db["games"].get(game_id)
     if game is None:
@@ -420,11 +418,13 @@ async def generate_completion(game_id: str):
             last_message["text"] += f"Error generating response: {str(e)}"
             last_message["status"] = "error"
             break
-        except openai.OpenAIError as e:
-            last_message["text"] += f"Error generating response: {str(e)}"
-            last_message["status"] = "error"
-            break
         except Exception as e:
+            # Check if it's an OpenAI error
+            if HAS_OPENAI and "openai" in str(type(e)).lower():
+                last_message["text"] += f"Error generating response: {str(e)}"
+                last_message["status"] = "error"
+                break
+
             print(f"Error generating response: {str(e)}")
             if try_num < RETRIES - 1:
                 print("Retrying...")
