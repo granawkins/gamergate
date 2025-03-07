@@ -54,51 +54,63 @@ export const Header = () => {
         padding: "0 1rem",
       }}
     >
-      <a
-        href="/"
+      <div
         style={{
-          textDecoration: "none",
-          color: "inherit",
           display: "flex",
+          flexWrap: "wrap",
           alignItems: "center",
           gap: "0.5rem",
         }}
       >
-        <h1>GAMERGATE</h1>
-      </a>
-
-      {/* Center game title and info icon when on play screen */}
-      {isPlayScreen && (
-        <div
+        <a
+          href="/"
           style={{
+            textDecoration: "none",
+            color: "inherit",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            position: "absolute",
-            left: "50%",
-            transform: "translateX(-50%)",
           }}
         >
-          <h2 style={{ margin: 0 }}>
-            {isLoading ? "Loading..." : gameInfo?.name || gameName}
-          </h2>
-          <button
-            onClick={() => setShowGameInfo(true)}
-            style={{
-              background: "none",
-              border: "none",
-              fontSize: "1.2rem",
-              cursor: "pointer",
-              marginLeft: "0.5rem",
-              display: "flex",
-              alignItems: "center",
-            }}
-            title="Game Information"
-          >
-            ⓘ
-          </button>
-        </div>
-      )}
+          <h1>GAMERGATE</h1>
+        </a>
+
+        {isPlayScreen && (
+          <>
+            <span style={{ fontSize: "1.5rem", opacity: 0.6 }}>/</span>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: "1.2rem",
+                }}
+              >
+                {isLoading ? "Loading..." : gameInfo?.name || gameName}
+              </h2>
+              <button
+                onClick={() => setShowGameInfo(true)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: "1.2rem",
+                  cursor: "pointer",
+                  marginLeft: "0.5rem",
+                  display: "flex",
+                  alignItems: "center",
+                  padding: 0,
+                }}
+                title="Game Information"
+              >
+                ⓘ
+              </button>
+            </div>
+          </>
+        )}
+      </div>
 
       {user && user.email ? (
         <a
