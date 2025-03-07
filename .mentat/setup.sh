@@ -48,8 +48,17 @@ npm run lint --fix
 
 # Configure git credentials
 cd ..
-echo "Configuring git credentials..."
-git config --global user.email "granthawkins88@gmail.com"
-git config --global user.name "Gamergate"
+echo "Checking git credentials..."
+# Only set email if it's not already configured
+if [ -z "$(git config --global user.email)" ]; then
+    echo "Setting git user.email..."
+    git config --global user.email "granthawkins88@gmail.com"
+fi
+
+# Only set name if it's not already configured
+if [ -z "$(git config --global user.name)" ]; then
+    echo "Setting git user.name..."
+    git config --global user.name "Gamergate"
+fi
 
 echo "Setup completed successfully!"
