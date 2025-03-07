@@ -158,7 +158,9 @@ export const Editor = () => {
 
       const data = await response.json();
       setMessages((prevMessages) => [...prevMessages, data.message]);
-      setGameInfo(data.gameInfo);
+      setGameInfo((oldInfo) =>
+        oldInfo ? { ...oldInfo, ...data.gameInfo } : null,
+      );
       const assistantMessageId = data.message.id;
       pollingIntervalRef.current = window.setInterval(
         () => pollMessage(assistantMessageId),

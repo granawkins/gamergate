@@ -294,6 +294,10 @@ export const GameInfoTab = ({
       ),
     },
     {
+      label: "Seconds Played",
+      content: gameInfo?.seconds_played || "None",
+    },
+    {
       label: "Parent Game",
       content: gameInfo?.parent_name ? (
         <Link

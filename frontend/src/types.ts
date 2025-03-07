@@ -12,6 +12,7 @@ export interface Game {
   id: string;
   name: string;
   description?: string;
+  seconds_played?: number;
   path: string;
   owner_id: string;
   owner_username?: string;
