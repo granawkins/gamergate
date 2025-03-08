@@ -3,7 +3,6 @@ from pydantic import BaseModel
 from typing import Optional, Dict, List
 from datetime import datetime
 from uuid import uuid4
-import numpy as np
 
 from db import db, User
 from routes.user import get_current_user
@@ -123,19 +122,27 @@ async def get_admin_stats(current_user: User = Depends(get_current_user)):
             total = sum(costs)
             mean = total / count
 
-            # Calculate percentiles
-            percentiles = (
-                np.percentile(costs, [10, 25, 75, 90]) if count >= 10 else [0, 0, 0, 0]
-            )
+            # Calculate percentiles manually
+            if count >= 10:
+                p10_idx = max(0, int(count * 0.1) - 1)
+                p25_idx = max(0, int(count * 0.25) - 1)
+                p75_idx = min(count - 1, int(count * 0.75))
+                p90_idx = min(count - 1, int(count * 0.9))
+                p10 = costs[p10_idx]
+                p25 = costs[p25_idx]
+                p75 = costs[p75_idx]
+                p90 = costs[p90_idx]
+            else:
+                p10, p25, p75, p90 = 0, 0, 0, 0
 
             cost_stats[model] = {
                 "count": count,
                 "total": round(total, 6),
                 "mean": round(mean, 6),
-                "p90": round(percentiles[3], 6),
-                "p75": round(percentiles[2], 6),
-                "p25": round(percentiles[1], 6),
-                "p10": round(percentiles[0], 6),
+                "p90": round(p90, 6),
+                "p75": round(p75, 6),
+                "p25": round(p25, 6),
+                "p10": round(p10, 6),
             }
 
     return {
