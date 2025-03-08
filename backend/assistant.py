@@ -305,6 +305,16 @@ async def generate_completion(game_id: str):
     # Check if model parameter exists, otherwise use default
     model = last_message.get("model", DEFAULT_MODEL)
 
+    # Check if user has enough credits
+    user_id = _db["games"][game_id]["owner_id"]
+    if user_id in _db["users"]:
+        if _db["users"][user_id]["messages_left"] <= 0:
+            last_message["text"] = "Error: Out of credits! Buy more on the user page."
+            last_message["status"] = "error"
+            _db["games"][game_id]["messages"][-1] = last_message
+            await db.set(_db)
+            return
+
     # Format messages for the LLM
     messages_for_llm = [
         {"role": message["role"], "content": message["text"]}
@@ -337,43 +347,61 @@ async def generate_completion(game_id: str):
             last_message["cost"] += cost
 
             # Check that message and edits are valid
-            extract_message(full_response)
-            edits = extract_edits(full_response)
+            try:
+                extract_message(full_response)
+                edits = extract_edits(full_response)
+            except BadResponseError:
+                last_message["text"] = (
+                    "Error parsing response; try again with a simpler command."
+                )
+                last_message["status"] = "error"
+                _db["games"][game_id]["messages"][-1] = last_message
+                await db.set(_db)
+                return
 
             # Apply edits
             if len(edits) > 0:
-                modified_code = code
-                for find, replace in edits:
-                    modified_code = apply_edit(modified_code, find, replace)
-                with open(file_path, "w") as f:
-                    f.write(modified_code)
+                try:
+                    modified_code = code
+                    for find, replace in edits:
+                        modified_code = apply_edit(modified_code, find, replace)
+                    with open(file_path, "w") as f:
+                        f.write(modified_code)
 
-                # Apply to codebase
-                subprocess.run(
-                    ["git", "add", "index.html"], cwd=GAMES_PATH / game["id"]
-                )
-                # First make the commit
-                subprocess.run(
-                    [
-                        "git",
-                        "commit",
-                        "-m",
-                        f"message {last_message['id']}",
-                    ],
-                    cwd=GAMES_PATH / game["id"],
-                )
-                # Then get the commit hash
-                commit_result = subprocess.run(
-                    ["git", "rev-parse", "HEAD"],
-                    cwd=GAMES_PATH / game["id"],
-                    capture_output=True,
-                )
-                last_message["commit_sha"] = commit_result.stdout.strip().decode(
-                    "utf-8"
-                )
+                    # Apply to codebase
+                    subprocess.run(
+                        ["git", "add", "index.html"], cwd=GAMES_PATH / game["id"]
+                    )
+                    # First make the commit
+                    subprocess.run(
+                        [
+                            "git",
+                            "commit",
+                            "-m",
+                            f"message {last_message['id']}",
+                        ],
+                        cwd=GAMES_PATH / game["id"],
+                    )
+                    # Then get the commit hash
+                    commit_result = subprocess.run(
+                        ["git", "rev-parse", "HEAD"],
+                        cwd=GAMES_PATH / game["id"],
+                        capture_output=True,
+                    )
+                    last_message["commit_sha"] = commit_result.stdout.strip().decode(
+                        "utf-8"
+                    )
 
-                # Update the updated_at field
-                _db["games"][game_id]["updated_at"] = datetime.now().isoformat()
+                    # Update the updated_at field
+                    _db["games"][game_id]["updated_at"] = datetime.now().isoformat()
+                except BadResponseError:
+                    last_message["text"] = (
+                        "Error parsing response; try again with a simpler command."
+                    )
+                    last_message["status"] = "error"
+                    _db["games"][game_id]["messages"][-1] = last_message
+                    await db.set(_db)
+                    return
 
             # Success!
             last_message["status"] = "completed"
@@ -386,8 +414,8 @@ async def generate_completion(game_id: str):
                     _db["users"][user_id]["messages_left"] -= 1
                     await db.set(_db)
             break
-        except (AnthropicError, OpenAIError) as e:
-            last_message["text"] += f"Error generating response: {str(e)}"
+        except (AnthropicError, OpenAIError):
+            last_message["text"] = "API Error. Use another model or try again later."
             last_message["status"] = "error"
             break
         except Exception as e:
@@ -396,7 +424,9 @@ async def generate_completion(game_id: str):
                 print("Retrying...")
                 last_message["text"] = ""  # Try again
             else:
-                last_message["text"] += f"Error generating response: {str(e)}"
+                last_message["text"] = (
+                    "Error parsing response; try again with a simpler command."
+                )
                 last_message["status"] = "error"
 
     _db["games"][game_id]["messages"][-1] = last_message
