@@ -50,6 +50,16 @@ class Database:
         )
         await self._connection.commit()
 
+    async def get_user_by_email(self, email: str) -> Optional[User]:
+        """Fetch a user by email"""
+        assert self._connection is not None and self._cursor is not None
+        async with self._connection.execute(
+            "SELECT id, created_at, messages_left, username, email, avatar_id FROM users WHERE email = ?",
+            (email,),
+        ) as cursor:
+            row = await cursor.fetchone()
+            return User.from_row(row) if row else None
+
     async def get_user_by_id(self, user_id: str) -> Optional[User]:
         """Fetch a user by ID"""
         assert self._connection is not None and self._cursor is not None
@@ -93,6 +103,16 @@ class Database:
             tuple(kwargs.values()) + (id,),
         )
         await self._connection.commit()
+
+    async def get_games_by_owner_id(self, owner_id: str) -> List[Game]:
+        """Fetch all games by owner ID"""
+        assert self._connection is not None and self._cursor is not None
+        async with self._connection.execute(
+            "SELECT id, name, description, owner_id, parent_id, created_at, updated_at, cover_image, version FROM games WHERE owner_id = ?",
+            (owner_id,),
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [Game.from_row(row) for row in rows]
 
     async def get_messages_by_game_id(self, game_id: str) -> List[Message]:
         """Fetch all messages for a game"""
