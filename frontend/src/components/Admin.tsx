@@ -390,86 +390,28 @@ export const Admin = () => {
         >
           <thead>
             <tr>
-              <th
-                style={{
-                  border: "1px solid #ddd",
-                  padding: "8px",
-                  whiteSpace: "normal",
-                  wordWrap: "break-word",
-                }}
-              >
-                Model
-              </th>
-              <th
-                style={{
-                  border: "1px solid #ddd",
-                  padding: "8px",
-                  whiteSpace: "normal",
-                  wordWrap: "break-word",
-                }}
-              >
-                Count
-              </th>
-              <th
-                style={{
-                  border: "1px solid #ddd",
-                  padding: "8px",
-                  whiteSpace: "normal",
-                  wordWrap: "break-word",
-                }}
-              >
-                Mean Cost ($)
-              </th>
-              <th
-                style={{
-                  border: "1px solid #ddd",
-                  padding: "8px",
-                  whiteSpace: "normal",
-                  wordWrap: "break-word",
-                }}
-              >
-                P90 ($)
-              </th>
-              <th
-                style={{
-                  border: "1px solid #ddd",
-                  padding: "8px",
-                  whiteSpace: "normal",
-                  wordWrap: "break-word",
-                }}
-              >
-                P75 ($)
-              </th>
-              <th
-                style={{
-                  border: "1px solid #ddd",
-                  padding: "8px",
-                  whiteSpace: "normal",
-                  wordWrap: "break-word",
-                }}
-              >
-                P25 ($)
-              </th>
-              <th
-                style={{
-                  border: "1px solid #ddd",
-                  padding: "8px",
-                  whiteSpace: "normal",
-                  wordWrap: "break-word",
-                }}
-              >
-                P10 ($)
-              </th>
-              <th
-                style={{
-                  border: "1px solid #ddd",
-                  padding: "8px",
-                  whiteSpace: "normal",
-                  wordWrap: "break-word",
-                }}
-              >
-                Total ($)
-              </th>
+              {[
+                "Model",
+                "Count",
+                "Mean Cost ($)",
+                "P90 ($)",
+                "P75 ($)",
+                "P25 ($)",
+                "P10 ($)",
+                "Total ($)",
+              ].map((header) => (
+                <th
+                  key={header}
+                  style={{
+                    border: "1px solid #ddd",
+                    padding: "8px",
+                    whiteSpace: "normal",
+                    wordWrap: "break-word",
+                  }}
+                >
+                  {header}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -495,24 +437,14 @@ export const Admin = () => {
                   <td style={{ border: "1px solid #ddd", padding: "8px" }}>
                     {stats.count}
                   </td>
-                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                    {stats.mean.toFixed(6)}
-                  </td>
-                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                    {stats.p90.toFixed(6)}
-                  </td>
-                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                    {stats.p75.toFixed(6)}
-                  </td>
-                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                    {stats.p25.toFixed(6)}
-                  </td>
-                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                    {stats.p10.toFixed(6)}
-                  </td>
-                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                    {stats.total.toFixed(6)}
-                  </td>
+                  {["mean", "p90", "p75", "p25", "p10", "total"].map((key) => (
+                    <td
+                      key={key}
+                      style={{ border: "1px solid #ddd", padding: "8px" }}
+                    >
+                      {stats[key].toFixed(6)}
+                    </td>
+                  ))}
                 </tr>
               ))
             )}
