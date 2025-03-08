@@ -386,18 +386,29 @@ async def generate_completion(game_id: str):
                     _db["users"][user_id]["messages_left"] -= 1
                     await db.set(_db)
             break
-        except (AnthropicError, OpenAIError) as e:
-            last_message["text"] += f"Error generating response: {str(e)}"
+        except BadRequestError as e:
+            last_message["text"] = str(e)
             last_message["status"] = "error"
             break
-        except Exception as e:
+        except (AnthropicError, OpenAIError) as e:
+            last_message["text"] += (
+                f"API Error: {str(e)}. Switch models or try again later."
+            )
+            last_message["status"] = "error"
+            break
+        except BadResponseError as e:
             print(f"Error generating response: {str(e)}")
             if try_num < RETRIES - 1:
                 print("Retrying...")
                 last_message["text"] = ""  # Try again
             else:
-                last_message["text"] += f"Error generating response: {str(e)}"
+                last_message["text"] = "Parsing error: try using a simpler prompt."
                 last_message["status"] = "error"
+        except Exception as e:
+            print(f"Uncaught exception generating response: {str(e)}")
+            last_message["text"] = "An unknown error occurred."
+            last_message["status"] = "error"
+            break
 
     _db["games"][game_id]["messages"][-1] = last_message
     await db.set(_db)

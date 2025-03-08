@@ -37,9 +37,7 @@ const Message = ({
           whiteSpace: "pre-wrap",
         }}
       >
-        {message.status === "error"
-          ? "Error, try again later"
-          : message.text || (isProcessing ? "..." : "")}
+        {message.text || (isProcessing ? "..." : "")}
       </div>
 
       {showUndoButton && onUndo && (
