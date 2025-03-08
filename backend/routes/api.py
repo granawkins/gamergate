@@ -11,7 +11,14 @@ import subprocess
 import shutil
 from uuid import uuid4
 
-from db import db, GAMES_PATH, Message, Game, PlaySession
+from db import (
+    initialize_admin_and_templates,
+    db,
+    GAMES_PATH,
+    Message,
+    Game,
+    PlaySession,
+)
 from routes.user import app as user_app, AuthenticatedUser, get_current_user
 from routes.admin import app as admin_app
 from routes.stripe import app as stripe_app
@@ -30,6 +37,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def startup_db_client():
+    await initialize_admin_and_templates()
 
 
 class MessageRequest(BaseModel):

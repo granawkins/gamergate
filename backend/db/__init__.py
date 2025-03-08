@@ -1,10 +1,8 @@
-import os
 import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
-import asyncio
 
 from db.models import User, Message, Game, Transaction, PlaySession  # noqa: F401
 from db.migrations import migrate
@@ -83,10 +81,3 @@ async def initialize_admin_and_templates():
 
     # Close database connection
     await db.close()
-
-
-# Run initialization in a separate event loop
-if not os.environ.get("TESTING"):
-    loop = asyncio.new_event_loop()
-    loop.run_until_complete(initialize_admin_and_templates())
-    loop.close()
