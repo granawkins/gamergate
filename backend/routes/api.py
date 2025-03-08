@@ -162,6 +162,7 @@ async def get_game_info(game_name: str):
         "created_at": game["created_at"],
         "updated_at": game["updated_at"],
         "cover_image": game.get("cover_image", ""),
+        "version": game.get("version", 1),  # Include version, default to 1 if not set
     }
 
     # Add parent name if applicable
@@ -305,6 +306,9 @@ async def clone_game(
         "cover_image": source_game.get(
             "cover_image", ""
         ),  # Copy cover image from source game
+        "version": source_game.get(
+            "version", 1
+        ),  # Copy version from source game, default to 1
     }
 
     # Copy the game directory
