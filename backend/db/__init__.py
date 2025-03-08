@@ -5,7 +5,11 @@ from db.migrations import migrate
 from db.database import Database
 
 DB_PATH = Path(__file__).parent / "db.sqlite"
+GAMES_PATH = Path(__file__).parent / "games"
+ADMIN_EMAIL = "granthawkins88@gmail.com"
 
 migrate(DB_PATH)
 
 db = Database(DB_PATH)
+
+# TODO: Add initialize games and users

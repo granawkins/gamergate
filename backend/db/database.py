@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 import aiosqlite
 from aiosqlite import Connection, Cursor
@@ -29,15 +29,7 @@ class Database:
         await self._cursor.execute(query, params)
         await self._connection.commit()
 
-    async def get_user_by_id(self, user_id: str) -> Optional[User]:
-        """Fetch a user by ID"""
-        assert self._connection is not None and self._cursor is not None
-        async with self._connection.execute(
-            "SELECT id, created_at, messages_left, username, email, avatar_id FROM users WHERE id = ?",
-            (user_id,),
-        ) as cursor:
-            row = await cursor.fetchone()
-            return User.from_row(row) if row else None
+    # INTERFACE
 
     async def create_user(self, user: User) -> None:
         """Create a new user"""
@@ -58,6 +50,28 @@ class Database:
         )
         await self._connection.commit()
 
+    async def get_user_by_id(self, user_id: str) -> Optional[User]:
+        """Fetch a user by ID"""
+        assert self._connection is not None and self._cursor is not None
+        async with self._connection.execute(
+            "SELECT id, created_at, messages_left, username, email, avatar_id FROM users WHERE id = ?",
+            (user_id,),
+        ) as cursor:
+            row = await cursor.fetchone()
+            return User.from_row(row) if row else None
+
+    async def update_user_by_id(self, id: str, **kwargs) -> None:
+        """Update a user"""
+        assert self._connection is not None and self._cursor is not None
+        assert all(key in User.__annotations__ for key in kwargs)
+        await self._connection.execute(
+            """
+            UPDATE users SET {} WHERE id = ?
+            """.format(", ".join([f"{key} = ?" for key in kwargs])),
+            tuple(kwargs.values()) + (id,),
+        )
+        await self._connection.commit()
+
     async def get_game_by_id(self, game_id: str) -> Optional[Game]:
         """Fetch a game by ID"""
         assert self._connection is not None and self._cursor is not None
@@ -67,3 +81,59 @@ class Database:
         ) as cursor:
             row = await cursor.fetchone()
             return Game.from_row(row) if row else None
+
+    async def update_game_by_id(self, id: str, **kwargs) -> None:
+        """Update a game"""
+        assert self._connection is not None and self._cursor is not None
+        assert all(key in Game.__annotations__ for key in kwargs)
+        await self._connection.execute(
+            """
+            UPDATE games SET {} WHERE id = ?
+            """.format(", ".join([f"{key} = ?" for key in kwargs])),
+            tuple(kwargs.values()) + (id,),
+        )
+        await self._connection.commit()
+
+    async def get_messages_by_game_id(self, game_id: str) -> List[Message]:
+        """Fetch all messages for a game"""
+        assert self._connection is not None and self._cursor is not None
+        async with self._connection.execute(
+            "SELECT id, game_id, text, role, timestamp, cost, status, commit_sha, model FROM messages WHERE game_id = ?",
+            (game_id,),
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [Message.from_row(row) for row in rows]
+
+    async def create_message(self, message: Message) -> None:
+        """Create a new message"""
+        assert self._connection is not None and self._cursor is not None
+        await self._connection.execute(
+            """
+            INSERT INTO messages (id, game_id, text, role, timestamp, cost, status, commit_sha, model)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                message.id,
+                message.game_id,
+                message.text,
+                message.role,
+                message.timestamp,
+                message.cost,
+                message.status,
+                message.commit_sha,
+                message.model,
+            ),
+        )
+        await self._connection.commit()
+
+    async def update_message_by_id(self, id: str, **kwargs) -> None:
+        """Update a message"""
+        assert self._connection is not None and self._cursor is not None
+        assert all(key in Message.__annotations__ for key in kwargs)
+        await self._connection.execute(
+            """
+            UPDATE messages SET {} WHERE id = ?
+            """.format(", ".join([f"{key} = ?" for key in kwargs])),
+            tuple(kwargs.values()) + (id,),
+        )
+        await self._connection.commit()
