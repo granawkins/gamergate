@@ -435,7 +435,7 @@ export const Admin = () => {
                 {/* Get stat keys from the first model's stats object */}
                 {Object.keys(Object.values(messageCosts)[0]).map((statKey) => {
                   // Map internal keys to display names
-                  const displayNames = {
+                  const displayNames: Record<string, string> = {
                     count: "Count",
                     mean: "Mean Cost ($)",
                     p90: "P90 ($)",
@@ -444,6 +444,9 @@ export const Admin = () => {
                     p10: "P10 ($)",
                     total: "Total ($)",
                   };
+
+                  // Type assertion to ensure statKey is a valid key
+                  const typedStatKey = statKey as keyof CostStats;
 
                   return (
                     <tr key={statKey}>
@@ -462,8 +465,8 @@ export const Admin = () => {
                           style={{ border: "1px solid #ddd", padding: "8px" }}
                         >
                           {statKey === "count"
-                            ? stats[statKey]
-                            : stats[statKey].toFixed(6)}
+                            ? stats[typedStatKey]
+                            : stats[typedStatKey].toFixed(6)}
                         </td>
                       ))}
                     </tr>
