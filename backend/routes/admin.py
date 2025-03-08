@@ -4,7 +4,7 @@ from typing import Optional, Dict, List
 from datetime import datetime
 from uuid import uuid4
 
-from db import db, User
+from old_db import db, User
 from routes.user import get_current_user
 
 app = FastAPI()

@@ -5,7 +5,7 @@ from uuid import uuid4
 import stripe
 from fastapi import FastAPI, Depends, Request, HTTPException
 
-from db import User, db
+from old_db import User, db
 from routes.utils import FRONTEND_URL, ENV
 from routes.user import get_current_user
 

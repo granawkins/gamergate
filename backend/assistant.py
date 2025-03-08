@@ -14,13 +14,16 @@ from typing import (
 
 from anthropic import AsyncAnthropic, AnthropicError
 from anthropic.types import MessageParam
+from dotenv import load_dotenv
 from openai import OpenAIError, AsyncOpenAI
 from openai.types.chat import (
     ChatCompletionAssistantMessageParam,
     ChatCompletionUserMessageParam,
     ChatCompletionSystemMessageParam,
 )
-from db import db, GAMES_PATH
+from old_db import db, GAMES_PATH
+
+load_dotenv()
 
 # Initialize Anthropic client
 anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))

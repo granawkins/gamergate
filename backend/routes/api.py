@@ -11,7 +11,7 @@ import subprocess
 import shutil
 from uuid import uuid4
 
-from db import db, GAMES_PATH, Message, User, GAME_VERSION
+from old_db import db, GAMES_PATH, Message, User, GAME_VERSION
 from routes.user import app as user_app, get_current_user
 from routes.admin import app as admin_app
 from routes.stripe import app as stripe_app

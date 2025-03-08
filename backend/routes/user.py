@@ -12,7 +12,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import RedirectResponse, Response
 from fastapi.security import APIKeyCookie
 
-from db import db, User, ADMIN_EMAIL
+from old_db import db, User, ADMIN_EMAIL
 from routes.utils import BASE_URL, FRONTEND_URL
 
 load_dotenv()
