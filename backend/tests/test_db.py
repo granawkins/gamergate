@@ -1,5 +1,6 @@
 import asyncio
 import pytest
+import pytest_asyncio
 import tempfile
 import sqlite3
 import uuid
@@ -23,7 +24,7 @@ def temp_db_path():
 
 
 # Fixture for a database instance with migrations applied
-@pytest.fixture
+@pytest_asyncio.fixture
 async def test_db(temp_db_path):
     # Run migrations on the temporary database
     migrate(temp_db_path)
@@ -156,7 +157,7 @@ async def test_concurrent_access(temp_db_path):
 
 # User tests
 class TestUserMethods:
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def test_user(self, test_db, timestamp):
         user_id = f"user_{uuid.uuid4()}"
         user = User(
@@ -240,7 +241,7 @@ class TestUserMethods:
 
 # Game tests
 class TestGameMethods:
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def test_user(self, test_db, timestamp):
         user_id = f"user_{uuid.uuid4()}"
         user = User(
@@ -254,7 +255,7 @@ class TestGameMethods:
         await test_db.create_user(user)
         return user
     
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def test_game(self, test_db, test_user, timestamp):
         game_id = f"game_{uuid.uuid4()}"
         game = Game(
@@ -407,7 +408,7 @@ class TestGameMethods:
 
 # Message tests
 class TestMessageMethods:
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def test_user(self, test_db, timestamp):
         user_id = f"user_{uuid.uuid4()}"
         user = User(
@@ -421,7 +422,7 @@ class TestMessageMethods:
         await test_db.create_user(user)
         return user
     
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def test_game(self, test_db, test_user, timestamp):
         game_id = f"game_{uuid.uuid4()}"
         game = Game(
@@ -438,7 +439,7 @@ class TestMessageMethods:
         await test_db.create_game(game)
         return game
     
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def test_message(self, test_db, test_game, timestamp):
         message_id = f"msg_{uuid.uuid4()}"
         message = Message(
@@ -560,7 +561,7 @@ class TestMessageMethods:
 
 # Transaction tests
 class TestTransactionMethods:
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def test_user(self, test_db, timestamp):
         user_id = f"user_{uuid.uuid4()}"
         user = User(
@@ -574,7 +575,7 @@ class TestTransactionMethods:
         await test_db.create_user(user)
         return user
     
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def test_transaction(self, test_db, test_user, timestamp):
         txn_id = f"txn_{uuid.uuid4()}"
         session_id = f"sess_{uuid.uuid4()}"
@@ -661,7 +662,7 @@ class TestTransactionMethods:
 
 # PlaySession tests
 class TestPlaySessionMethods:
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def test_user(self, test_db, timestamp):
         user_id = f"user_{uuid.uuid4()}"
         user = User(
@@ -675,7 +676,7 @@ class TestPlaySessionMethods:
         await test_db.create_user(user)
         return user
     
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def test_game(self, test_db, test_user, timestamp):
         game_id = f"game_{uuid.uuid4()}"
         game = Game(
