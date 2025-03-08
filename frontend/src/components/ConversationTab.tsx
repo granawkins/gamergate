@@ -95,15 +95,13 @@ export const ConversationTab = ({
   messagesLeft?: number;
 }) => {
   const [inputText, setInputText] = useState("");
-  const [selectedModel, setSelectedModel] = useState(
-    "claude-3-5-sonnet-20241022",
-  );
+  const [selectedModel, setSelectedModel] = useState("o3-mini");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const models = [
-    { id: "claude-3-5-sonnet-20240620", name: "Claude 3.5" },
-    { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 New" },
+    { id: "o3-mini", name: "OpenAI o3-mini" },
     { id: "gpt-4o", name: "GPT-4o" },
+    { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 New" },
   ];
 
   const handleSendMessage = async () => {

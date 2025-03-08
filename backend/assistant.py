@@ -26,28 +26,28 @@ from db import db, GAMES_PATH
 anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-DEFAULT_MODEL = "claude-3-5-sonnet-20241022"
+DEFAULT_MODEL = "o3-mini"
 RETRIES = 3
 MOST_RECENT_N_MESSAGES = 5
 
 model_costs = {
     # Anthropic models
-    "claude-3-5-sonnet-20240620": {
-        "cache_creation_input_tokens": 0.00015,
-        "cache_read_input_tokens": 0.00001,
-        "input_tokens": 0.00015,
-        "output_tokens": 0.0006,
-    },
     "claude-3-5-sonnet-20241022": {
-        "cache_creation_input_tokens": 0.00015,
-        "cache_read_input_tokens": 0.00001,
-        "input_tokens": 0.00015,
-        "output_tokens": 0.0006,
+        "cache_creation_input_tokens": 0.000375,
+        "cache_read_input_tokens": 0.00003,
+        "input_tokens": 0.0003,
+        "output_tokens": 0.0015,
     },
     # OpenAI models
     "gpt-4o": {
-        "input_tokens": 0.00005,
-        "output_tokens": 0.00015,
+        "input_tokens": 0.00025,
+        "cached_input_tokens": 0.000125,
+        "output_tokens": 0.001,
+    },
+    "o3-mini": {
+        "input_tokens": 0.00011,
+        "cached_input_tokens": 0.000055,
+        "output_tokens": 0.00044,
     },
 }
 
@@ -327,7 +327,7 @@ async def generate_completion(game_id: str):
             # Choose the appropriate completion function based on the model
             if model.startswith("claude"):
                 completion_function = anthropic_completion
-            elif model.startswith("gpt"):
+            elif model.startswith(("gpt", "o3")):
                 completion_function = openai_completion
             else:
                 raise ValueError(f"Unsupported model: {model}")
