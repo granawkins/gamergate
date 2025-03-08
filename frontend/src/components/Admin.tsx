@@ -388,37 +388,10 @@ export const Admin = () => {
             border: "1px solid #ddd",
           }}
         >
-          <thead>
-            <tr>
-              {[
-                "Model",
-                "Count",
-                "Mean Cost ($)",
-                "P90 ($)",
-                "P75 ($)",
-                "P25 ($)",
-                "P10 ($)",
-                "Total ($)",
-              ].map((header) => (
-                <th
-                  key={header}
-                  style={{
-                    border: "1px solid #ddd",
-                    padding: "8px",
-                    whiteSpace: "normal",
-                    wordWrap: "break-word",
-                  }}
-                >
-                  {header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {Object.keys(messageCosts).length === 0 ? (
+          {Object.keys(messageCosts).length === 0 ? (
+            <tbody>
               <tr>
                 <td
-                  colSpan={8}
                   style={{
                     border: "1px solid #ddd",
                     padding: "8px",
@@ -428,27 +401,77 @@ export const Admin = () => {
                   No cost data available
                 </td>
               </tr>
-            ) : (
-              Object.entries(messageCosts).map(([model, stats]) => (
-                <tr key={model}>
-                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                    {model}
-                  </td>
-                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                    {stats.count}
-                  </td>
-                  {["mean", "p90", "p75", "p25", "p10", "total"].map((key) => (
-                    <td
-                      key={key}
-                      style={{ border: "1px solid #ddd", padding: "8px" }}
+            </tbody>
+          ) : (
+            <>
+              <thead>
+                <tr>
+                  <th
+                    style={{
+                      border: "1px solid #ddd",
+                      padding: "8px",
+                      whiteSpace: "normal",
+                      wordWrap: "break-word",
+                    }}
+                  >
+                    Stat
+                  </th>
+                  {Object.keys(messageCosts).map((model) => (
+                    <th
+                      key={model}
+                      style={{
+                        border: "1px solid #ddd",
+                        padding: "8px",
+                        whiteSpace: "normal",
+                        wordWrap: "break-word",
+                      }}
                     >
-                      {stats[key].toFixed(6)}
-                    </td>
+                      {model}
+                    </th>
                   ))}
                 </tr>
-              ))
-            )}
-          </tbody>
+              </thead>
+              <tbody>
+                {/* Get stat keys from the first model's stats object */}
+                {Object.keys(Object.values(messageCosts)[0]).map((statKey) => {
+                  // Map internal keys to display names
+                  const displayNames = {
+                    count: "Count",
+                    mean: "Mean Cost ($)",
+                    p90: "P90 ($)",
+                    p75: "P75 ($)",
+                    p25: "P25 ($)",
+                    p10: "P10 ($)",
+                    total: "Total ($)",
+                  };
+
+                  return (
+                    <tr key={statKey}>
+                      <td
+                        style={{
+                          border: "1px solid #ddd",
+                          padding: "8px",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {displayNames[statKey] || statKey}
+                      </td>
+                      {Object.entries(messageCosts).map(([model, stats]) => (
+                        <td
+                          key={model}
+                          style={{ border: "1px solid #ddd", padding: "8px" }}
+                        >
+                          {statKey === "count"
+                            ? stats[statKey]
+                            : stats[statKey].toFixed(6)}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </>
+          )}
         </table>
       </div>
     </div>
