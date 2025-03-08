@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Game } from "../types";
 
-import { backendUrl } from "../utils";
+import { backendUrl, DEFAULT_GAME_VERSION } from "../utils";
 
 // EditableField component for handling field editing functionality
 const EditableField = ({
@@ -365,7 +365,7 @@ export const GameInfoTab = ({
     },
     {
       label: "Version",
-      content: gameInfo?.version || 1,
+      content: gameInfo?.version || DEFAULT_GAME_VERSION,
     },
     {
       label: "Cover Image",

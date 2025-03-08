@@ -8,6 +8,10 @@ from typing import TypedDict, Optional, List, Literal
 from uuid import UUID, uuid4
 
 
+# Constants
+DEFAULT_GAME_VERSION = 1
+
+
 class User(TypedDict):
     id: str
     created_at: str  # ISO format string of datetime
@@ -100,7 +104,7 @@ class DB:
                     "updated_at": datetime.now().isoformat(),
                     "messages": [],
                     "cover_image": "",
-                    "version": 1,  # Default version is 1
+                    "version": DEFAULT_GAME_VERSION,
                 }
 
                 # Create a new directory with the game_id and copy the contents
