@@ -52,7 +52,7 @@ export const Header = () => {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        padding: "0 1rem",
+        backgroundColor: "black",
       }}
     >
       <div
@@ -70,9 +70,17 @@ export const Header = () => {
             color: "inherit",
             display: "flex",
             alignItems: "center",
+            cursor: "pointer",
           }}
         >
-          <h1>GAMERGATE</h1>
+          <img
+            src="/logo_full.png"
+            alt="GAMERGATE"
+            style={{
+              height: "3rem",
+              padding: "0.5rem",
+            }}
+          />
         </a>
 
         {isPlayScreen && (
@@ -120,6 +128,7 @@ export const Header = () => {
             display: "flex",
             alignItems: "center",
             textDecoration: "none",
+            padding: "0.5rem",
           }}
         >
           <Avatar user={user} size={36} />
