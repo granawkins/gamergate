@@ -28,8 +28,6 @@ async def initialize_admin_and_templates():
     Initialize the admin user and template games if they don't exist.
     This is run when the module is first imported.
     """
-    # Connect to database
-    await db.connect()
 
     # Check if admin user exists, create if not
     admin_user = await db.get_user_by_email(ADMIN_EMAIL)
@@ -78,6 +76,3 @@ async def initialize_admin_and_templates():
                 subprocess.run(["git", "init"], cwd=game_dir)
                 subprocess.run(["git", "add", "."], cwd=game_dir)
                 subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=game_dir)
-
-    # Close database connection
-    await db.close()

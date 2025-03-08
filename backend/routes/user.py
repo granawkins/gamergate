@@ -36,6 +36,11 @@ class AuthError(Exception):
 class AuthenticatedUser(User):
     admin: bool
 
+    def to_dict(self):
+        # Convert to dictionary for JSON serialization
+        user_dict = vars(self)
+        return user_dict
+
 
 def create_session_token(user_id: str) -> str:
     expires_delta = timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
@@ -123,7 +128,7 @@ async def user_me(request: Request):
         dummy_user_with_admin = AuthenticatedUser(admin=False, **vars(dummy_user))
 
         response = {
-            "user": dummy_user_with_admin,
+            "user": dummy_user_with_admin.to_dict(),
             "games": [],
         }
 
@@ -147,7 +152,7 @@ async def user_me(request: Request):
 
     # Return existing user data with admin field
     return {
-        "user": AuthenticatedUser(admin=is_admin, **vars(user)),
+        "user": AuthenticatedUser(admin=is_admin, **vars(user)).to_dict(),
         "games": games,
     }
 

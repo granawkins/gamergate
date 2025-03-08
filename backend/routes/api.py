@@ -12,7 +12,6 @@ import shutil
 from uuid import uuid4
 
 from db import (
-    initialize_admin_and_templates,
     db,
     GAMES_PATH,
     Message,
@@ -37,11 +36,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-async def startup_db_client():
-    await initialize_admin_and_templates()
 
 
 class MessageRequest(BaseModel):
