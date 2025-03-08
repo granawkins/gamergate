@@ -10,7 +10,6 @@ Run this script once after setting up the new database schema.
 
 import asyncio
 import json
-import os
 from pathlib import Path
 from uuid import uuid4
 
@@ -80,7 +79,7 @@ async def migrate_data():
         try:
             await db.create_game(game)
             print(f"Migrated game: {game.id} ({game.name})")
-            
+
             # Then migrate all messages for this game
             message_count = 0
             for msg_data in game_data.get("messages", []):
@@ -100,7 +99,7 @@ async def migrate_data():
                     message_count += 1
                 except Exception as e:
                     print(f"Error migrating message {message.id}: {str(e)}")
-            
+
             print(f"  Migrated {message_count} messages for game {game.id}")
         except Exception as e:
             print(f"Error migrating game {game.id}: {str(e)}")

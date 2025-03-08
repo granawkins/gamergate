@@ -46,12 +46,12 @@ async def initialize_admin_and_templates():
             messages_left=10,
         )
         await db.create_user(admin_user)
-    
+
     # Initialize template games from games directory
     for dir in GAMES_PATH.iterdir():
-        if not dir.is_dir() or dir.name.startswith('.'):
+        if not dir.is_dir() or dir.name.startswith("."):
             continue
-            
+
         # Check if this template already exists
         existing_game = await db.get_game_by_name(dir.name)
         if existing_game is None:
@@ -70,17 +70,17 @@ async def initialize_admin_and_templates():
                 version=GAME_VERSION,
             )
             await db.create_game(template_game)
-            
+
             # Create a new directory with the game_id and copy the contents
             game_dir = GAMES_PATH / game_id
             if not game_dir.exists():
                 shutil.copytree(dir, game_dir)
-                
+
                 # Initialize a git repo for the game
                 subprocess.run(["git", "init"], cwd=game_dir)
                 subprocess.run(["git", "add", "."], cwd=game_dir)
                 subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=game_dir)
-    
+
     # Close database connection
     await db.close()
 

@@ -28,13 +28,13 @@ def temp_db_path():
 async def test_db(temp_db_path):
     # Run migrations on the temporary database
     migrate(temp_db_path)
-    
+
     # Create a Database instance
     db = Database(db_path=temp_db_path)
     await db.connect()
-    
+
     yield db
-    
+
     # Clean up
     await db.close()
 
@@ -170,7 +170,7 @@ class TestUserMethods:
         )
         await test_db.create_user(user)
         return user
-    
+
     @pytest.mark.asyncio
     async def test_create_user(self, test_db, timestamp):
         # Create a user
@@ -184,52 +184,50 @@ class TestUserMethods:
             avatar_id=None,
         )
         await test_db.create_user(user)
-        
+
         # Verify user was created
         retrieved_user = await test_db.get_user_by_id(user_id)
         assert retrieved_user is not None
         assert retrieved_user.id == user_id
         assert retrieved_user.username == "createuser"
         assert retrieved_user.email == "create@example.com"
-    
+
     @pytest.mark.asyncio
     async def test_get_all_users(self, test_db, test_user):
         # Get all users
         users = await test_db.get_all_users()
-        
+
         # Verify our test user is included
         assert any(user.id == test_user.id for user in users)
         assert len(users) > 0
-    
+
     @pytest.mark.asyncio
     async def test_get_user_by_email(self, test_db, test_user):
         # Get user by email
         user = await test_db.get_user_by_email(test_user.email)
-        
+
         # Verify user is found
         assert user is not None
         assert user.id == test_user.id
         assert user.email == test_user.email
-    
+
     @pytest.mark.asyncio
     async def test_get_user_by_id(self, test_db, test_user):
         # Get user by ID
         user = await test_db.get_user_by_id(test_user.id)
-        
+
         # Verify user is found
         assert user is not None
         assert user.id == test_user.id
         assert user.username == test_user.username
-    
+
     @pytest.mark.asyncio
     async def test_update_user_by_id(self, test_db, test_user):
         # Update user
         await test_db.update_user_by_id(
-            test_user.id,
-            username="updated_username",
-            messages_left=20
+            test_user.id, username="updated_username", messages_left=20
         )
-        
+
         # Verify user was updated
         updated_user = await test_db.get_user_by_id(test_user.id)
         assert updated_user is not None
@@ -254,7 +252,7 @@ class TestGameMethods:
         )
         await test_db.create_user(user)
         return user
-    
+
     @pytest_asyncio.fixture
     async def test_game(self, test_db, test_user, timestamp):
         game_id = f"game_{uuid.uuid4()}"
@@ -267,11 +265,11 @@ class TestGameMethods:
             created_at=timestamp,
             updated_at=timestamp,
             cover_image=None,
-            version=1
+            version=1,
         )
         await test_db.create_game(game)
         return game
-    
+
     @pytest.mark.asyncio
     async def test_create_game(self, test_db, test_user, timestamp):
         # Create a game
@@ -285,58 +283,58 @@ class TestGameMethods:
             created_at=timestamp,
             updated_at=timestamp,
             cover_image=None,
-            version=1
+            version=1,
         )
         await test_db.create_game(game)
-        
+
         # Verify game was created
         retrieved_game = await test_db.get_game_by_id(game_id)
         assert retrieved_game is not None
         assert retrieved_game.id == game_id
         assert retrieved_game.name == "New Game"
         assert retrieved_game.owner_id == test_user.id
-    
+
     @pytest.mark.asyncio
     async def test_get_all_games(self, test_db, test_game):
         # Get all games
         games = await test_db.get_all_games()
-        
+
         # Verify our test game is included
         assert any(game.id == test_game.id for game in games)
         assert len(games) > 0
-    
+
     @pytest.mark.asyncio
     async def test_get_all_game_data(self, test_db, test_game, test_user):
         # Get all game data
         games_data = await test_db.get_all_game_data()
-        
+
         # Verify our test game is included with additional data
         game_data = next((g for g in games_data if g.id == test_game.id), None)
         assert game_data is not None
         assert game_data.seconds_played == 0  # No play sessions yet
         assert game_data.owner_username == test_user.username
-    
+
     @pytest.mark.asyncio
     async def test_get_game_data_by_id(self, test_db, test_game, test_user):
         # Get game data by ID
         game_data = await test_db.get_game_data_by_id(test_game.id)
-        
+
         # Verify game data is returned
         assert game_data is not None
         assert game_data.id == test_game.id
         assert game_data.seconds_played == 0  # No play sessions yet
         assert game_data.owner_username == test_user.username
-    
+
     @pytest.mark.asyncio
     async def test_get_game_by_id(self, test_db, test_game):
         # Get game by ID
         game = await test_db.get_game_by_id(test_game.id)
-        
+
         # Verify game is returned
         assert game is not None
         assert game.id == test_game.id
         assert game.name == test_game.name
-    
+
     @pytest.mark.asyncio
     async def test_update_game_by_id(self, test_db, test_game):
         # Update game
@@ -345,9 +343,9 @@ class TestGameMethods:
             test_game.id,
             name="Updated Game",
             description="Updated description",
-            updated_at=new_timestamp
+            updated_at=new_timestamp,
         )
-        
+
         # Verify game was updated
         updated_game = await test_db.get_game_by_id(test_game.id)
         assert updated_game is not None
@@ -357,7 +355,7 @@ class TestGameMethods:
         # Other fields should remain unchanged
         assert updated_game.owner_id == test_game.owner_id
         assert updated_game.created_at == test_game.created_at
-    
+
     @pytest.mark.asyncio
     async def test_delete_game_by_id(self, test_db, timestamp, test_user):
         # Create a game to delete
@@ -371,36 +369,36 @@ class TestGameMethods:
             created_at=timestamp,
             updated_at=timestamp,
             cover_image=None,
-            version=1
+            version=1,
         )
         await test_db.create_game(game)
-        
+
         # Verify game exists
         retrieved_game = await test_db.get_game_by_id(game_id)
         assert retrieved_game is not None
-        
+
         # Delete game
         await test_db.delete_game_by_id(game_id)
-        
+
         # Verify game was deleted
         deleted_game = await test_db.get_game_by_id(game_id)
         assert deleted_game is None
-    
+
     @pytest.mark.asyncio
     async def test_get_game_by_name(self, test_db, test_game):
         # Get game by name
         game = await test_db.get_game_by_name(test_game.name)
-        
+
         # Verify game is returned
         assert game is not None
         assert game.id == test_game.id
         assert game.name == test_game.name
-    
+
     @pytest.mark.asyncio
     async def test_get_games_by_owner_id(self, test_db, test_game):
         # Get games by owner ID
         games = await test_db.get_games_by_owner_id(test_game.owner_id)
-        
+
         # Verify our test game is included
         assert any(game.id == test_game.id for game in games)
         assert len(games) > 0
@@ -421,7 +419,7 @@ class TestMessageMethods:
         )
         await test_db.create_user(user)
         return user
-    
+
     @pytest_asyncio.fixture
     async def test_game(self, test_db, test_user, timestamp):
         game_id = f"game_{uuid.uuid4()}"
@@ -434,11 +432,11 @@ class TestMessageMethods:
             created_at=timestamp,
             updated_at=timestamp,
             cover_image=None,
-            version=1
+            version=1,
         )
         await test_db.create_game(game)
         return game
-    
+
     @pytest_asyncio.fixture
     async def test_message(self, test_db, test_game, timestamp):
         message_id = f"msg_{uuid.uuid4()}"
@@ -451,11 +449,11 @@ class TestMessageMethods:
             cost=None,
             status="completed",
             commit_sha=None,
-            model=None
+            model=None,
         )
         await test_db.create_message(message)
         return message
-    
+
     @pytest.mark.asyncio
     async def test_create_message(self, test_db, test_game, timestamp):
         # Create a message
@@ -469,45 +467,45 @@ class TestMessageMethods:
             cost=None,
             status="completed",
             commit_sha=None,
-            model=None
+            model=None,
         )
         await test_db.create_message(message)
-        
+
         # Verify message was created
         retrieved_message = await test_db.get_message_by_id(message_id)
         assert retrieved_message is not None
         assert retrieved_message.id == message_id
         assert retrieved_message.text == "New message content"
         assert retrieved_message.game_id == test_game.id
-    
+
     @pytest.mark.asyncio
     async def test_get_all_messages(self, test_db, test_message):
         # Get all messages
         messages = await test_db.get_all_messages()
-        
+
         # Verify our test message is included
         assert any(message.id == test_message.id for message in messages)
         assert len(messages) > 0
-    
+
     @pytest.mark.asyncio
     async def test_get_messages_by_game_id(self, test_db, test_message, test_game):
         # Get messages by game ID
         messages = await test_db.get_messages_by_game_id(test_game.id)
-        
+
         # Verify our test message is included
         assert any(message.id == test_message.id for message in messages)
         assert len(messages) > 0
-    
+
     @pytest.mark.asyncio
     async def test_get_message_by_id(self, test_db, test_message):
         # Get message by ID
         message = await test_db.get_message_by_id(test_message.id)
-        
+
         # Verify message is returned
         assert message is not None
         assert message.id == test_message.id
         assert message.text == test_message.text
-    
+
     @pytest.mark.asyncio
     async def test_update_message_by_id(self, test_db, test_message):
         # Update message
@@ -516,9 +514,9 @@ class TestMessageMethods:
             text="Updated message content",
             status="error",
             cost=0.05,
-            model="claude-3-opus-20240229"
+            model="claude-3-opus-20240229",
         )
-        
+
         # Verify message was updated
         updated_message = await test_db.get_message_by_id(test_message.id)
         assert updated_message is not None
@@ -529,7 +527,7 @@ class TestMessageMethods:
         # Other fields should remain unchanged
         assert updated_message.game_id == test_message.game_id
         assert updated_message.role == test_message.role
-    
+
     @pytest.mark.asyncio
     async def test_delete_message_by_id(self, test_db, test_game, timestamp):
         # Create a message to delete
@@ -543,17 +541,17 @@ class TestMessageMethods:
             cost=None,
             status="completed",
             commit_sha=None,
-            model=None
+            model=None,
         )
         await test_db.create_message(message)
-        
+
         # Verify message exists
         retrieved_message = await test_db.get_message_by_id(message_id)
         assert retrieved_message is not None
-        
+
         # Delete message
         await test_db.delete_message_by_id(message_id)
-        
+
         # Verify message was deleted
         deleted_message = await test_db.get_message_by_id(message_id)
         assert deleted_message is None
@@ -574,7 +572,7 @@ class TestTransactionMethods:
         )
         await test_db.create_user(user)
         return user
-    
+
     @pytest_asyncio.fixture
     async def test_transaction(self, test_db, test_user, timestamp):
         txn_id = f"txn_{uuid.uuid4()}"
@@ -587,11 +585,11 @@ class TestTransactionMethods:
             created_at=timestamp,
             updated_at=timestamp,
             amount=50,
-            description="Test transaction"
+            description="Test transaction",
         )
         await test_db.create_transaction(transaction)
         return transaction
-    
+
     @pytest.mark.asyncio
     async def test_create_transaction(self, test_db, test_user, timestamp):
         # Create a transaction
@@ -605,10 +603,10 @@ class TestTransactionMethods:
             created_at=timestamp,
             updated_at=timestamp,
             amount=25,
-            description="New transaction"
+            description="New transaction",
         )
         await test_db.create_transaction(transaction)
-        
+
         # Verify transaction was created
         # Note: We can't directly get a transaction by ID in the current API
         transactions = await test_db.get_all_transactions()
@@ -617,26 +615,28 @@ class TestTransactionMethods:
         assert created_txn.id == txn_id
         assert created_txn.user_id == test_user.id
         assert created_txn.amount == 25
-    
+
     @pytest.mark.asyncio
     async def test_get_all_transactions(self, test_db, test_transaction):
         # Get all transactions
         transactions = await test_db.get_all_transactions()
-        
+
         # Verify our test transaction is included
         assert any(txn.id == test_transaction.id for txn in transactions)
         assert len(transactions) > 0
-    
+
     @pytest.mark.asyncio
     async def test_get_transaction_by_session_id(self, test_db, test_transaction):
         # Get transaction by session ID
-        transaction = await test_db.get_transaction_by_session_id(test_transaction.session_id)
-        
+        transaction = await test_db.get_transaction_by_session_id(
+            test_transaction.session_id
+        )
+
         # Verify transaction is returned
         assert transaction is not None
         assert transaction.id == test_transaction.id
         assert transaction.session_id == test_transaction.session_id
-    
+
     @pytest.mark.asyncio
     async def test_update_transaction_by_id(self, test_db, test_transaction):
         # Update transaction
@@ -645,12 +645,14 @@ class TestTransactionMethods:
             test_transaction.id,
             status="complete",
             updated_at=new_timestamp,
-            description="Updated transaction"
+            description="Updated transaction",
         )
-        
+
         # Verify transaction was updated
         transactions = await test_db.get_all_transactions()
-        updated_txn = next((t for t in transactions if t.id == test_transaction.id), None)
+        updated_txn = next(
+            (t for t in transactions if t.id == test_transaction.id), None
+        )
         assert updated_txn is not None
         assert updated_txn.status == "complete"
         assert updated_txn.updated_at == new_timestamp
@@ -675,7 +677,7 @@ class TestPlaySessionMethods:
         )
         await test_db.create_user(user)
         return user
-    
+
     @pytest_asyncio.fixture
     async def test_game(self, test_db, test_user, timestamp):
         game_id = f"game_{uuid.uuid4()}"
@@ -688,11 +690,11 @@ class TestPlaySessionMethods:
             created_at=timestamp,
             updated_at=timestamp,
             cover_image=None,
-            version=1
+            version=1,
         )
         await test_db.create_game(game)
         return game
-    
+
     @pytest.mark.asyncio
     async def test_create_play_session(self, test_db, test_user, test_game, timestamp):
         # Create a play session
@@ -702,10 +704,10 @@ class TestPlaySessionMethods:
             user_id=test_user.id,
             game_id=test_game.id,
             created_at=timestamp,
-            seconds=120
+            seconds=120,
         )
         await test_db.create_play_session(play_session)
-        
+
         # Verify play session was created by checking game data
         game_data = await test_db.get_game_data_by_id(test_game.id)
         assert game_data is not None
