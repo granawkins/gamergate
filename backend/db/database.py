@@ -302,17 +302,17 @@ class Database:
         assert self._connection is not None and self._cursor is not None
         await self._connection.execute(
             """
-            INSERT INTO transactions (id, user_id, amount, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO transactions (id, user_id, session_id, status, created_at, updated_at, amount, description)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 transaction.id,
                 transaction.user_id,
                 transaction.session_id,
-                transaction.amount,
+                transaction.status,
                 transaction.created_at,
                 transaction.updated_at,
-                transaction.status,
+                transaction.amount,
                 transaction.description,
             ),
         )
@@ -322,7 +322,7 @@ class Database:
         """Fetch all transactions"""
         assert self._connection is not None and self._cursor is not None
         async with self._connection.execute(
-            "SELECT id, user_id, amount, created_at, updated_at FROM transactions"
+            "SELECT id, user_id, session_id, status, created_at, updated_at, amount, description FROM transactions"
         ) as cursor:
             rows = await cursor.fetchall()
             return [Transaction.from_row(row) for row in rows]
@@ -333,7 +333,7 @@ class Database:
         """Fetch a transaction by session ID"""
         assert self._connection is not None and self._cursor is not None
         async with self._connection.execute(
-            "SELECT id, user_id, amount, created_at, updated_at FROM transactions WHERE session_id = ?",
+            "SELECT id, user_id, session_id, status, created_at, updated_at, amount, description FROM transactions WHERE session_id = ?",
             (session_id,),
         ) as cursor:
             row = await cursor.fetchone()
