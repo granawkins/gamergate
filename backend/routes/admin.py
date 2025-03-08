@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, List
 from datetime import datetime
 from uuid import uuid4
 
@@ -102,7 +102,54 @@ async def get_admin_stats(current_user: User = Depends(get_current_user)):
     # Sort transactions by updated_at (newest first)
     transaction_stats.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
 
-    return {"users": user_stats, "transactions": transaction_stats}
+    # Collect message costs by model
+    message_costs_by_model: Dict[str, List[float]] = {}
+    for game in games.values():
+        for message in game.get("messages", []):
+            cost = message.get("cost", 0)
+            model = message.get("model")
+            if cost > 0 and model:
+                if model not in message_costs_by_model:
+                    message_costs_by_model[model] = []
+                message_costs_by_model[model].append(cost)
+
+    # Calculate cost statistics for each model
+    cost_stats = {}
+    for model, costs in message_costs_by_model.items():
+        if costs:
+            costs.sort()
+            count = len(costs)
+            total = sum(costs)
+            mean = total / count
+
+            # Calculate percentiles manually
+            if count >= 10:
+                p10_idx = max(0, int(count * 0.1) - 1)
+                p25_idx = max(0, int(count * 0.25) - 1)
+                p75_idx = min(count - 1, int(count * 0.75))
+                p90_idx = min(count - 1, int(count * 0.9))
+                p10 = costs[p10_idx]
+                p25 = costs[p25_idx]
+                p75 = costs[p75_idx]
+                p90 = costs[p90_idx]
+            else:
+                p10, p25, p75, p90 = 0, 0, 0, 0
+
+            cost_stats[model] = {
+                "count": count,
+                "total": round(total, 6),
+                "mean": round(mean, 6),
+                "p90": round(p90, 6),
+                "p75": round(p75, 6),
+                "p25": round(p25, 6),
+                "p10": round(p10, 6),
+            }
+
+    return {
+        "users": user_stats,
+        "transactions": transaction_stats,
+        "message_costs": cost_stats,
+    }
 
 
 @app.post("/update-messages")

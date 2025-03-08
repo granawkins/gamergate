@@ -22,10 +22,25 @@ interface Transaction {
   description: string;
 }
 
+interface CostStats {
+  count: number;
+  total: number;
+  mean: number;
+  p90: number;
+  p75: number;
+  p25: number;
+  p10: number;
+}
+
+interface MessageCosts {
+  [model: string]: CostStats;
+}
+
 export const Admin = () => {
   const { loading, user } = useAuth();
   const [userStats, setUserStats] = useState<UserStats[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [messageCosts, setMessageCosts] = useState<MessageCosts>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
@@ -54,6 +69,7 @@ export const Admin = () => {
       const data = await response.json();
       setUserStats(data.users);
       setTransactions(data.transactions);
+      setMessageCosts(data.message_costs || {});
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -359,6 +375,103 @@ export const Admin = () => {
               ))
             )}
           </tbody>
+        </table>
+      </div>
+
+      <h2>Message Cost Statistics</h2>
+      <div className="table-responsive">
+        <table
+          className="cost-stats-table"
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            border: "1px solid #ddd",
+          }}
+        >
+          {Object.keys(messageCosts).length === 0 ? (
+            <tbody>
+              <tr>
+                <td
+                  style={{
+                    border: "1px solid #ddd",
+                    padding: "8px",
+                    textAlign: "center",
+                  }}
+                >
+                  No cost data available
+                </td>
+              </tr>
+            </tbody>
+          ) : (
+            <>
+              <thead>
+                <tr>
+                  <th
+                    style={{
+                      border: "1px solid #ddd",
+                      padding: "8px",
+                      whiteSpace: "normal",
+                      wordWrap: "break-word",
+                    }}
+                  >
+                    Stat
+                  </th>
+                  {Object.keys(messageCosts).map((model) => (
+                    <th
+                      key={model}
+                      style={{
+                        border: "1px solid #ddd",
+                        padding: "8px",
+                        whiteSpace: "normal",
+                        wordWrap: "break-word",
+                      }}
+                    >
+                      {model}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {/* Get stat keys from the first model's stats object */}
+                {Object.keys(Object.values(messageCosts)[0]).map((statKey) => {
+                  // Map internal keys to display names
+                  const displayNames = {
+                    count: "Count",
+                    mean: "Mean Cost ($)",
+                    p90: "P90 ($)",
+                    p75: "P75 ($)",
+                    p25: "P25 ($)",
+                    p10: "P10 ($)",
+                    total: "Total ($)",
+                  };
+
+                  return (
+                    <tr key={statKey}>
+                      <td
+                        style={{
+                          border: "1px solid #ddd",
+                          padding: "8px",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {displayNames[statKey] || statKey}
+                      </td>
+                      {Object.entries(messageCosts).map(([model, stats]) => (
+                        <td
+                          key={model}
+                          style={{ border: "1px solid #ddd", padding: "8px" }}
+                        >
+                          {statKey === "count"
+                            ? stats[statKey]
+                            : stats[statKey].toFixed(6)}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </>
+          )}
         </table>
       </div>
     </div>
