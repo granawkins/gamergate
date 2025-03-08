@@ -30,6 +30,7 @@ class User:
 @dataclass
 class Message:
     id: str
+    game_id: str
     text: str
     role: Literal["user", "assistant"]
     timestamp: str
@@ -42,13 +43,14 @@ class Message:
     def from_row(cls, row: Row) -> "Message":
         return cls(
             id=row[0],
-            text=row[1],
-            role=row[2],
-            timestamp=row[3],
-            cost=row[4],
-            status=row[5],
-            commit_sha=row[6],
-            model=row[7],
+            game_id=row[1],
+            text=row[2],
+            role=row[3],
+            timestamp=row[4],
+            cost=row[5],
+            status=row[6],
+            commit_sha=row[7],
+            model=row[8],
         )
 
 

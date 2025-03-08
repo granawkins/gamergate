@@ -102,7 +102,7 @@ async def test_database_user_methods(temp_db_path):
     try:
         # Initially, the user shouldn't exist
         test_user_id = "test123"
-        user = await db.get_user(test_user_id)
+        user = await db.get_user_by_id(test_user_id)
         assert user is None
 
         # Create a user and upsert it
@@ -116,33 +116,14 @@ async def test_database_user_methods(temp_db_path):
             avatar_id=None,
         )
 
-        await db.upsert_user(new_user)
+        await db.create_user(new_user)
 
         # Check if user was saved
-        user = await db.get_user(test_user_id)
+        user = await db.get_user_by_id(test_user_id)
         assert user is not None
         assert user.id == test_user_id
         assert user.username == "testuser"
         assert user.messages_left == 10
-
-        # Test update functionality
-        updated_user = User(
-            id=test_user_id,
-            created_at=now,
-            messages_left=5,  # Changed
-            username="updateduser",  # Changed
-            email="test@example.com",
-            avatar_id="avatar1",  # Changed
-        )
-
-        await db.upsert_user(updated_user)
-
-        # Check if user was updated
-        user = await db.get_user(test_user_id)
-        assert user is not None
-        assert user.username == "updateduser"
-        assert user.messages_left == 5
-        assert user.avatar_id == "avatar1"
 
     finally:
         # Clean up
@@ -172,7 +153,7 @@ async def test_concurrent_access(temp_db_path):
                 email=f"user_{user_id}@example.com",
                 avatar_id=None,
             )
-            await db.upsert_user(user)
+            await db.create_user(user)
             return user
 
         # Launch tasks concurrently
@@ -181,27 +162,10 @@ async def test_concurrent_access(temp_db_path):
 
         # Verify all users were created
         for user in users:
-            retrieved_user = await db.get_user(user.id)
+            retrieved_user = await db.get_user_by_id(user.id)
             assert retrieved_user is not None
             assert retrieved_user.id == user.id
             assert retrieved_user.username == user.username
-
-        # Launch multiple updates concurrently
-        async def update_messages(user_id: str, new_count: int):
-            user = await db.get_user(user_id)
-            assert user is not None
-            user.messages_left = new_count
-            await db.upsert_user(user)
-
-        # Update all users concurrently
-        update_tasks = [update_messages(f"user_{i}", i * 5) for i in range(5)]
-        await asyncio.gather(*update_tasks)
-
-        # Verify updates
-        for i in range(5):
-            user = await db.get_user(f"user_{i}")
-            assert user is not None
-            assert user.messages_left == i * 5
 
     finally:
         # Clean up

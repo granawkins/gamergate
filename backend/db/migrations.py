@@ -87,8 +87,8 @@ def migration_001(conn: sqlite3.Connection) -> None:
             id TEXT PRIMARY KEY,
             created_at TEXT NOT NULL,
             messages_left INTEGER NOT NULL,
-            username TEXT,
-            email TEXT,
+            username TEXT UNIQUE,
+            email TEXT UNIQUE,
             avatar_id TEXT
         )
     """)
@@ -97,13 +97,15 @@ def migration_001(conn: sqlite3.Connection) -> None:
     conn.execute("""
         CREATE TABLE messages (
             id TEXT PRIMARY KEY,
+            game_id TEXT NOT NULL,
             text TEXT NOT NULL,
             role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
             timestamp TEXT NOT NULL,
             cost REAL,
             status TEXT NOT NULL CHECK (status IN ('processing', 'completed', 'error')),
             commit_sha TEXT,
-            model TEXT
+            model TEXT,
+            FOREIGN KEY (game_id) REFERENCES games (id)
         )
     """)
 
@@ -111,7 +113,7 @@ def migration_001(conn: sqlite3.Connection) -> None:
     conn.execute("""
         CREATE TABLE games (
             id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
+            name TEXT NOT NULL UNIQUE,
             description TEXT,
             owner_id TEXT NOT NULL,
             parent_id TEXT,
