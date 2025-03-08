@@ -5,6 +5,7 @@ from db.migrations import migrate
 from db.database import Database
 
 DB_PATH = Path(__file__).parent / "db.sqlite"
+GAME_VERSION = 1
 GAMES_PATH = Path(__file__).parent / "games"
 ADMIN_EMAIL = "granthawkins88@gmail.com"
 
