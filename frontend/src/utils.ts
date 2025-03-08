@@ -1,6 +1,3 @@
-// Constants
-export const GAME_VERSION = 1;
-
 const origin = () => {
   console.log(window.location.origin);
   return window.location.origin.split(":").slice(0, 2).join(":");
