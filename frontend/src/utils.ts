@@ -1,5 +1,5 @@
 // Constants
-export const DEFAULT_GAME_VERSION = 1;
+export const GAME_VERSION = 1;
 
 const origin = () => {
   console.log(window.location.origin);

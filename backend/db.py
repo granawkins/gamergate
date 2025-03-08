@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 
 
 # Constants
-DEFAULT_GAME_VERSION = 1
+GAME_VERSION = 1
 
 
 class User(TypedDict):
@@ -104,7 +104,7 @@ class DB:
                     "updated_at": datetime.now().isoformat(),
                     "messages": [],
                     "cover_image": "",
-                    "version": DEFAULT_GAME_VERSION,
+                    "version": GAME_VERSION,
                 }
 
                 # Create a new directory with the game_id and copy the contents
