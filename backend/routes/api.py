@@ -11,7 +11,7 @@ import subprocess
 import shutil
 from uuid import uuid4
 
-from db import db, GAMES_PATH, Message, User
+from db import db, GAMES_PATH, Message, User, GAME_VERSION
 from routes.user import app as user_app, get_current_user
 from routes.admin import app as admin_app
 from routes.stripe import app as stripe_app
@@ -162,6 +162,7 @@ async def get_game_info(game_name: str):
         "created_at": game["created_at"],
         "updated_at": game["updated_at"],
         "cover_image": game.get("cover_image", ""),
+        "version": game.get("version", GAME_VERSION),
     }
 
     # Add parent name if applicable
@@ -305,6 +306,9 @@ async def clone_game(
         "cover_image": source_game.get(
             "cover_image", ""
         ),  # Copy cover image from source game
+        "version": source_game.get(
+            "version", GAME_VERSION
+        ),  # Copy version from source game
     }
 
     # Copy the game directory

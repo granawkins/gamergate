@@ -364,6 +364,10 @@ export const GameInfoTab = ({
       ),
     },
     {
+      label: "Version",
+      content: gameInfo?.version || 0,
+    },
+    {
       label: "Cover Image",
       content: (
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>

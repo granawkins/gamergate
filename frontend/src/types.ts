@@ -20,6 +20,7 @@ export interface Game {
   updated_at: string;
   parent_name: string | null;
   cover_image?: string;
+  version?: number;
 }
 
 export interface Message {
