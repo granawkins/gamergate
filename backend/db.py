@@ -13,13 +13,14 @@ from uuid import uuid4
 GAME_VERSION = 1
 
 
-class User(TypedDict):
-    id: str
+class User(TypedDict, total=False):
+    id: str  # Required
     created_at: str  # ISO format string of datetime
     messages_left: int
     username: Optional[str]
     email: Optional[str]
     avatar_id: Optional[str]
+    admin: bool  # Added for API usage
 
 
 class Message(TypedDict, total=False):
