@@ -1,5 +1,6 @@
 anthropic
 fastapi
+numpy
 openai
 PyJWT
 pyright
