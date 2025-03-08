@@ -29,7 +29,7 @@ export const StripeCheckout = () => {
       method: "POST",
       credentials: "include",
       body: JSON.stringify({
-        product_id: "gamergate-100-messages",
+        product_id: "gamergate-50-messages",
         quantity: 1,
       }),
     })

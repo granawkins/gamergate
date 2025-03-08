@@ -19,7 +19,7 @@ export const Info = ({ onClose }: { onClose: () => void }) => (
       </p>
       <p style={{ fontSize: "0.9rem", color: "#666" }}>
         New users are given 10 free messages. After that, you can buy new
-        messages at $5 per 100 messages.
+        messages at $5 per 50 messages.
       </p>
     </div>
 
