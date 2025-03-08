@@ -5,7 +5,7 @@ import aiosqlite
 from asyncio import Lock
 from datetime import datetime
 from pathlib import Path
-from typing import TypedDict, Optional, List, Literal, Dict, Any, cast
+from typing import TypedDict, Optional, List, Literal, Dict, Any, cast, Union
 from uuid import uuid4
 
 
@@ -23,7 +23,7 @@ class User(TypedDict):
 
 
 class Message(TypedDict, total=False):
-    id: str
+    id: str  # Made optional with total=False
     text: str
     role: Literal["user", "assistant"]
     timestamp: str
@@ -33,7 +33,7 @@ class Message(TypedDict, total=False):
     model: Optional[str]
 
 
-class Game(TypedDict):
+class Game(TypedDict, total=False):
     id: str
     name: str
     description: Optional[str]
@@ -44,9 +44,11 @@ class Game(TypedDict):
     messages: List[Message]
     cover_image: Optional[str]  # Base64 encoded image string
     version: int  # Version number of the game
+    seconds_played: int  # Added for compatibility with API routes
+    parent_name: Optional[str]  # Added for API routes
 
 
-class Transaction(TypedDict):
+class Transaction(TypedDict, total=False):
     id: str
     user_id: str
     session_id: str
@@ -468,7 +470,7 @@ class DB:
 
             return result
 
-    async def set(self, data: Dict[str, Any]) -> None:
+    async def set(self, data: Union[Dict[str, Any], DatabaseResult]) -> None:
         """
         Legacy method to update the entire database.
         This is a compatibility method that will update the SQLite database.
@@ -816,9 +818,14 @@ class DB:
         """Add a new message to a game and return the message with ID."""
         await self._initialize_db()
 
+        # Make a copy of the message to avoid modifying the original
+        message_copy = dict(message)
+
         # Generate ID if not provided
-        if "id" not in message:
-            message["id"] = str(uuid4())
+        if "id" not in message_copy:
+            message_copy["id"] = str(uuid4())
+
+        message_id = message_copy["id"]
 
         async with aiosqlite.connect(SQLITE_DB_PATH) as db:
             # Check if the game exists
@@ -834,7 +841,8 @@ class DB:
                 "SELECT MAX(message_order) FROM messages WHERE game_id = ?", (game_id,)
             )
             row = await cursor.fetchone()
-            message_order = (row[0] or -1) + 1 if row[0] is not None else 0
+            max_order = row[0] if row and row[0] is not None else -1
+            message_order = max_order + 1
 
             # Insert the new message
             await db.execute(
@@ -843,15 +851,15 @@ class DB:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    message["id"],
+                    message_id,
                     game_id,
-                    message.get("text", ""),
-                    message.get("role", "user"),
-                    message.get("timestamp", datetime.now().isoformat()),
-                    message.get("cost", 0),
-                    message.get("status"),
-                    message.get("commit_sha"),
-                    message.get("model"),
+                    message_copy.get("text", ""),
+                    message_copy.get("role", "user"),
+                    message_copy.get("timestamp", datetime.now().isoformat()),
+                    message_copy.get("cost", 0),
+                    message_copy.get("status"),
+                    message_copy.get("commit_sha"),
+                    message_copy.get("model"),
                     message_order,
                 ),
             )
@@ -864,19 +872,24 @@ class DB:
 
             await db.commit()
 
-            return message
+            return cast(Message, message_copy)
 
     async def update_message(self, message: Message) -> Optional[Message]:
         """Update an existing message."""
-        if "id" not in message:
+        # Make a copy of the message to avoid modifying the original
+        message_copy = dict(message)
+
+        if "id" not in message_copy:
             return None
+
+        message_id = message_copy["id"]
 
         await self._initialize_db()
 
         async with aiosqlite.connect(SQLITE_DB_PATH) as db:
             # Check if the message exists
             cursor = await db.execute(
-                "SELECT * FROM messages WHERE id = ?", (message["id"],)
+                "SELECT * FROM messages WHERE id = ?", (message_id,)
             )
             row = await cursor.fetchone()
             if not row:
@@ -896,20 +909,20 @@ class DB:
                 WHERE id = ?
                 """,
                 (
-                    message.get("text", ""),
-                    message.get("role", "user"),
-                    message.get("timestamp", datetime.now().isoformat()),
-                    message.get("cost", 0),
-                    message.get("status"),
-                    message.get("commit_sha"),
-                    message.get("model"),
-                    message["id"],
+                    message_copy.get("text", ""),
+                    message_copy.get("role", "user"),
+                    message_copy.get("timestamp", datetime.now().isoformat()),
+                    message_copy.get("cost", 0),
+                    message_copy.get("status"),
+                    message_copy.get("commit_sha"),
+                    message_copy.get("model"),
+                    message_id,
                 ),
             )
 
             await db.commit()
 
-            return message
+            return cast(Message, message_copy)
 
     async def get_transaction_by_session(
         self, session_id: str
