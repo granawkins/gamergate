@@ -327,6 +327,30 @@ class Database:
             rows = await cursor.fetchall()
             return [Transaction.from_row(row) for row in rows]
 
+    async def get_transaction_by_session_id(
+        self, session_id: str
+    ) -> Optional[Transaction]:
+        """Fetch a transaction by session ID"""
+        assert self._connection is not None and self._cursor is not None
+        async with self._connection.execute(
+            "SELECT id, user_id, amount, created_at, updated_at FROM transactions WHERE session_id = ?",
+            (session_id,),
+        ) as cursor:
+            row = await cursor.fetchone()
+            return Transaction.from_row(row) if row else None
+
+    async def update_transaction_by_id(self, id: str, **kwargs) -> None:
+        """Update a transaction"""
+        assert self._connection is not None and self._cursor is not None
+        assert all(key in Transaction.__annotations__ for key in kwargs)
+        await self._connection.execute(
+            """
+            UPDATE transactions SET {} WHERE id = ?
+            """.format(", ".join([f"{key} = ?" for key in kwargs])),
+            tuple(kwargs.values()) + (id,),
+        )
+        await self._connection.commit()
+
     async def create_play_session(self, play_session: PlaySession) -> None:
         """Create a new play session"""
         assert self._connection is not None and self._cursor is not None

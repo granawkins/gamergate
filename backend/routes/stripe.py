@@ -5,9 +5,9 @@ from uuid import uuid4
 import stripe
 from fastapi import FastAPI, Depends, Request, HTTPException
 
-from old_db import User, db
+from db import db, Transaction
 from routes.utils import FRONTEND_URL, ENV
-from routes.user import get_current_user
+from routes.user import get_current_user, AuthenticatedUser
 
 # This is your test secret API key.
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
@@ -25,7 +25,7 @@ price_ids = {
 
 @app.post("/create-checkout-session")
 async def create_checkout_session(
-    request: Request, current_user: User = Depends(get_current_user)
+    request: Request, current_user: AuthenticatedUser = Depends(get_current_user)
 ):
     data = await request.json()
     product_id = data["product_id"]
@@ -45,7 +45,7 @@ async def create_checkout_session(
             ],
             mode="payment",
             return_url=FRONTEND_URL + "/return?session_id={CHECKOUT_SESSION_ID}",
-            metadata={"user_id": current_user["id"]},
+            metadata={"user_id": current_user.id},
         )
     except Exception as e:
         return str(e)
@@ -64,50 +64,47 @@ async def session_status(request: Request):
 
     # Validate the user_id
     user_id = session.metadata.get("user_id")
-    _db = await db.get()
-    if not user_id or user_id not in _db["users"]:
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Missing user_id in metadata")
+    user = await db.get_user_by_id(user_id)
+    if not user:
         raise HTTPException(status_code=400, detail="Invalid user ID")
 
     current_time = datetime.now().isoformat()
 
     # Create or update the transaction record
-    transaction = next(
-        (tx for tx in _db["transactions"].values() if tx["session_id"] == session_id),
-        None,
-    )
+    transaction = await db.get_transaction_by_session_id(session_id)
     credit_user = session.status == "complete" and (
-        not transaction or transaction["status"] != "complete"
+        not transaction or transaction.status != "complete"
     )
     if not transaction:
         transaction_id = str(uuid4())
-        transaction = {
-            "id": transaction_id,
-            "user_id": user_id,
-            "session_id": session_id,
-            "status": session.status,
-            "created_at": current_time,
-            "updated_at": current_time,
-            "amount": 50,
-            "description": "Stripe purchase",
-        }
-        _db["transactions"][transaction_id] = transaction
-        await db.set(_db)
+        transaction = Transaction(
+            id=transaction_id,
+            user_id=user.id,
+            session_id=session_id,
+            status=session.status or "error",
+            created_at=current_time,
+            updated_at=current_time,
+            amount=50,
+            description="Stripe purchase",
+        )
+        await db.create_transaction(transaction)
     elif credit_user:
-        transaction["status"] = session.status
-        transaction["updated_at"] = current_time
-        if "amount" not in transaction:
-            transaction["amount"] = 50
-        if "description" not in transaction:
-            transaction["description"] = "Stripe purchase"
-        _db["transactions"][transaction["id"]] = transaction
-        await db.set(_db)
+        await db.update_transaction_by_id(
+            transaction.id,
+            status=session.status,
+            updated_at=current_time,
+            amount=50,
+            description="Stripe purchase",
+        )
 
     # Update the user's message count if the transaction is complete
-    messages_left = _db["users"][user_id]["messages_left"]
+    messages_left = user.messages_left
     if credit_user:
         messages_left += 50
-        _db["users"][user_id]["messages_left"] = messages_left
-        await db.set(_db)
+        await db.update_user_by_id(user.id, messages_left=messages_left)
+
     # Get the user's email from stripe
     customer_email = None
     if hasattr(session, "customer_details") and session.customer_details is not None:
