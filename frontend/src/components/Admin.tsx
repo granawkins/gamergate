@@ -22,10 +22,25 @@ interface Transaction {
   description: string;
 }
 
+interface CostStats {
+  count: number;
+  total: number;
+  mean: number;
+  p90: number;
+  p75: number;
+  p25: number;
+  p10: number;
+}
+
+interface MessageCosts {
+  [model: string]: CostStats;
+}
+
 export const Admin = () => {
   const { loading, user } = useAuth();
   const [userStats, setUserStats] = useState<UserStats[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [messageCosts, setMessageCosts] = useState<MessageCosts>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
@@ -54,6 +69,7 @@ export const Admin = () => {
       const data = await response.json();
       setUserStats(data.users);
       setTransactions(data.transactions);
+      setMessageCosts(data.message_costs || {});
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -354,6 +370,148 @@ export const Admin = () => {
                   </td>
                   <td style={{ border: "1px solid #ddd", padding: "8px" }}>
                     {transaction.status}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Message Cost Statistics</h2>
+      <div className="table-responsive">
+        <table
+          className="cost-stats-table"
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            border: "1px solid #ddd",
+          }}
+        >
+          <thead>
+            <tr>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                Model
+              </th>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                Count
+              </th>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                Mean Cost ($)
+              </th>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                P90 ($)
+              </th>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                P75 ($)
+              </th>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                P25 ($)
+              </th>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                P10 ($)
+              </th>
+              <th
+                style={{
+                  border: "1px solid #ddd",
+                  padding: "8px",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                Total ($)
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.keys(messageCosts).length === 0 ? (
+              <tr>
+                <td
+                  colSpan={8}
+                  style={{
+                    border: "1px solid #ddd",
+                    padding: "8px",
+                    textAlign: "center",
+                  }}
+                >
+                  No cost data available
+                </td>
+              </tr>
+            ) : (
+              Object.entries(messageCosts).map(([model, stats]) => (
+                <tr key={model}>
+                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                    {model}
+                  </td>
+                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                    {stats.count}
+                  </td>
+                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                    {stats.mean.toFixed(6)}
+                  </td>
+                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                    {stats.p90.toFixed(6)}
+                  </td>
+                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                    {stats.p75.toFixed(6)}
+                  </td>
+                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                    {stats.p25.toFixed(6)}
+                  </td>
+                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                    {stats.p10.toFixed(6)}
+                  </td>
+                  <td style={{ border: "1px solid #ddd", padding: "8px" }}>
+                    {stats.total.toFixed(6)}
                   </td>
                 </tr>
               ))

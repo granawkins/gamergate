@@ -1,8 +1,9 @@
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, List
 from datetime import datetime
 from uuid import uuid4
+import numpy as np
 
 from db import db, User
 from routes.user import get_current_user
@@ -102,7 +103,46 @@ async def get_admin_stats(current_user: User = Depends(get_current_user)):
     # Sort transactions by updated_at (newest first)
     transaction_stats.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
 
-    return {"users": user_stats, "transactions": transaction_stats}
+    # Collect message costs by model
+    message_costs_by_model: Dict[str, List[float]] = {}
+    for game in games.values():
+        for message in game.get("messages", []):
+            cost = message.get("cost", 0)
+            model = message.get("model")
+            if cost > 0 and model:
+                if model not in message_costs_by_model:
+                    message_costs_by_model[model] = []
+                message_costs_by_model[model].append(cost)
+
+    # Calculate cost statistics for each model
+    cost_stats = {}
+    for model, costs in message_costs_by_model.items():
+        if costs:
+            costs.sort()
+            count = len(costs)
+            total = sum(costs)
+            mean = total / count
+
+            # Calculate percentiles
+            percentiles = (
+                np.percentile(costs, [10, 25, 75, 90]) if count >= 10 else [0, 0, 0, 0]
+            )
+
+            cost_stats[model] = {
+                "count": count,
+                "total": round(total, 6),
+                "mean": round(mean, 6),
+                "p90": round(percentiles[3], 6),
+                "p75": round(percentiles[2], 6),
+                "p25": round(percentiles[1], 6),
+                "p10": round(percentiles[0], 6),
+            }
+
+    return {
+        "users": user_stats,
+        "transactions": transaction_stats,
+        "message_costs": cost_stats,
+    }
 
 
 @app.post("/update-messages")
