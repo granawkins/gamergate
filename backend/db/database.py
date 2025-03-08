@@ -50,6 +50,15 @@ class Database:
         )
         await self._connection.commit()
 
+    async def get_all_users(self) -> List[User]:
+        """Fetch all users"""
+        assert self._connection is not None and self._cursor is not None
+        async with self._connection.execute(
+            "SELECT id, created_at, messages_left, username, email, avatar_id FROM users"
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [User.from_row(row) for row in rows]
+
     async def get_user_by_email(self, email: str) -> Optional[User]:
         """Fetch a user by email"""
         assert self._connection is not None and self._cursor is not None
@@ -82,6 +91,15 @@ class Database:
         )
         await self._connection.commit()
 
+    async def get_all_games(self) -> List[Game]:
+        """Fetch all games"""
+        assert self._connection is not None and self._cursor is not None
+        async with self._connection.execute(
+            "SELECT id, name, description, owner_id, parent_id, created_at, updated_at, cover_image, version FROM games"
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [Game.from_row(row) for row in rows]
+
     async def get_game_by_id(self, game_id: str) -> Optional[Game]:
         """Fetch a game by ID"""
         assert self._connection is not None and self._cursor is not None
@@ -113,6 +131,15 @@ class Database:
         ) as cursor:
             rows = await cursor.fetchall()
             return [Game.from_row(row) for row in rows]
+
+    async def get_all_messages(self) -> List[Message]:
+        """Fetch all messages"""
+        assert self._connection is not None and self._cursor is not None
+        async with self._connection.execute(
+            "SELECT id, game_id, text, role, timestamp, cost, status, commit_sha, model FROM messages"
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [Message.from_row(row) for row in rows]
 
     async def get_messages_by_game_id(self, game_id: str) -> List[Message]:
         """Fetch all messages for a game"""
@@ -157,3 +184,33 @@ class Database:
             tuple(kwargs.values()) + (id,),
         )
         await self._connection.commit()
+
+    async def create_transaction(self, transaction: Transaction) -> None:
+        """Create a new transaction"""
+        assert self._connection is not None and self._cursor is not None
+        await self._connection.execute(
+            """
+            INSERT INTO transactions (id, user_id, amount, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                transaction.id,
+                transaction.user_id,
+                transaction.session_id,
+                transaction.amount,
+                transaction.created_at,
+                transaction.updated_at,
+                transaction.status,
+                transaction.description,
+            ),
+        )
+        await self._connection.commit()
+
+    async def get_all_transactions(self) -> List[Transaction]:
+        """Fetch all transactions"""
+        assert self._connection is not None and self._cursor is not None
+        async with self._connection.execute(
+            "SELECT id, user_id, amount, created_at, updated_at FROM transactions"
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [Transaction.from_row(row) for row in rows]
