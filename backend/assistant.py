@@ -305,16 +305,6 @@ async def generate_completion(game_id: str):
     # Check if model parameter exists, otherwise use default
     model = last_message.get("model", DEFAULT_MODEL)
 
-    # Check if user has enough credits
-    user_id = _db["games"][game_id]["owner_id"]
-    if user_id in _db["users"]:
-        if _db["users"][user_id]["messages_left"] <= 0:
-            last_message["text"] = "Error: Out of credits! Buy more on the user page."
-            last_message["status"] = "error"
-            _db["games"][game_id]["messages"][-1] = last_message
-            await db.set(_db)
-            return
-
     # Format messages for the LLM
     messages_for_llm = [
         {"role": message["role"], "content": message["text"]}
@@ -351,13 +341,8 @@ async def generate_completion(game_id: str):
                 extract_message(full_response)
                 edits = extract_edits(full_response)
             except BadResponseError:
-                last_message["text"] = (
-                    "Error parsing response; try again with a simpler command."
-                )
-                last_message["status"] = "error"
-                _db["games"][game_id]["messages"][-1] = last_message
-                await db.set(_db)
-                return
+                # Let it continue to retry, will be caught in the Exception handler if out of retries
+                raise
 
             # Apply edits
             if len(edits) > 0:
@@ -395,13 +380,8 @@ async def generate_completion(game_id: str):
                     # Update the updated_at field
                     _db["games"][game_id]["updated_at"] = datetime.now().isoformat()
                 except BadResponseError:
-                    last_message["text"] = (
-                        "Error parsing response; try again with a simpler command."
-                    )
-                    last_message["status"] = "error"
-                    _db["games"][game_id]["messages"][-1] = last_message
-                    await db.set(_db)
-                    return
+                    # Let it continue to retry, will be caught in the Exception handler if out of retries
+                    raise
 
             # Success!
             last_message["status"] = "completed"
@@ -424,9 +404,23 @@ async def generate_completion(game_id: str):
                 print("Retrying...")
                 last_message["text"] = ""  # Try again
             else:
-                last_message["text"] = (
-                    "Error parsing response; try again with a simpler command."
-                )
+                # Set the appropriate error message based on the exception type
+                if isinstance(e, BadResponseError):
+                    last_message["text"] = (
+                        "Error parsing response; try again with a simpler command."
+                    )
+                elif isinstance(e, (AnthropicError, OpenAIError)):
+                    last_message["text"] = (
+                        "API Error. Use another model or try again later."
+                    )
+                elif "messages_left" in str(e).lower():
+                    last_message["text"] = (
+                        "Error: Out of credits! Buy more on the user page."
+                    )
+                else:
+                    last_message["text"] = (
+                        "Error parsing response; try again with a simpler command."
+                    )
                 last_message["status"] = "error"
 
     _db["games"][game_id]["messages"][-1] = last_message
