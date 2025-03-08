@@ -46,7 +46,19 @@ npm install
 echo "Fixing linting errors in frontend..."
 npm run lint --fix
 
-# Return to root directory
+# Configure git credentials
 cd ..
+echo "Checking git credentials..."
+# Only set email if it's not already configured
+if [ -z "$(git config --global user.email)" ]; then
+    echo "Setting git user.email..."
+    git config --global user.email "granthawkins88@gmail.com"
+fi
+
+# Only set name if it's not already configured
+if [ -z "$(git config --global user.name)" ]; then
+    echo "Setting git user.name..."
+    git config --global user.name "Gamergate"
+fi
 
 echo "Setup completed successfully!"
