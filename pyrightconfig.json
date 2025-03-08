@@ -1,0 +1,16 @@
+{
+  "include": ["backend"],
+  "exclude": ["**/__pycache__", "**/.venv"],
+  "reportMissingImports": true,
+  "reportOptionalMemberAccess": true,
+  "reportOptionalCall": true,
+  "reportOptionalIterable": true,
+  "reportOptionalSubscript": true,
+  "reportOptionalContextManager": true,
+  "reportOptionalOperand": true,
+  "reportUnnecessaryIsInstance": false,
+  "reportTypedDictNotRequiredAccess": false,
+  "reportPrivateImportUsage": false,
+  "pythonVersion": "3.9",
+  "typeCheckingMode": "basic"
+}
