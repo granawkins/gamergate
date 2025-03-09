@@ -12,3 +12,4 @@ export * from "./Admin";
 export * from "./Stripe";
 export * from "./Modal";
 export * from "./GameInfoModal";
+export * from "./LoadingMask";
