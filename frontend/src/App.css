@@ -1,0 +1,88 @@
+/* Global styles */
+:root {
+  --primary-color: #fec20f;
+  --text-color: white;
+  --bg-color: black;
+  --button-text-color: black;
+}
+
+/* Background and text colors */
+body,
+#root,
+div,
+main,
+section,
+article,
+aside,
+header,
+footer,
+nav {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+/* Input fields */
+input,
+textarea,
+select {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--text-color);
+}
+
+/* Regular buttons - white squares with black text */
+button,
+.button {
+  background-color: white;
+  color: var(--button-text-color);
+  border: none;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+/* Primary buttons - yellow with black text */
+button.primary,
+.button.primary {
+  background-color: var(--primary-color);
+  color: var(--button-text-color);
+}
+
+/* Modal styling */
+.modal,
+[role="dialog"],
+div[class*="modal"] {
+  width: min(400px, 90%);
+  margin: auto;
+  background-color: var(--bg-color);
+  border: 1px solid var(--text-color);
+  padding: 20px;
+}
+
+/* Links */
+a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Tables */
+table,
+th,
+td {
+  border: 1px solid var(--text-color);
+  border-collapse: collapse;
+  padding: 8px;
+}
+
+/* Code blocks and pre-formatted text */
+code,
+pre {
+  background-color: #222;
+  color: var(--text-color);
+  padding: 2px 4px;
+  border-radius: 4px;
+}

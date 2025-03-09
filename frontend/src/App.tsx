@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import "./App.css";
 
 import {
   Admin,
@@ -17,6 +18,7 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <div
+          className="app-container"
           style={{
             height: "100vh",
             display: "flex",

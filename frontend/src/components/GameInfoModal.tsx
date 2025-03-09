@@ -83,7 +83,7 @@ export const GameInfoModal: React.FC<GameInfoModalProps> = ({
             <a
               href={`/play/${game.parent_name}`}
               style={{
-                color: "#0084ff",
+                color: "var(--primary-color)",
                 textDecoration: "none",
               }}
             >
@@ -103,7 +103,12 @@ export const GameInfoModal: React.FC<GameInfoModalProps> = ({
         <p>{formatDate(game.updated_at)}</p>
       </div>
 
-      <div style={{ borderTop: "1px solid #eee", paddingTop: "1.5rem" }}>
+      <div
+        style={{
+          borderTop: "1px solid var(--text-color)",
+          paddingTop: "1.5rem",
+        }}
+      >
         <h3 style={{ marginBottom: "1rem" }}>Remix This Game</h3>
         <div style={{ marginBottom: "1rem" }}>
           <label
@@ -120,8 +125,10 @@ export const GameInfoModal: React.FC<GameInfoModalProps> = ({
             style={{
               width: "100%",
               padding: "8px",
-              border: "1px solid #ccc",
+              border: "1px solid var(--text-color)",
               borderRadius: "4px",
+              backgroundColor: "var(--bg-color)",
+              color: "var(--text-color)",
             }}
           />
         </div>
@@ -133,10 +140,9 @@ export const GameInfoModal: React.FC<GameInfoModalProps> = ({
         <button
           onClick={handleClone}
           disabled={isSubmitting}
+          className="primary"
           style={{
             padding: "8px 16px",
-            backgroundColor: "#0084ff",
-            color: "white",
             border: "none",
             borderRadius: "4px",
             cursor: isSubmitting ? "not-allowed" : "pointer",
