@@ -142,11 +142,7 @@ export const GameInfoModal: React.FC<GameInfoModalProps> = ({
           disabled={isSubmitting}
           className="primary"
           style={{
-            padding: "8px 16px",
-            border: "none",
-            borderRadius: "4px",
             cursor: isSubmitting ? "not-allowed" : "pointer",
-            width: "100%",
           }}
         >
           {isSubmitting ? "Creating..." : "Remix Game"}

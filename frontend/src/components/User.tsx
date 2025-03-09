@@ -94,17 +94,10 @@ export const User = () => {
             </div>
             {error && <p className="text-red-500 mb-2">{error}</p>}
             <div className="flex gap-2">
-              <button
-                type="submit"
-                className="bg-blue-500 text-white py-1 px-3 rounded hover:bg-blue-600"
-              >
+              <button type="submit" className="primary">
                 Save
               </button>
-              <button
-                type="button"
-                onClick={() => setEditingUsername(false)}
-                className="bg-gray-300 py-1 px-3 rounded hover:bg-gray-400"
-              >
+              <button type="button" onClick={() => setEditingUsername(false)}>
                 Cancel
               </button>
             </div>
@@ -115,12 +108,7 @@ export const User = () => {
               <div>
                 <span className="font-medium">Username:</span> {user.username}
               </div>
-              <button
-                onClick={startEditingUsername}
-                className="text-blue-500 hover:underline"
-              >
-                Edit
-              </button>
+              <button onClick={startEditingUsername}>Edit</button>
             </div>
             {successMessage && (
               <p className="text-green-500 mt-2">{successMessage}</p>
@@ -141,13 +129,11 @@ export const User = () => {
       <div className="flex gap-3">
         <button
           onClick={() => (window.location.href = "/checkout")}
-          className="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600"
         >
           Buy Messages
         </button>
         <button
           onClick={logout}
-          className="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600"
         >
           Logout
         </button>

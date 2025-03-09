@@ -55,7 +55,6 @@ const Message = ({
             justifyContent: "center",
             padding: "4px",
             borderRadius: "50%",
-            color: "#666",
           }}
           title="Undo this change"
         >
@@ -250,7 +249,6 @@ export const ConversationTab = ({
                 fontSize: "12px",
                 border: "1px solid #ccc",
                 borderRadius: "4px",
-                background: "white",
               }}
               disabled={textDisabled}
             >

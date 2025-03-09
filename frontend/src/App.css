@@ -1,8 +1,8 @@
 /* Global styles */
 :root {
   --primary-color: #fec20f;
-  --text-color: white;
-  --bg-color: black;
+  --text-color: #ccc;
+  --bg-color: rgb(25, 25, 25);
   --button-text-color: black;
 }
 
@@ -33,7 +33,7 @@ select {
 /* Regular buttons - white squares with black text */
 button,
 .button {
-  background-color: white;
+  background-color: #ccc;
   color: var(--button-text-color);
   border: none;
   padding: 8px 16px;

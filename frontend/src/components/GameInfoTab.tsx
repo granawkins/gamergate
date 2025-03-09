@@ -172,12 +172,8 @@ const EditableField = ({
           <button
             onClick={handleSave}
             disabled={isUpdating}
+            className="primary"
             style={{
-              padding: "4px 8px",
-              backgroundColor: "#0084ff",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
               cursor: isUpdating ? "default" : "pointer",
               opacity: isUpdating ? 0.7 : 1,
             }}
@@ -188,10 +184,6 @@ const EditableField = ({
             onClick={handleCancel}
             disabled={isUpdating}
             style={{
-              padding: "4px 8px",
-              backgroundColor: "#f0f0f0",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
               cursor: isUpdating ? "default" : "pointer",
               opacity: isUpdating ? 0.7 : 1,
             }}
@@ -216,18 +208,7 @@ const EditableField = ({
       <span style={{ marginRight: "8px" }}>
         {initialValue || <em style={{ color: "#888" }}>No {fieldName} set</em>}
       </span>
-      <button
-        onClick={() => setIsEditing(true)}
-        style={{
-          padding: "4px 8px",
-          backgroundColor: "#f0f0f0",
-          border: "1px solid #ccc",
-          borderRadius: "4px",
-          cursor: "pointer",
-        }}
-      >
-        Edit
-      </button>
+      <button onClick={() => setIsEditing(true)}>Edit</button>
     </div>
   );
 };
@@ -392,18 +373,7 @@ export const GameInfoTab = ({
               ref={fileInputRef}
               onChange={handleCoverImageUpload}
             />
-            <button
-              onClick={triggerFileInput}
-              style={{
-                padding: "6px 12px",
-                backgroundColor: "#f0f0f0",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-            >
-              Upload Cover Image
-            </button>
+            <button onClick={triggerFileInput}>Upload Cover Image</button>
           </div>
         </div>
       ),
@@ -441,18 +411,7 @@ export const GameInfoTab = ({
       content: (
         <button
           onClick={handleDownload}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: "#0084ff",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            fontWeight: "500",
-          }}
+          className="primary"
           disabled={!gameInfo?.name}
           title="Download game files as a ZIP archive"
         >
