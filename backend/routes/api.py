@@ -98,7 +98,11 @@ async def update_game_info(request: Request):
 @app.get("/games/{game_name}/info")
 async def get_game_info(game_name: str):
     """Get game information including the owner username."""
-    game_data = await db.get_game_data_by_id(game_name)
+    game = await db.get_game_by_name(game_name)
+    if game is None:
+        raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
+    game_data = await db.get_game_data_by_id(game.id)
+    print(game_data)
     if game_data is None:
         raise HTTPException(status_code=404, detail=f"Game '{game_name}' not found")
     return game_data
