@@ -33,7 +33,14 @@ export const User = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.detail || "Failed to update username");
+        // Provide a more user-friendly message for the taken username case
+        if (data.detail === "Username is already taken") {
+          setError(
+            "This username is already taken. Please choose another one.",
+          );
+        } else {
+          setError(data.detail || "Failed to update username");
+        }
         return;
       }
 
@@ -129,12 +136,6 @@ export const User = () => {
           <span className="font-medium">Messages Left:</span>{" "}
           {user.messages_left}
         </div>
-
-        {user.admin && (
-          <div className="mb-2">
-            <span className="font-medium">Admin:</span> Yes
-          </div>
-        )}
       </div>
 
       <div className="flex gap-3">
