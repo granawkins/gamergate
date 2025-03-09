@@ -6,11 +6,13 @@ from datetime import datetime, timedelta, UTC
 from dataclasses import dataclass
 from dotenv import load_dotenv
 from urllib.parse import urlencode
+from typing import Optional
 
 import jwt
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, status, Depends
 from fastapi.responses import RedirectResponse, Response
 from fastapi.security import APIKeyCookie
+from pydantic import BaseModel
 
 from db import db, User, ADMIN_EMAIL
 from routes.utils import BASE_URL, FRONTEND_URL
@@ -155,6 +157,33 @@ async def user_me(request: Request):
         "user": AuthenticatedUser(admin=is_admin, **vars(user)).to_dict(),
         "games": games,
     }
+
+
+class UpdateInfoRequest(BaseModel):
+    field: str
+    username: Optional[str] = None
+
+
+@app.post("/update-info")
+async def update_user_info(
+    request: UpdateInfoRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    """Update user information (currently only username)."""
+    if request.field != "username" or not request.username:
+        raise HTTPException(
+            status_code=400, detail="Currently only username updates are supported"
+        )
+
+    # Check if the username is already taken
+    users = await db.get_all_users()
+    for user in users:
+        if user.username == request.username and user.id != current_user.id:
+            raise HTTPException(status_code=400, detail="Username is already taken")
+
+    # Update the username
+    await db.update_user_by_id(current_user.id, username=request.username)
+    return {"successful": True}
 
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
