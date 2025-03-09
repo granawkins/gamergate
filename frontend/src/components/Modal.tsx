@@ -32,9 +32,9 @@ export const Modal: React.FC<ModalProps> = ({
       }}
     >
       <div
+        className="modal"
         onClick={(e) => e.stopPropagation()}
         style={{
-          backgroundColor: "white",
           padding: "2rem",
           borderRadius: "8px",
           maxWidth: "90%",
@@ -44,7 +44,11 @@ export const Modal: React.FC<ModalProps> = ({
         }}
       >
         {title && (
-          <h2 style={{ marginBottom: "1.5rem", color: "#0084ff" }}>{title}</h2>
+          <h2
+            style={{ marginTop: 0, marginBottom: "1.5rem", color: "#0084ff" }}
+          >
+            {title}
+          </h2>
         )}
 
         {children}
@@ -59,6 +63,7 @@ export const Modal: React.FC<ModalProps> = ({
             border: "none",
             fontSize: "1.5rem",
             cursor: "pointer",
+            color: "#ccc",
           }}
         >
           ×

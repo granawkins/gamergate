@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Info } from "./Info";
 import useAuth from "../auth/useAuth";
 import { Game } from "../types";
+import { Modal } from "./Modal";
 
 // Modal component for cloning a game
 const CloneGameModal = ({
@@ -38,108 +39,63 @@ const CloneGameModal = ({
     }
   };
 
-  if (!game) return null;
-
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        zIndex: 1000,
-      }}
-    >
-      <div
-        style={{
-          backgroundColor: "white",
-          padding: "20px",
-          borderRadius: "5px",
-          width: "400px",
-          maxWidth: "90%",
-        }}
-      >
-        <h2>Clone Game</h2>
-        <p>Create a new game based on "{game.name}"</p>
+    <Modal isOpen={!!game} onClose={onClose} title="Clone Game">
+      {game && (
+        <>
+          <p>Create a new game based on "{game.name}"</p>
 
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: "15px" }}>
-            <label
-              htmlFor="newGameName"
-              style={{ display: "block", marginBottom: "5px" }}
-            >
-              New Game Name:
-            </label>
-            <input
-              id="newGameName"
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "8px",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-              }}
-              autoFocus
-            />
-          </div>
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: "15px" }}>
+              <label
+                htmlFor="newGameName"
+                style={{ display: "block", marginBottom: "5px" }}
+              >
+                New Game Name:
+              </label>
+              <input
+                id="newGameName"
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                style={{
+                  width: "100%",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                }}
+                autoFocus
+              />
+            </div>
 
-          {error && (
+            {error && (
+              <div
+                style={{
+                  color: "red",
+                  marginBottom: "15px",
+                }}
+              >
+                {error}
+              </div>
+            )}
+
             <div
               style={{
-                color: "red",
-                marginBottom: "15px",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "10px",
               }}
             >
-              {error}
+              <button type="button" onClick={onClose} disabled={isSubmitting}>
+                Cancel
+              </button>
+              <button type="submit" disabled={isSubmitting} className="primary">
+                {isSubmitting ? "Creating..." : "Create"}
+              </button>
             </div>
-          )}
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "10px",
-            }}
-          >
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              style={{
-                padding: "8px 16px",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                backgroundColor: "#f5f5f5",
-                cursor: isSubmitting ? "not-allowed" : "pointer",
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              style={{
-                padding: "8px 16px",
-                border: "1px solid #0066cc",
-                borderRadius: "4px",
-                backgroundColor: "#0084ff",
-                color: "white",
-                cursor: isSubmitting ? "not-allowed" : "pointer",
-              }}
-            >
-              {isSubmitting ? "Creating..." : "Create"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+          </form>
+        </>
+      )}
+    </Modal>
   );
 };
 
@@ -192,7 +148,6 @@ const GameCard = ({
         position: "relative",
         height: "180px",
         width: "180px",
-        border: "1px solid black",
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
@@ -201,6 +156,7 @@ const GameCard = ({
         overflow: "hidden",
         textDecoration: "none",
         color: "inherit",
+        border: "1px solid #ccc",
       }}
     >
       {game.cover_image ? (
@@ -227,7 +183,6 @@ const GameCard = ({
           style={{
             width: "100%",
             height: "120px",
-            backgroundColor: "#f0f0f0",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
@@ -241,7 +196,7 @@ const GameCard = ({
           padding: "8px",
           textAlign: "center",
           width: "100%",
-          backgroundColor: "rgba(255, 255, 255, 0.9)",
+          backgroundColor: "rgba(0, 0, 0, 0.9)",
         }}
       >
         <h3
@@ -263,9 +218,7 @@ const GameCard = ({
             position: "absolute",
             top: "8px",
             right: "8px",
-            background: "rgba(255, 255, 255, 0.8)",
-            border: "none",
-            borderRadius: "50%",
+            background: "transparent",
             cursor: "pointer",
             fontSize: "1.2rem",
             padding: "4px",
@@ -287,9 +240,7 @@ const GameCard = ({
             position: "absolute",
             bottom: "8px",
             right: "8px",
-            background: "rgba(255, 255, 255, 0.8)",
-            border: "none",
-            borderRadius: "50%",
+            background: "transparent",
             cursor: "pointer",
             fontSize: "1.2rem",
             padding: "4px",
@@ -471,55 +422,28 @@ export const Home = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
-                padding: "0.5rem",
                 borderRadius: "4px",
                 border: "1px solid #ccc",
                 width: "200px",
               }}
             />
             <div style={{ display: "flex", gap: "0.5rem" }}>
-              <button
-                onClick={() => setSortOption("newest")}
-                style={{
-                  padding: "0.5rem",
-                  borderRadius: "4px",
-                  border: "1px solid #ccc",
-                  backgroundColor:
-                    sortOption === "newest" ? "#0084ff" : "#f5f5f5",
-                  color: sortOption === "newest" ? "white" : "black",
-                  cursor: "pointer",
-                }}
-              >
-                Newest
-              </button>
-              <button
-                onClick={() => setSortOption("oldest")}
-                style={{
-                  padding: "0.5rem",
-                  borderRadius: "4px",
-                  border: "1px solid #ccc",
-                  backgroundColor:
-                    sortOption === "oldest" ? "#0084ff" : "#f5f5f5",
-                  color: sortOption === "oldest" ? "white" : "black",
-                  cursor: "pointer",
-                }}
-              >
-                Oldest
-              </button>
-              <button
-                onClick={() => setSortOption("most_played")}
-                style={{
-                  padding: "0.5rem",
-                  borderRadius: "4px",
-                  border: "1px solid #ccc",
-                  backgroundColor:
-                    sortOption === "most_played" ? "#0084ff" : "#f5f5f5",
-                  color: sortOption === "most_played" ? "white" : "black",
-                  cursor: "pointer",
-                }}
-              >
-                Most Played
-              </button>
+              {[
+                { label: "Newest", value: "newest" },
+                { label: "Oldest", value: "oldest" },
+                { label: "Most Played", value: "most_played" },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setSortOption(option.value)}
+                  style={{
+                    textDecoration:
+                      sortOption === option.value ? "underline" : "none",
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -558,7 +482,6 @@ export const Home = () => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          backgroundColor: "white",
           boxSizing: "border-box",
           height: "40px",
         }}

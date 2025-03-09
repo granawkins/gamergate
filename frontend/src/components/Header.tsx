@@ -61,6 +61,7 @@ export const Header = () => {
           flexWrap: "wrap",
           alignItems: "center",
           gap: "0.5rem",
+          backgroundColor: "black",
         }}
       >
         <a
@@ -85,7 +86,7 @@ export const Header = () => {
 
         {isPlayScreen && (
           <>
-            <span style={{ fontSize: "1.5rem", opacity: 0.6 }}>/</span>
+            <span style={{ fontSize: "1.5rem" }}>/</span>
             <div
               style={{
                 display: "flex",
@@ -111,6 +112,7 @@ export const Header = () => {
                   display: "flex",
                   alignItems: "center",
                   padding: 0,
+                  color: "#ccc",
                 }}
                 title="Game Information"
               >

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Game } from "../types";
 
 import { backendUrl } from "../utils";
+import { LoadingMask } from "./LoadingMask";
 
 // EditableField component for handling field editing functionality
 const EditableField = ({
@@ -122,6 +123,7 @@ const EditableField = ({
         style={{
           display: "flex",
           alignItems: fieldType === "textarea" ? "flex-start" : "center",
+          justifyContent: "flex-end",
           flex: 1,
           flexWrap: "wrap", // Allow wrapping on mobile
           gap: "8px", // Add spacing between wrapped items
@@ -133,15 +135,8 @@ const EditableField = ({
             onChange={(e) => setValue(e.target.value)}
             placeholder={placeholder}
             style={{
-              padding: "4px 8px",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              flexGrow: 1,
               minWidth: "120px",
               minHeight: "80px",
-              marginRight: "8px",
-              fontFamily: "inherit",
-              fontSize: "inherit",
             }}
             autoFocus
           />
@@ -151,14 +146,6 @@ const EditableField = ({
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder={placeholder}
-            style={{
-              padding: "4px 8px",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              flexGrow: 1,
-              minWidth: "120px",
-              marginRight: "8px",
-            }}
             autoFocus
           />
         )}
@@ -172,12 +159,8 @@ const EditableField = ({
           <button
             onClick={handleSave}
             disabled={isUpdating}
+            className="primary"
             style={{
-              padding: "4px 8px",
-              backgroundColor: "#0084ff",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
               cursor: isUpdating ? "default" : "pointer",
               opacity: isUpdating ? 0.7 : 1,
             }}
@@ -188,10 +171,6 @@ const EditableField = ({
             onClick={handleCancel}
             disabled={isUpdating}
             style={{
-              padding: "4px 8px",
-              backgroundColor: "#f0f0f0",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
               cursor: isUpdating ? "default" : "pointer",
               opacity: isUpdating ? 0.7 : 1,
             }}
@@ -204,30 +183,9 @@ const EditableField = ({
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        flex: 1,
-        flexWrap: "wrap", // Allow wrapping on mobile
-        gap: "8px", // Add spacing between wrapped items
-      }}
-    >
-      <span style={{ marginRight: "8px" }}>
-        {initialValue || <em style={{ color: "#888" }}>No {fieldName} set</em>}
-      </span>
-      <button
-        onClick={() => setIsEditing(true)}
-        style={{
-          padding: "4px 8px",
-          backgroundColor: "#f0f0f0",
-          border: "1px solid #ccc",
-          borderRadius: "4px",
-          cursor: "pointer",
-        }}
-      >
-        Edit
-      </button>
+    <div className="info-style">
+      <span>{initialValue || "No " + fieldName + " set"}</span>
+      <button onClick={() => setIsEditing(true)}>Edit</button>
     </div>
   );
 };
@@ -392,18 +350,7 @@ export const GameInfoTab = ({
               ref={fileInputRef}
               onChange={handleCoverImageUpload}
             />
-            <button
-              onClick={triggerFileInput}
-              style={{
-                padding: "6px 12px",
-                backgroundColor: "#f0f0f0",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-            >
-              Upload Cover Image
-            </button>
+            <button onClick={triggerFileInput}>Upload Cover Image</button>
           </div>
         </div>
       ),
@@ -441,18 +388,7 @@ export const GameInfoTab = ({
       content: (
         <button
           onClick={handleDownload}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: "#0084ff",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            fontWeight: "500",
-          }}
+          className="primary"
           disabled={!gameInfo?.name}
           title="Download game files as a ZIP archive"
         >
@@ -475,39 +411,20 @@ export const GameInfoTab = ({
   ];
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "1rem" }}>
+    <div style={{ position: "relative", padding: "1rem", overflowY: "auto" }}>
       {isLoading ? (
-        <div style={{ textAlign: "center", color: "#888", marginTop: "2rem" }}>
-          Loading game information...
-        </div>
+        <LoadingMask />
       ) : gameInfo ? (
-        <div>
+        <div className="info-section">
           <h2>Game Information</h2>
-          <div style={{ marginTop: "1rem" }}>
-            {gameFields.map(({ label, content }) => (
-              <div
-                key={label}
-                style={{
-                  display: "flex",
-                  padding: "0.5rem 0",
-                  borderBottom: "1px solid #eee",
-                  flexDirection: label === "Description" ? "column" : "row",
-                }}
-              >
-                <div
-                  style={{
-                    fontWeight: "bold",
-                    width: label === "Description" ? "auto" : "120px",
-                    flexShrink: 0,
-                    marginBottom: label === "Description" ? "8px" : "0",
-                  }}
-                >
-                  {label}:
-                </div>
-                <div style={{ flex: 1 }}>{content}</div>
-              </div>
-            ))}
-          </div>
+          {gameFields.map(({ label, content }) => (
+            <div key={label} className="info-style">
+              <span>{label}:</span>
+              <span>{content}</span>
+            </div>
+          ))}
+
+          <div style={{ marginTop: "1rem" }}></div>
         </div>
       ) : (
         <div style={{ textAlign: "center", color: "#888", marginTop: "2rem" }}>

@@ -61,90 +61,74 @@ export const GameInfoModal: React.FC<GameInfoModalProps> = ({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={game.name}>
-      <div style={{ marginBottom: "1.5rem" }}>
-        <h3 style={{ marginBottom: "0.5rem" }}>Description</h3>
-        <p>{game.description || "No description available."}</p>
-      </div>
+      <p>{game.description || "No description available."}</p>
+      <hr />
+      <div className="info-section">
+        <div className="info-style">
+          <span>Seconds Played</span>
+          <span>{game.seconds_played || "None"}</span>
+        </div>
 
-      <div style={{ marginBottom: "1.5rem" }}>
-        <h3 style={{ marginBottom: "0.5rem" }}>Seconds Played</h3>
-        <p>{game.seconds_played || "None"}</p>
-      </div>
+        <div className="info-style">
+          <span>Created By</span>
+          <span>{game.owner_username || "Anonymous"}</span>
+        </div>
 
-      <div style={{ marginBottom: "1.5rem" }}>
-        <h3 style={{ marginBottom: "0.5rem" }}>Created By</h3>
-        <p>{game.owner_username || "Anonymous"}</p>
-      </div>
-
-      {game.parent_name && (
-        <div style={{ marginBottom: "1.5rem" }}>
-          <h3 style={{ marginBottom: "0.5rem" }}>Based On</h3>
-          <p>
+        {game.parent_name && (
+          <div className="info-style">
+            <span>Based On</span>
             <a
               href={`/play/${game.parent_name}`}
               style={{
-                color: "#0084ff",
+                color: "var(--primary-color)",
                 textDecoration: "none",
               }}
             >
               {game.parent_name}
             </a>
-          </p>
-        </div>
-      )}
+          </div>
+        )}
 
-      <div style={{ marginBottom: "1.5rem" }}>
-        <h3 style={{ marginBottom: "0.5rem" }}>Created</h3>
-        <p>{formatDate(game.created_at)}</p>
+        <div className="info-style">
+          <span>Created</span>
+          <span>{formatDate(game.created_at)}</span>
+        </div>
+
+        <div className="info-style">
+          <span>Last Updated</span>
+          <span>{formatDate(game.updated_at)}</span>
+        </div>
       </div>
 
-      <div style={{ marginBottom: "1.5rem" }}>
-        <h3 style={{ marginBottom: "0.5rem" }}>Last Updated</h3>
-        <p>{formatDate(game.updated_at)}</p>
-      </div>
+      <hr />
 
-      <div style={{ borderTop: "1px solid #eee", paddingTop: "1.5rem" }}>
-        <h3 style={{ marginBottom: "1rem" }}>Remix This Game</h3>
-        <div style={{ marginBottom: "1rem" }}>
-          <label
-            htmlFor="newGameName"
-            style={{ display: "block", marginBottom: "0.5rem" }}
-          >
-            New Game Name:
-          </label>
-          <input
-            id="newGameName"
-            type="text"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "8px",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-            }}
-          />
-        </div>
+      <p style={{ marginBottom: "1rem" }}>Clone This Game</p>
+      <div className="info-style">
+        <input
+          id="newGameName"
+          type="text"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder="New Game Name"
+          style={{
+            width: "100%",
+          }}
+        />
+        <button
+          onClick={handleClone}
+          disabled={isSubmitting}
+          className="primary"
+          style={{
+            cursor: isSubmitting ? "not-allowed" : "pointer",
+            width: "180px",
+          }}
+        >
+          {isSubmitting ? "Creating..." : "Clone Game"}
+        </button>
 
         {error && (
           <div style={{ color: "red", marginBottom: "1rem" }}>{error}</div>
         )}
-
-        <button
-          onClick={handleClone}
-          disabled={isSubmitting}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: "#0084ff",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: isSubmitting ? "not-allowed" : "pointer",
-            width: "100%",
-          }}
-        >
-          {isSubmitting ? "Creating..." : "Remix Game"}
-        </button>
       </div>
     </Modal>
   );
