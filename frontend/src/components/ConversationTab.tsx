@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Message as MessageType } from "../types";
+import { LoadingMask } from "./LoadingMask";
 
 // Message component for rendering individual messages
 const Message = ({
@@ -183,7 +184,13 @@ export const ConversationTab = ({
           borderTop: "1px solid #ccc",
         }}
       >
-        <div style={{ display: "flex" }}>
+        <div
+          style={{
+            display: "flex",
+            position: "relative", // Added position relative for absolute positioning of LoadingMask
+          }}
+        >
+          {isPolling && <LoadingMask />} {/* Show loading mask while polling */}
           <textarea
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
