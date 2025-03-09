@@ -160,7 +160,7 @@ async def update_user_messages(
     target_user = await db.get_user_by_id(request.user_id)
     if target_user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    target_messages = min(0, target_user.messages_left + request.messages_to_add)
+    target_messages = max(0, target_user.messages_left + request.messages_to_add)
     await db.update_user_by_id(request.user_id, messages_left=target_messages)
 
     current_time = datetime.now().isoformat()
