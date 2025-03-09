@@ -74,69 +74,58 @@ export const User = () => {
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">User Profile</h1>
+    <div style={{ margin: "1rem" }}>
+      <h1>User Profile</h1>
 
-      <div className="bg-gray-100 p-4 rounded mb-4">
-        {editingUsername ? (
-          <form onSubmit={handleUpdateUsername} className="mb-4">
-            <div className="mb-2">
-              <label className="block text-sm font-medium mb-1">
-                Username:
-              </label>
+      <div className="info-section">
+        <div className="info-style">
+          Username
+          {editingUsername ? (
+            <span className="info-style">
               <input
                 type="text"
                 value={newUsername}
                 onChange={(e) => setNewUsername(e.target.value)}
-                className="w-full p-2 border rounded"
                 required
               />
-            </div>
-            {error && <p className="text-red-500 mb-2">{error}</p>}
-            <div className="flex gap-2">
-              <button type="submit" className="primary">
+              <button
+                type="submit"
+                className="primary"
+                onClick={handleUpdateUsername}
+              >
                 Save
               </button>
               <button type="button" onClick={() => setEditingUsername(false)}>
                 Cancel
               </button>
-            </div>
-          </form>
-        ) : (
-          <div className="mb-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <span className="font-medium">Username:</span> {user.username}
-              </div>
+            </span>
+          ) : (
+            <span className="info-style">
+              {user.username}
               <button onClick={startEditingUsername}>Edit</button>
-            </div>
-            {successMessage && (
-              <p className="text-green-500 mt-2">{successMessage}</p>
-            )}
-          </div>
-        )}
+            </span>
+          )}
+        </div>
+        {error && <p style={{ color: "red" }}>{error}</p>}
+        {successMessage && <p style={{ color: "green" }}>{successMessage}</p>}
 
-        <div className="mb-2">
-          <span className="font-medium">Email:</span> {user.email}
+        <div className="info-style">
+          <span>Email:</span> {user.email}
         </div>
 
-        <div className="mb-2">
-          <span className="font-medium">Messages Left:</span>{" "}
-          {user.messages_left}
+        <div className="info-style">
+          <span>Messages Left:</span>{" "}
+          <span className="info-style">
+            {user.messages_left}
+            <button onClick={() => (window.location.href = "/checkout")}>
+              Buy Messages
+            </button>
+          </span>
         </div>
-      </div>
 
-      <div className="flex gap-3">
-        <button
-          onClick={() => (window.location.href = "/checkout")}
-        >
-          Buy Messages
-        </button>
-        <button
-          onClick={logout}
-        >
-          Logout
-        </button>
+        <div className="info-style">
+          <button onClick={logout}>Logout</button>
+        </div>
       </div>
     </div>
   );

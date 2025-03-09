@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Game } from "../types";
 
 import { backendUrl } from "../utils";
+import { LoadingMask } from "./LoadingMask";
 
 // EditableField component for handling field editing functionality
 const EditableField = ({
@@ -122,6 +123,7 @@ const EditableField = ({
         style={{
           display: "flex",
           alignItems: fieldType === "textarea" ? "flex-start" : "center",
+          justifyContent: "flex-end",
           flex: 1,
           flexWrap: "wrap", // Allow wrapping on mobile
           gap: "8px", // Add spacing between wrapped items
@@ -133,15 +135,8 @@ const EditableField = ({
             onChange={(e) => setValue(e.target.value)}
             placeholder={placeholder}
             style={{
-              padding: "4px 8px",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              flexGrow: 1,
               minWidth: "120px",
               minHeight: "80px",
-              marginRight: "8px",
-              fontFamily: "inherit",
-              fontSize: "inherit",
             }}
             autoFocus
           />
@@ -151,14 +146,6 @@ const EditableField = ({
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder={placeholder}
-            style={{
-              padding: "4px 8px",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              flexGrow: 1,
-              minWidth: "120px",
-              marginRight: "8px",
-            }}
             autoFocus
           />
         )}
@@ -196,18 +183,8 @@ const EditableField = ({
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        flex: 1,
-        flexWrap: "wrap", // Allow wrapping on mobile
-        gap: "8px", // Add spacing between wrapped items
-      }}
-    >
-      <span style={{ marginRight: "8px" }}>
-        {initialValue || <em style={{ color: "#888" }}>No {fieldName} set</em>}
-      </span>
+    <div className="info-style">
+      <span>{initialValue || "No " + fieldName + " set"}</span>
       <button onClick={() => setIsEditing(true)}>Edit</button>
     </div>
   );
@@ -434,39 +411,20 @@ export const GameInfoTab = ({
   ];
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "1rem" }}>
+    <div style={{ position: "relative", padding: "1rem", overflowY: "auto" }}>
       {isLoading ? (
-        <div style={{ textAlign: "center", color: "#888", marginTop: "2rem" }}>
-          Loading game information...
-        </div>
+        <LoadingMask />
       ) : gameInfo ? (
-        <div>
+        <div className="info-section">
           <h2>Game Information</h2>
-          <div style={{ marginTop: "1rem" }}>
-            {gameFields.map(({ label, content }) => (
-              <div
-                key={label}
-                style={{
-                  display: "flex",
-                  padding: "0.5rem 0",
-                  borderBottom: "1px solid #eee",
-                  flexDirection: label === "Description" ? "column" : "row",
-                }}
-              >
-                <div
-                  style={{
-                    fontWeight: "bold",
-                    width: label === "Description" ? "auto" : "120px",
-                    flexShrink: 0,
-                    marginBottom: label === "Description" ? "8px" : "0",
-                  }}
-                >
-                  {label}:
-                </div>
-                <div style={{ flex: 1 }}>{content}</div>
-              </div>
-            ))}
-          </div>
+          {gameFields.map(({ label, content }) => (
+            <div key={label} className="info-style">
+              <span>{label}:</span>
+              <span>{content}</span>
+            </div>
+          ))}
+
+          <div style={{ marginTop: "1rem" }}></div>
         </div>
       ) : (
         <div style={{ textAlign: "center", color: "#888", marginTop: "2rem" }}>

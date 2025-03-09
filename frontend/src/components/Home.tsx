@@ -60,7 +60,6 @@ const CloneGameModal = ({
                 onChange={(e) => setNewName(e.target.value)}
                 style={{
                   width: "100%",
-                  padding: "8px",
                   border: "1px solid #ccc",
                   borderRadius: "4px",
                 }}
@@ -423,7 +422,6 @@ export const Home = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
-                padding: "0.5rem",
                 borderRadius: "4px",
                 border: "1px solid #ccc",
                 width: "200px",
