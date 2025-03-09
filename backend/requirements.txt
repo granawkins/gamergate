@@ -1,9 +1,11 @@
+aiosqlite
 anthropic
 fastapi
 openai
 PyJWT
 pyright
 pytest
+pytest-asyncio
 python-dotenv
 requests
 ruff

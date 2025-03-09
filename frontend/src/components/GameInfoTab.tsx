@@ -60,9 +60,9 @@ const EditableField = ({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          [fieldName]: value,
-          current_game_id: gameId,
+          id: gameId,
           field: fieldName,
+          [fieldName]: value,
         }),
       });
 
@@ -291,9 +291,9 @@ export const GameInfoTab = ({
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              cover_image: base64String,
-              current_game_id: gameInfo?.id,
+              id: gameInfo?.id,
               field: "cover_image",
+              cover_image: base64String,
             }),
           });
 

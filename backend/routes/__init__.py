@@ -4,8 +4,22 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, FileResponse
 
 from routes.api import app as api_app
+from db import db, initialize_admin_and_templates
 
-app = FastAPI()
+
+async def startup_db_client():
+    await db.connect()
+    await initialize_admin_and_templates()
+
+
+async def shutdown_db_client():
+    await db.close()
+
+
+app = FastAPI(
+    on_startup=[startup_db_client],
+    on_shutdown=[shutdown_db_client],
+)
 
 app.mount("/api", api_app)
 

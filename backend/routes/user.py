@@ -3,9 +3,9 @@ import json
 import requests
 import uuid
 from datetime import datetime, timedelta, UTC
+from dataclasses import dataclass
 from dotenv import load_dotenv
 from urllib.parse import urlencode
-from typing import cast
 
 import jwt
 from fastapi import FastAPI, HTTPException, Request, status
@@ -32,6 +32,16 @@ class AuthError(Exception):
     pass
 
 
+@dataclass
+class AuthenticatedUser(User):
+    admin: bool
+
+    def to_dict(self):
+        # Convert to dictionary for JSON serialization
+        user_dict = vars(self)
+        return user_dict
+
+
 def create_session_token(user_id: str) -> str:
     expires_delta = timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
     expire = datetime.now(UTC) + expires_delta
@@ -51,7 +61,7 @@ def verify_session_token(token: str) -> str:
         raise AuthError("Invalid token")
 
 
-async def get_current_user(request: Request) -> User:
+async def get_current_user(request: Request) -> AuthenticatedUser:
     token = request.cookies.get("session_token")
     if not token:
         raise HTTPException(
@@ -62,17 +72,16 @@ async def get_current_user(request: Request) -> User:
 
     try:
         user_id = verify_session_token(token)
-        _db = await db.get()
-        user = _db["users"].get(user_id)
+        user = await db.get_user_by_id(user_id)
         if user is None:
             raise AuthError("User not found")
 
         # Add admin field to the user object, determined by email
-        user_with_admin = dict(user)
-        user_with_admin["admin"] = user.get("email") == ADMIN_EMAIL
+        is_admin = user.email == ADMIN_EMAIL
 
-        # Cast back to User type to satisfy the type checker
-        return cast(User, user_with_admin)
+        # Create AuthenticatedUser with explicit typing to satisfy PyRight
+        user_with_admin = AuthenticatedUser(admin=is_admin, **vars(user))
+        return user_with_admin
     except AuthError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -84,8 +93,6 @@ async def get_current_user(request: Request) -> User:
 @app.get("/me")
 async def user_me(request: Request):
     token = request.cookies.get("session_token")
-    _db = await db.get()
-
     user_id = None
     user = None
 
@@ -93,7 +100,7 @@ async def user_me(request: Request):
     if token:
         try:
             user_id = verify_session_token(token)
-            user = _db["users"].get(user_id)
+            user = await db.get_user_by_id(user_id)
         except AuthError:
             # Invalid token, will create a dummy user
             pass
@@ -102,28 +109,26 @@ async def user_me(request: Request):
     if user is None:
         # Create a dummy user for non-authenticated visitors
         dummy_id = str(uuid.uuid4())
-        dummy_user: User = {
-            "id": dummy_id,
-            "created_at": datetime.now().isoformat(),
-            "messages_left": 0,
-            "username": None,
-            "email": None,
-            "avatar_id": None,
-        }
+        dummy_user = User(
+            id=dummy_id,
+            created_at=datetime.now().isoformat(),
+            messages_left=0,
+            username=None,
+            email=None,
+            avatar_id=None,
+        )
 
         # Store the dummy user in the database
-        _db["users"][dummy_id] = dummy_user
-        await db.set(_db)
+        await db.create_user(dummy_user)
 
         # Create a session token for the dummy user
         auth_token = create_session_token(dummy_id)
 
         # Add admin field to the dummy user (will be False)
-        dummy_user_with_admin = dict(dummy_user)
-        dummy_user_with_admin["admin"] = False
+        dummy_user_with_admin = AuthenticatedUser(admin=False, **vars(dummy_user))
 
         response = {
-            "user": dummy_user_with_admin,
+            "user": dummy_user_with_admin.to_dict(),
             "games": [],
         }
 
@@ -142,13 +147,13 @@ async def user_me(request: Request):
         return return_response
 
     # Add admin field to the user object for existing users
-    user_with_admin = dict(user)
-    user_with_admin["admin"] = user.get("email") == ADMIN_EMAIL
+    is_admin = user.email == ADMIN_EMAIL
+    games = await db.get_games_by_owner_id(user.id)
 
     # Return existing user data with admin field
     return {
-        "user": user_with_admin,
-        "games": [g for g in _db["games"].values() if g["owner_id"] == user["id"]],
+        "user": AuthenticatedUser(admin=is_admin, **vars(user)).to_dict(),
+        "games": games,
     }
 
 
@@ -179,71 +184,53 @@ async def user_google_callback(request: Request):
     email = user_data.get("email")
     avatar_id = user_data.get("picture")  # Get avatar URL from Google
 
-    _db = await db.get()
-
-    # Get the dummy user ID from the session token
-    # We assume we always have a dummy user at this point
-    dummy_user_id = ""
-    session_token = request.cookies.get("session_token")
-    if session_token:
-        try:
-            dummy_user_id = verify_session_token(session_token)
-        except AuthError:
-            # If token is invalid, we'll still proceed with the state parameter
-            pass
-
-    # If no session token or invalid, try to get from state parameter
-    if not dummy_user_id:
-        dummy_user_id = request.query_params.get("state", "")
-
-    # Check if a user with this email already exists
-    existing_user = next(
-        (u for u in _db["users"].values() if u.get("email") == email), None
-    )
-
-    # Variable to store the user ID for the token
-    user_id: str
-
-    if existing_user:
-        # User with this email already exists
-        user_id = existing_user["id"]
+    user_id = None
+    existing_user = await db.get_user_by_email(email)
+    if existing_user is not None:
+        # If it's an existing user, pass through
+        user_id = existing_user.id
         user = existing_user
 
         # Update avatar if needed
-        if "avatar_id" not in user or user["avatar_id"] != avatar_id:
-            user["avatar_id"] = avatar_id if avatar_id else None
-            _db["users"][user_id] = user
-            await db.set(_db)
-    elif dummy_user_id and dummy_user_id in _db["users"]:
-        # Update the dummy user with the Google account info
-        user_id = dummy_user_id
-        dummy_user = _db["users"][dummy_user_id]
+        if user.avatar_id != avatar_id:
+            await db.update_user_by_id(user_id, avatar_id=avatar_id)
 
-        # This is a first-time login for this dummy user, update with Google info
-        dummy_user["email"] = email
-        dummy_user["username"] = email.split("@")[0]
-        dummy_user["avatar_id"] = avatar_id if avatar_id else None
-
-        # Set messages_left to 10 for first-time login
-        dummy_user["messages_left"] = 10
-
-        _db["users"][user_id] = dummy_user
-        await db.set(_db)
     else:
-        # Create a new user with all fields
-        user_id = str(uuid.uuid4())
-        new_user: User = {
-            "id": user_id,
-            "username": email.split("@")[0],
-            "email": email,
-            "created_at": datetime.now().isoformat(),
-            "avatar_id": avatar_id if avatar_id else None,
-            "messages_left": 10,
-        }
+        # If it's a new user, check for a dummy user_id passed through
+        session_token = request.cookies.get("session_token")
+        if session_token:
+            try:
+                user_id = verify_session_token(session_token)
+            except AuthError:
+                # If token is invalid, we'll still proceed with the state parameter
+                pass
 
-        _db["users"][user_id] = new_user
-        await db.set(_db)
+        # If no session token or invalid, try to get from state parameter
+        if not user_id:
+            user_id = request.query_params.get("state")
 
+        user = None if not user_id else await db.get_user_by_id(user_id)
+        if user is not None and user_id is not None:
+            await db.update_user_by_id(
+                user_id,
+                avatar_id=avatar_id if avatar_id else None,
+                email=email,
+                username=email.split("@")[0],
+            )
+        else:
+            # Otherwise, create a new user. This shouldn't ever happen tbh.
+            user_id = user_id or str(uuid.uuid4())
+            new_user = User(
+                id=user_id,
+                username=email.split("@")[0],
+                email=email,
+                created_at=datetime.now().isoformat(),
+                avatar_id=avatar_id if avatar_id else None,
+                messages_left=10,
+            )
+            await db.create_user(new_user)
+
+    assert user_id is not None
     auth_token = create_session_token(user_id)
     response = RedirectResponse(f"{FRONTEND_URL}/")
     response.set_cookie(

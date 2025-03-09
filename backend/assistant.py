@@ -14,6 +14,7 @@ from typing import (
 
 from anthropic import AsyncAnthropic, AnthropicError
 from anthropic.types import MessageParam
+from dotenv import load_dotenv
 from openai import OpenAIError, AsyncOpenAI
 from openai.types.chat import (
     ChatCompletionAssistantMessageParam,
@@ -21,6 +22,8 @@ from openai.types.chat import (
     ChatCompletionSystemMessageParam,
 )
 from db import db, GAMES_PATH
+
+load_dotenv()
 
 # Initialize Anthropic client
 anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
@@ -281,13 +284,12 @@ async def generate_completion(game_id: str):
     Applies edits to the codebase.
     Updates the message with the completion text, diff, commit sha, cost, and status.
     """
-    _db = await db.get()
-    game = _db["games"].get(game_id)
+    game = await db.get_game_by_id(game_id)
     if game is None:
         raise BadRequestError(f"Game {game_id} not found")
 
     # Build system prompt
-    file_path = GAMES_PATH / game["id"] / "index.html"
+    file_path = GAMES_PATH / game_id / "index.html"
     if not file_path.exists():
         raise BadRequestError("Game code not found")
     with open(file_path, "r") as f:
@@ -295,19 +297,19 @@ async def generate_completion(game_id: str):
     system_prompt = SYSTEM_PROMPT.format(code=code)
 
     # Build messages
-    messages = game["messages"]
+    messages = await db.get_messages_by_game_id(game_id)
     last_message = messages[-1]
-    if last_message["role"] != "assistant":
+    if last_message.role != "assistant":
         raise BadRequestError("Last message must be an assistant message")
-    if last_message["text"]:
+    if last_message.text:
         raise BadRequestError("Last message must be empty")
 
     # Check if model parameter exists, otherwise use default
-    model = last_message.get("model", DEFAULT_MODEL)
+    model = last_message.model or DEFAULT_MODEL
 
     # Format messages for the LLM
     messages_for_llm = [
-        {"role": message["role"], "content": message["text"]}
+        {"role": message.role, "content": message.text}
         for message in messages[
             -(MOST_RECENT_N_MESSAGES + 1) : -1
         ]  # Last message is placeholder for assistant response
@@ -315,14 +317,14 @@ async def generate_completion(game_id: str):
 
     for try_num in range(RETRIES):
         full_response = ""
+        total_cost = 0.0
+        commit_sha = None
         try:
             # Define streaming callback
             async def streaming_callback(response_text: str) -> None:
                 nonlocal full_response
                 full_response = response_text
-                last_message["text"] = full_response
-                _db["games"][game_id]["messages"][-1] = last_message
-                await db.set(_db)
+                await db.update_message_by_id(last_message.id, text=full_response)
 
             # Choose the appropriate completion function based on the model
             if model.startswith("claude"):
@@ -331,10 +333,9 @@ async def generate_completion(game_id: str):
                 completion_function = openai_completion
             else:
                 raise ValueError(f"Unsupported model: {model}")
-            cost = await completion_function(
+            total_cost += await completion_function(
                 messages_for_llm, model, system_prompt, streaming_callback
             )
-            last_message["cost"] += cost
 
             # Check that message and edits are valid
             extract_message(full_response)
@@ -349,69 +350,76 @@ async def generate_completion(game_id: str):
                     f.write(modified_code)
 
                 # Apply to codebase
-                subprocess.run(
-                    ["git", "add", "index.html"], cwd=GAMES_PATH / game["id"]
-                )
+                subprocess.run(["git", "add", "index.html"], cwd=GAMES_PATH / game_id)
                 # First make the commit
                 subprocess.run(
                     [
                         "git",
                         "commit",
                         "-m",
-                        f"message {last_message['id']}",
+                        f"message {last_message.id}",
                     ],
-                    cwd=GAMES_PATH / game["id"],
+                    cwd=GAMES_PATH / game_id,
                 )
                 # Then get the commit hash
                 commit_result = subprocess.run(
                     ["git", "rev-parse", "HEAD"],
-                    cwd=GAMES_PATH / game["id"],
+                    cwd=GAMES_PATH / game_id,
                     capture_output=True,
                 )
-                last_message["commit_sha"] = commit_result.stdout.strip().decode(
-                    "utf-8"
-                )
-
-                # Update the updated_at field
-                _db["games"][game_id]["updated_at"] = datetime.now().isoformat()
+                commit_sha = commit_result.stdout.strip().decode("utf-8")
 
             # Success!
-            last_message["status"] = "completed"
-
-            # Decrement messages_left for the user
-            _db = await db.get()
-            user_id = _db["games"][game_id]["owner_id"]
-            if user_id in _db["users"]:
-                if _db["users"][user_id]["messages_left"] > 0:
-                    _db["users"][user_id]["messages_left"] -= 1
-                    await db.set(_db)
+            await db.update_message_by_id(
+                last_message.id,
+                status="completed",
+                cost=total_cost,
+                commit_sha=commit_sha,
+            )
+            await db.update_game_by_id(
+                game_id,
+                updated_at=datetime.now().isoformat(),
+            )
+            user = await db.get_user_by_id(game.owner_id)
+            if user is not None and user.messages_left > 0:
+                await db.update_user_by_id(
+                    user.id, messages_left=user.messages_left - 1
+                )
             break
         except BadRequestError as e:
-            last_message["text"] = str(e)
-            last_message["status"] = "error"
+            await db.update_message_by_id(last_message.id, text=str(e), status="error")
             break
         except (AnthropicError, OpenAIError) as e:
-            last_message["text"] += (
-                f"API Error: {str(e)}. Switch models or try again later."
+            await db.update_message_by_id(
+                last_message.id,
+                text=f"API Error: {str(e)}. Switch models or try again later.",
+                status="error",
+                cost=total_cost,
             )
-            last_message["status"] = "error"
             break
         except BadResponseError as e:
             print(f"Error generating response: {str(e)}")
             if try_num < RETRIES - 1:
                 print("Retrying...")
-                last_message["text"] = ""  # Try again
+                await db.update_message_by_id(
+                    last_message.id, text="", status="processing"
+                )
             else:
-                last_message["text"] = "Parsing error: try using a simpler prompt."
-                last_message["status"] = "error"
+                await db.update_message_by_id(
+                    last_message.id,
+                    text="Parsing error: try using a simpler prompt.",
+                    status="error",
+                    cost=total_cost,
+                )
         except Exception as e:
             print(f"Uncaught exception generating response: {str(e)}")
-            last_message["text"] = "An unknown error occurred."
-            last_message["status"] = "error"
+            await db.update_message_by_id(
+                last_message.id,
+                text="An unknown error occurred.",
+                status="error",
+                cost=total_cost,
+            )
             break
-
-    _db["games"][game_id]["messages"][-1] = last_message
-    await db.set(_db)
 
 
 # Run up to 10 completions concurrently
