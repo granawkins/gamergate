@@ -26,7 +26,6 @@ export const Header = () => {
         const response = await fetch(`/api/games/${gameName}/info`);
         if (response.ok) {
           const data = await response.json();
-          console.log(data);
           setGameInfo(data);
         } else {
           console.error("Failed to fetch game info");
