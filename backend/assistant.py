@@ -317,6 +317,8 @@ async def generate_completion(game_id: str):
 
     for try_num in range(RETRIES):
         full_response = ""
+        total_cost = 0.0
+        commit_sha = None
         try:
             # Define streaming callback
             async def streaming_callback(response_text: str) -> None:
@@ -331,10 +333,9 @@ async def generate_completion(game_id: str):
                 completion_function = openai_completion
             else:
                 raise ValueError(f"Unsupported model: {model}")
-            cost = await completion_function(
+            total_cost += await completion_function(
                 messages_for_llm, model, system_prompt, streaming_callback
             )
-            await db.update_message_by_id(last_message.id, cost=cost)
 
             # Check that message and edits are valid
             extract_message(full_response)
@@ -368,17 +369,17 @@ async def generate_completion(game_id: str):
                 )
                 commit_sha = commit_result.stdout.strip().decode("utf-8")
 
-                # Update the updated_at field
-                await db.update_game_by_id(
-                    game_id,
-                    updated_at=datetime.now().isoformat(),
-                    commit_sha=commit_sha,
-                )
-
             # Success!
-            await db.update_message_by_id(last_message.id, status="completed")
-
-            # Decrement messages_left for the user
+            await db.update_message_by_id(
+                last_message.id,
+                status="completed",
+                cost=total_cost,
+                commit_sha=commit_sha,
+            )
+            await db.update_game_by_id(
+                game_id,
+                updated_at=datetime.now().isoformat(),
+            )
             user = await db.get_user_by_id(game.owner_id)
             if user is not None and user.messages_left > 0:
                 await db.update_user_by_id(
@@ -393,6 +394,7 @@ async def generate_completion(game_id: str):
                 last_message.id,
                 text=f"API Error: {str(e)}. Switch models or try again later.",
                 status="error",
+                cost=total_cost,
             )
             break
         except BadResponseError as e:
@@ -407,11 +409,15 @@ async def generate_completion(game_id: str):
                     last_message.id,
                     text="Parsing error: try using a simpler prompt.",
                     status="error",
+                    cost=total_cost,
                 )
         except Exception as e:
             print(f"Uncaught exception generating response: {str(e)}")
             await db.update_message_by_id(
-                last_message.id, text="An unknown error occurred.", status="error"
+                last_message.id,
+                text="An unknown error occurred.",
+                status="error",
+                cost=total_cost,
             )
             break
 

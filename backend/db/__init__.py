@@ -12,6 +12,7 @@ DB_PATH = Path(__file__).parent / "db.sqlite"
 GAME_VERSION = 1
 GAMES_PATH = Path(__file__).parent.parent / "games"
 ADMIN_EMAIL = "granthawkins88@gmail.com"
+TEMPLATES = ["driver", "blank-html"]
 
 # Make sure games directory exists
 GAMES_PATH.mkdir(exist_ok=True)
@@ -44,19 +45,16 @@ async def initialize_admin_and_templates():
         await db.create_user(admin_user)
 
     # Initialize template games from games directory
-    for dir in GAMES_PATH.iterdir():
-        if not dir.is_dir() or dir.name.startswith("."):
-            continue
-
+    for template in TEMPLATES:
         # Check if this template already exists
-        existing_game = await db.get_game_by_name(dir.name)
+        existing_game = await db.get_game_by_name(template)
         if existing_game is None:
             # Create new template game
             game_id = str(uuid4())
             now = datetime.now().isoformat()
             template_game = Game(
                 id=game_id,
-                name=dir.name,
+                name=template,
                 description="",
                 owner_id="",  # Empty owner_id means it's a template
                 parent_id=None,
@@ -70,7 +68,7 @@ async def initialize_admin_and_templates():
             # Create a new directory with the game_id and copy the contents
             game_dir = GAMES_PATH / game_id
             if not game_dir.exists():
-                shutil.copytree(dir, game_dir)
+                shutil.copytree(GAMES_PATH / template, game_dir)
 
                 # Initialize a git repo for the game
                 subprocess.run(["git", "init"], cwd=game_dir)

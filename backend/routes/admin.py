@@ -94,7 +94,7 @@ async def get_admin_stats(current_user: AuthenticatedUser = Depends(get_current_
         )
 
     # Sort transactions by updated_at (newest first)
-    transaction_stats.sort(key=lambda x: x.updated_at, reverse=True)
+    transaction_stats.sort(key=lambda x: x["updated_at"], reverse=True)
 
     # Collect message costs by model
     message_costs_by_model: Dict[str, List[float]] = {}

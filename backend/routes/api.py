@@ -335,7 +335,7 @@ async def get_message(
         raise HTTPException(status_code=404, detail=f"Message '{message_id}' not found")
     if message.role == "assistant" and message.status != "error":
         message.text = extract_message(message.text, allow_incomplete=True)
-    return message
+    return {"message": message}
 
 
 class UndoRequest(BaseModel):
