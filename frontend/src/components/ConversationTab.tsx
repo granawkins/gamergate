@@ -95,7 +95,9 @@ export const ConversationTab = ({
   messagesLeft?: number;
 }) => {
   const [inputText, setInputText] = useState("");
-  const [selectedModel, setSelectedModel] = useState("o3-mini");
+  const [selectedModel, setSelectedModel] = useState(
+    "claude-3-5-sonnet-20241022",
+  );
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const models = [

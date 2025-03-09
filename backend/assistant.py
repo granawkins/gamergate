@@ -29,7 +29,7 @@ load_dotenv()
 anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-DEFAULT_MODEL = "o3-mini"
+DEFAULT_MODEL = "claude-3-5-sonnet-20241022"
 RETRIES = 3
 MOST_RECENT_N_MESSAGES = 5
 
