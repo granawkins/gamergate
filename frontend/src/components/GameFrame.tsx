@@ -45,6 +45,7 @@ export const GameFrame = ({
         overflow: "hidden",
         margin: 0,
         padding: 0,
+        backgroundColor: "white",
       }}
     >
       <iframe
