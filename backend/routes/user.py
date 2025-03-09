@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, UTC
 from dataclasses import dataclass
 from dotenv import load_dotenv
 from urllib.parse import urlencode
+from typing import Optional
 
 import jwt
 from fastapi import FastAPI, HTTPException, Request, status, Depends
@@ -160,7 +161,7 @@ async def user_me(request: Request):
 
 class UpdateInfoRequest(BaseModel):
     field: str
-    username: str = None
+    username: Optional[str] = None
 
 
 @app.post("/update-info")
