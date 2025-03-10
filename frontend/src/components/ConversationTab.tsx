@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Message as MessageType } from "../types";
+import { Message as MessageType, Model } from "../types";
 import { LoadingMask } from "./LoadingMask";
 
 // Message component for rendering individual messages
@@ -98,7 +98,7 @@ export const ConversationTab = ({
   const [selectedModel, setSelectedModel] = useState(
     "claude-3-5-sonnet-20241022",
   );
-  const [models, setModels] = useState([]);
+  const [models, setModels] = useState<Model[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch models and their costs

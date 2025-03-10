@@ -6,7 +6,7 @@ interface UserStats {
   username?: string;
   email?: string;
   created_at: string;
-  messages_left: number;
+  credits: number;
   total_messages: number;
   n_projects: number;
 }
@@ -44,7 +44,7 @@ export const Admin = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
-  const [messagesToAdd, setMessagesToAdd] = useState<number>(0);
+  const [creditsToAdd, setCreditsToAdd] = useState<number>(0);
 
   useEffect(() => {
     // If not loading and user is not admin, redirect to home
@@ -79,31 +79,31 @@ export const Admin = () => {
     }
   };
 
-  const updateUserMessages = async (userId: string) => {
+  const updateUserCredits = async (userId: string) => {
     try {
       setUpdatingUserId(userId);
-      const response = await fetch("/api/admin/update-messages", {
+      const response = await fetch("/api/admin/update-credits", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           user_id: userId,
-          messages_to_add: messagesToAdd,
+          credits_to_add: creditsToAdd,
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update user messages");
+        throw new Error("Failed to update user credits");
       }
 
       // Refresh user stats after update
       await fetchUserStats();
-      setMessagesToAdd(0);
+      setCreditsToAdd(0);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
-      console.error("Error updating user messages:", err);
+      console.error("Error updating user credits:", err);
     } finally {
       setUpdatingUserId(null);
     }
@@ -186,7 +186,7 @@ export const Admin = () => {
                   wordWrap: "break-word",
                 }}
               >
-                Messages Left
+                Credits
               </th>
               <th
                 style={{
@@ -216,7 +216,7 @@ export const Admin = () => {
                   wordWrap: "break-word",
                 }}
               >
-                Adjust Messages Left
+                Adjust Credits
               </th>
             </tr>
           </thead>
@@ -233,7 +233,7 @@ export const Admin = () => {
                   {formatDate(user.created_at)}
                 </td>
                 <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                  {user.messages_left}
+                  {user.credits}
                 </td>
                 <td style={{ border: "1px solid #ddd", padding: "8px" }}>
                   {user.total_messages}
@@ -242,25 +242,25 @@ export const Admin = () => {
                   {user.n_projects}
                 </td>
                 <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                  <div className="message-update-controls">
+                  <div className="credits-update-controls">
                     <input
                       type="number"
-                      value={updatingUserId === user.id ? messagesToAdd : 0}
+                      value={updatingUserId === user.id ? creditsToAdd : 0}
                       onChange={(e) =>
-                        setMessagesToAdd(parseInt(e.target.value) || 0)
+                        setCreditsToAdd(parseInt(e.target.value) || 0)
                       }
                       onClick={() => {
                         // Clear the input when clicked and set the current user as updating
                         if (updatingUserId !== user.id) {
                           setUpdatingUserId(user.id);
-                          setMessagesToAdd(0);
+                          setCreditsToAdd(0);
                         }
                       }}
                       placeholder="Add/remove"
                       style={{ width: "100px", marginRight: "5px" }}
                     />
                     <button
-                      onClick={() => updateUserMessages(user.id)}
+                      onClick={() => updateUserCredits(user.id)}
                       disabled={
                         updatingUserId !== null && updatingUserId !== user.id
                       }

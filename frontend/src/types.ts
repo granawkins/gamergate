@@ -1,7 +1,7 @@
 export interface User {
   id: string;
   created_at: string;
-  messages_left: number;
+  credits: number;
   email?: string;
   username?: string;
   avatar_id?: string;
@@ -21,6 +21,12 @@ export interface Game {
   parent_name: string | null;
   cover_image?: string;
   version?: number;
+}
+
+export interface Model {
+  id: string;
+  name: string;
+  cost: number;
 }
 
 export interface Message {
