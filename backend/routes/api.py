@@ -297,13 +297,16 @@ async def handle_chat(
     Store the message and return a response with the game info immediately,
     then run the completion in the background with a semaphore.
     """
-    # Get model and check if the user has enough credits
-    model = body.get("model", DEFAULT_MODEL)
+    # Get the request body first
+    body = await request.json()
+    user_message_text = body["message"]
+    model = body.get("model", DEFAULT_MODEL)  # Get model from request
+
+    # Check if the user has enough credits for the model
     from assistant import model_costs
 
     model_cost = model_costs.get(model, {}).get("cost", 1)
 
-    # Check if the user has enough credits
     if current_user.credits < model_cost:
         raise HTTPException(
             status_code=403,
@@ -319,10 +322,6 @@ async def handle_chat(
         raise HTTPException(
             status_code=403, detail="You are not the owner of this game"
         )
-
-    body = await request.json()
-    user_message_text = body["message"]
-    model = body.get("model", DEFAULT_MODEL)  # Get model from request
 
     user_message: Message = Message(
         id=str(uuid4()),
