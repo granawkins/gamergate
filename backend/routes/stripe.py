@@ -15,7 +15,7 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 app = FastAPI()
 
 price_ids = {
-    "gamergate-50-messages": {
+    "gamergate-50-credits": {
         "PROD": "price_1QzVQpL7uUhJKkiA5UOiCuK8",
         "DEV": "price_1QzVi5L7uUhJKkiAHWDtfXrR",
         "QA": "price_1QzVi5L7uUhJKkiAHWDtfXrR",
@@ -87,7 +87,7 @@ async def session_status(request: Request):
             created_at=current_time,
             updated_at=current_time,
             amount=50,
-            description="Stripe purchase",
+            description="50 credits purchase",
         )
         await db.create_transaction(transaction)
     elif credit_user:
@@ -96,14 +96,14 @@ async def session_status(request: Request):
             status=session.status,
             updated_at=current_time,
             amount=50,
-            description="Stripe purchase",
+            description="50 credits purchase",
         )
 
-    # Update the user's message count if the transaction is complete
-    messages_left = user.messages_left
+    # Update the user's credits if the transaction is complete
+    credits = user.credits
     if credit_user:
-        messages_left += 50
-        await db.update_user_by_id(user.id, messages_left=messages_left)
+        credits += 50
+        await db.update_user_by_id(user.id, credits=credits)
 
     # Get the user's email from stripe
     customer_email = None
@@ -115,5 +115,5 @@ async def session_status(request: Request):
         "status": session.status,
         "customer_email": customer_email,
         "session_id": session.id,
-        "messages_left": messages_left,
+        "credits": credits,
     }

@@ -15,7 +15,7 @@ class UserStats(BaseModel):
     username: Optional[str]
     email: Optional[str]
     created_at: str
-    messages_left: int
+    credits: int
     total_messages: int
     n_projects: int
 
@@ -33,7 +33,7 @@ class TransactionInfo(BaseModel):
 
 class MessageUpdateRequest(BaseModel):
     user_id: str
-    messages_to_add: int  # Can be negative to remove messages
+    credits_to_add: int  # Can be negative to remove credits
 
 
 @app.get("/stats")
@@ -64,7 +64,7 @@ async def get_admin_stats(current_user: AuthenticatedUser = Depends(get_current_
                 "username": user.username,
                 "email": user.email,
                 "created_at": user.created_at,
-                "messages_left": user.messages_left,
+                "credits": user.credits,
                 "total_messages": total_messages,
                 "n_projects": n_projects,
             }
@@ -145,13 +145,13 @@ async def get_admin_stats(current_user: AuthenticatedUser = Depends(get_current_
     }
 
 
-@app.post("/update-messages")
-async def update_user_messages(
+@app.post("/update-credits")
+async def update_user_credits(
     request: MessageUpdateRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     """
-    Update a user's messages_left count.
+    Update a user's credits count.
     Only accessible by admin users.
     """
     if not current_user.admin:
@@ -160,8 +160,8 @@ async def update_user_messages(
     target_user = await db.get_user_by_id(request.user_id)
     if target_user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    target_messages = max(0, target_user.messages_left + request.messages_to_add)
-    await db.update_user_by_id(request.user_id, messages_left=target_messages)
+    target_credits = max(0, target_user.credits + request.credits_to_add)
+    await db.update_user_by_id(request.user_id, credits=target_credits)
 
     current_time = datetime.now().isoformat()
     transaction_id = str(uuid4())
@@ -170,7 +170,7 @@ async def update_user_messages(
             id=transaction_id,
             user_id=request.user_id,
             session_id="",
-            amount=request.messages_to_add,
+            amount=request.credits_to_add,
             created_at=current_time,
             updated_at=current_time,
             status="complete",
@@ -180,5 +180,5 @@ async def update_user_messages(
 
     return {
         "user_id": request.user_id,
-        "messages_left": target_messages,
+        "credits": target_credits,
     }

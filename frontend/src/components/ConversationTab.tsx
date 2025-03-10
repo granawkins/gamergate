@@ -104,7 +104,7 @@ export const ConversationTab = ({
     { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 New", cost: 2 },
   ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   // Fetch models and their costs
   useEffect(() => {
     const fetchModels = async () => {
@@ -118,7 +118,7 @@ export const ConversationTab = ({
         console.error("Failed to fetch models:", error);
       }
     };
-    
+
     fetchModels();
   }, []);
 
@@ -272,15 +272,14 @@ export const ConversationTab = ({
             >
               {models.map((model) => (
                 <option key={model.id} value={model.id}>
-                  {model.name} ({model.cost} credit{model.cost !== 1 ? 's' : ''}/message)
+                  {model.name} ({model.cost} credit{model.cost !== 1 ? "s" : ""}
+                  /message)
                 </option>
               ))}
             </select>
           </div>
 
-          {messagesLeft !== undefined && (
-            <div>Credits: {messagesLeft}</div>
-          )}
+          {messagesLeft !== undefined && <div>Credits: {messagesLeft}</div>}
         </div>
       </div>
     </>

@@ -40,7 +40,7 @@ async def initialize_admin_and_templates():
             email=ADMIN_EMAIL,
             created_at=datetime.now().isoformat(),
             avatar_id=None,
-            messages_left=10,
+            credits=10,
         )
         await db.create_user(admin_user)
 
