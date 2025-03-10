@@ -36,24 +36,27 @@ MOST_RECENT_N_MESSAGES = 5
 model_costs = {
     # Anthropic models
     "claude-3-5-sonnet-20241022": {
+        "name": "Claude 3.5 Sonnet",
         "cache_creation_input_tokens": 0.000375,
         "cache_read_input_tokens": 0.00003,
         "input_tokens": 0.0003,
         "output_tokens": 0.0015,
-        "cost": 2,  # Cost in credits per message
+        "credits_per_message": 2,
     },
     # OpenAI models
     "gpt-4o": {
+        "name": "GPT-4o",
         "input_tokens": 0.00025,
         "cached_input_tokens": 0.000125,
         "output_tokens": 0.001,
-        "cost": 1,  # Cost in credits per message
+        "credits_per_message": 1,
     },
     "o3-mini": {
+        "name": "OpenAI o3-mini",
         "input_tokens": 0.00011,
         "cached_input_tokens": 0.000055,
         "output_tokens": 0.00044,
-        "cost": 1,  # Cost in credits per message
+        "credits_per_message": 1,
     },
 }
 
@@ -385,7 +388,7 @@ async def generate_completion(game_id: str):
             )
             user = await db.get_user_by_id(game.owner_id)
             # Use the model's cost to deduct credits
-            model_cost = model_costs.get(model, {}).get("cost", 1)
+            model_cost = model_costs.get(model, {}).get("credits_per_message", 1)
             if user is not None and user.credits >= model_cost:
                 await db.update_user_by_id(user.id, credits=user.credits - model_cost)
             break

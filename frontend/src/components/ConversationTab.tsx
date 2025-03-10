@@ -84,7 +84,7 @@ export const ConversationTab = ({
   error,
   onSendMessage,
   onUndo,
-  messagesLeft,
+  credits,
 }: {
   messages: MessageType[];
   isLoading: boolean;
@@ -92,17 +92,13 @@ export const ConversationTab = ({
   error?: string;
   onSendMessage: (message: string, model: string) => Promise<void>;
   onUndo?: (message: MessageType) => Promise<void>;
-  messagesLeft?: number;
+  credits?: number;
 }) => {
   const [inputText, setInputText] = useState("");
   const [selectedModel, setSelectedModel] = useState(
     "claude-3-5-sonnet-20241022",
   );
-  const [models, setModels] = useState([
-    { id: "o3-mini", name: "OpenAI o3-mini", cost: 1 },
-    { id: "gpt-4o", name: "GPT-4o", cost: 1 },
-    { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 New", cost: 2 },
-  ]);
+  const [models, setModels] = useState([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch models and their costs
@@ -279,7 +275,7 @@ export const ConversationTab = ({
             </select>
           </div>
 
-          {messagesLeft !== undefined && <div>Credits: {messagesLeft}</div>}
+          {credits !== undefined && <div>Credits: {credits}</div>}
         </div>
       </div>
     </>
