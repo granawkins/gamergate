@@ -10,7 +10,7 @@ from typing import Optional, Literal
 class User:
     id: str
     created_at: str  # ISO format string of datetime
-    messages_left: int
+    credits: int
     username: Optional[str]
     email: Optional[str]
     avatar_id: Optional[str]
@@ -20,7 +20,7 @@ class User:
         return cls(
             id=row[0],
             created_at=row[1],
-            messages_left=row[2],
+            credits=row[2],
             username=row[3],
             email=row[4],
             avatar_id=row[5],

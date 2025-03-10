@@ -98,13 +98,29 @@ export const ConversationTab = ({
   const [selectedModel, setSelectedModel] = useState(
     "claude-3-5-sonnet-20241022",
   );
+  const [models, setModels] = useState([
+    { id: "o3-mini", name: "OpenAI o3-mini", cost: 1 },
+    { id: "gpt-4o", name: "GPT-4o", cost: 1 },
+    { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 New", cost: 2 },
+  ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const models = [
-    { id: "o3-mini", name: "OpenAI o3-mini" },
-    { id: "gpt-4o", name: "GPT-4o" },
-    { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 New" },
-  ];
+  
+  // Fetch models and their costs
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const response = await fetch("/api/models");
+        if (response.ok) {
+          const data = await response.json();
+          setModels(data.models);
+        }
+      } catch (error) {
+        console.error("Failed to fetch models:", error);
+      }
+    };
+    
+    fetchModels();
+  }, []);
 
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
@@ -256,14 +272,14 @@ export const ConversationTab = ({
             >
               {models.map((model) => (
                 <option key={model.id} value={model.id}>
-                  {model.name}
+                  {model.name} ({model.cost} credit{model.cost !== 1 ? 's' : ''}/message)
                 </option>
               ))}
             </select>
           </div>
 
           {messagesLeft !== undefined && (
-            <div>Messages left: {messagesLeft}</div>
+            <div>Credits: {messagesLeft}</div>
           )}
         </div>
       </div>

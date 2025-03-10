@@ -29,6 +29,32 @@ app.mount("/user", user_app)
 app.mount("/admin", admin_app)
 app.mount("/stripe", stripe_app)
 
+
+@app.get("/models")
+async def get_models():
+    """
+    Get available models and their costs
+    """
+    from assistant import model_costs
+
+    models = []
+    for model_id, details in model_costs.items():
+        cost = details.get("cost", 1)
+        name = model_id
+
+        # Create more readable names for models
+        if model_id == "claude-3-5-sonnet-20241022":
+            name = "Claude 3.5 Sonnet"
+        elif model_id == "gpt-4o":
+            name = "GPT-4o"
+        elif model_id == "o3-mini":
+            name = "OpenAI o3-mini"
+
+        models.append({"id": model_id, "name": name, "cost": cost})
+
+    return {"models": models}
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],  # Default Vite dev server port
@@ -271,10 +297,17 @@ async def handle_chat(
     Store the message and return a response with the game info immediately,
     then run the completion in the background with a semaphore.
     """
-    # Check if the user has messages left
-    if current_user.messages_left <= 0:
+    # Get model and check if the user has enough credits
+    model = body.get("model", DEFAULT_MODEL)
+    from assistant import model_costs
+
+    model_cost = model_costs.get(model, {}).get("cost", 1)
+
+    # Check if the user has enough credits
+    if current_user.credits < model_cost:
         raise HTTPException(
-            status_code=403, detail="You have no messages left. Please try again later."
+            status_code=403,
+            detail=f"You don't have enough credits. This model requires {model_cost} credits.",
         )
 
     # Check if the game exists

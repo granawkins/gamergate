@@ -40,17 +40,20 @@ model_costs = {
         "cache_read_input_tokens": 0.00003,
         "input_tokens": 0.0003,
         "output_tokens": 0.0015,
+        "cost": 2,  # Cost in credits per message
     },
     # OpenAI models
     "gpt-4o": {
         "input_tokens": 0.00025,
         "cached_input_tokens": 0.000125,
         "output_tokens": 0.001,
+        "cost": 1,  # Cost in credits per message
     },
     "o3-mini": {
         "input_tokens": 0.00011,
         "cached_input_tokens": 0.000055,
         "output_tokens": 0.00044,
+        "cost": 1,  # Cost in credits per message
     },
 }
 
@@ -381,10 +384,10 @@ async def generate_completion(game_id: str):
                 updated_at=datetime.now().isoformat(),
             )
             user = await db.get_user_by_id(game.owner_id)
-            if user is not None and user.messages_left > 0:
-                await db.update_user_by_id(
-                    user.id, messages_left=user.messages_left - 1
-                )
+            # Use the model's cost to deduct credits
+            model_cost = model_costs.get(model, {}).get("cost", 1)
+            if user is not None and user.credits >= model_cost:
+                await db.update_user_by_id(user.id, credits=user.credits - model_cost)
             break
         except BadRequestError as e:
             await db.update_message_by_id(last_message.id, text=str(e), status="error")

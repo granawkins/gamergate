@@ -163,6 +163,40 @@ migration_manager.register(Migration(1, "Initial schema setup", migration_001))
 # migration_manager.register(Migration(3, "Alter table Y", migration_003))
 
 
+# Migration 002: Rename messages_left to credits
+def migration_002(conn: sqlite3.Connection) -> None:
+    """Rename messages_left column to credits in users table"""
+    # Create a new table with the updated schema
+    conn.execute("""
+        CREATE TABLE users_new (
+            id TEXT PRIMARY KEY,
+            created_at TEXT NOT NULL,
+            credits INTEGER NOT NULL,
+            username TEXT UNIQUE,
+            email TEXT UNIQUE,
+            avatar_id TEXT
+        )
+    """)
+
+    # Copy data from old table to new table
+    conn.execute("""
+        INSERT INTO users_new (id, created_at, credits, username, email, avatar_id)
+        SELECT id, created_at, messages_left, username, email, avatar_id FROM users
+    """)
+
+    # Drop the old table
+    conn.execute("DROP TABLE users")
+
+    # Rename the new table to the original name
+    conn.execute("ALTER TABLE users_new RENAME TO users")
+
+
+# Register the migration
+migration_manager.register(
+    Migration(2, "Rename messages_left to credits", migration_002)
+)
+
+
 def migrate(db_path: Path):
     """Run all pending migrations"""
     migration_manager.run_migrations(db_path)

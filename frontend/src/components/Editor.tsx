@@ -263,7 +263,7 @@ export const Editor = () => {
         error={error}
         onSendMessage={handleSendMessage}
         onUndo={handleUndo}
-        messagesLeft={user?.messages_left}
+        messagesLeft={user?.credits}
       />
     ) : (
       <GameInfoTab
