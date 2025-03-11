@@ -74,6 +74,10 @@ async def get_games(search: str = "", sort: str = "newest"):
     elif sort == "most_played":
         # For now, we'll sort by updated_at as a proxy for popularity
         play_games.sort(key=lambda x: x.seconds_played, reverse=True)
+    elif sort == "alphabetical":
+        play_games.sort(
+            key=lambda x: x.name.lower()
+        )  # Sort alphabetically, case insensitive
 
     return {"play": play_games, "templates": template_games}
 

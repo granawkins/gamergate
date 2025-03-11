@@ -432,6 +432,7 @@ export const Home = () => {
                 { label: "Newest", value: "newest" },
                 { label: "Oldest", value: "oldest" },
                 { label: "Most Played", value: "most_played" },
+                { label: "Alphabetical", value: "alphabetical" },
               ].map((option) => (
                 <button
                   key={option.value}
