@@ -21,7 +21,7 @@ from db import (
 from routes.user import app as user_app, AuthenticatedUser, get_current_user
 from routes.admin import app as admin_app
 from routes.stripe import app as stripe_app
-from assistant import DEFAULT_MODEL, get_completion_background, extract_message
+from assistant import get_completion_background, MODEL
 
 app = FastAPI()
 
@@ -252,10 +252,6 @@ async def get_chat_messages(
         )
 
     messages = await db.get_messages_by_game_id(game.id)
-    for message in messages:
-        if message.role == "assistant" and message.status != "error":
-            message.text = extract_message(message.text, allow_incomplete=True)
-
     game_data = await db.get_game_data_by_id(game.id)
     return {"messages": messages, "gameInfo": game_data}
 
@@ -289,7 +285,6 @@ async def handle_chat(
 
     body = await request.json()
     user_message_text = body["message"]
-    model = body.get("model", DEFAULT_MODEL)  # Get model from request
 
     user_message: Message = Message(
         id=str(uuid4()),
@@ -313,7 +308,7 @@ async def handle_chat(
         cost=0,
         status="processing",
         commit_sha=None,
-        model=model,
+        model=MODEL,
     )
     await db.create_message(assistant_message)
 
@@ -337,8 +332,6 @@ async def get_message(
     message = await db.get_message_by_id(message_id)
     if message is None:
         raise HTTPException(status_code=404, detail=f"Message '{message_id}' not found")
-    if message.role == "assistant" and message.status != "error":
-        message.text = extract_message(message.text, allow_incomplete=True)
     return {"message": message}
 
 
@@ -406,10 +399,6 @@ async def undo_last_commit(
         await db.delete_message_by_id(message.id)
 
     messages = await db.get_messages_by_game_id(game.id)
-    for message in messages:
-        if message.role == "assistant" and message.status != "error":
-            message.text = extract_message(message.text, allow_incomplete=True)
-
     return {"success": True, "messages": messages}
 
 

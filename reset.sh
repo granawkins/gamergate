@@ -28,8 +28,8 @@ done
 
 # 3. Delete the database file if it exists
 echo "Deleting database file..."
-if [ -f backend/db.json ]; then
-  rm backend/db.json
+if [ -f backend/db/db.sqlite ]; then
+  rm backend/db/db.sqlite
   echo "Database file deleted"
 else
   echo "No database file found"

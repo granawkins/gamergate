@@ -5,7 +5,7 @@ import re
 # Add the parent directory to the path so we can import modules from the backend package
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from assistant import apply_edit, extract_message, extract_edits
+from legacy_assistant import apply_edit, extract_message, extract_edits
 
 
 def test_apply_edit():
