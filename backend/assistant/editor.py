@@ -98,7 +98,19 @@ class Editor:
         else:
             raise BadResponseError(f"Unknown command: {command}")
 
-    async def commit_changes(self, commit_message: str) -> str:
+    async def commit_changes(self, commit_message: str) -> str | None:
+        # Check if there are changes to commit
+        status_result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=self.cwd,
+            capture_output=True,
+            text=True,
+        )
+
+        # If there are no changes, return None
+        if not status_result.stdout.strip():
+            return None
+
         # Apply to codebase
         subprocess.run(["git", "add", "index.html"], cwd=self.cwd)
         # First make the commit
