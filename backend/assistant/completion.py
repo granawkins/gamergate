@@ -1,6 +1,7 @@
 # https://docs.anthropic.com/en/docs/build-with-claude/tool-use/text-editor-tool
 import asyncio
 import os
+import json
 from typing import List, Callable, Coroutine, Any, Optional, Tuple
 
 from dotenv import load_dotenv
@@ -16,6 +17,7 @@ from anthropic.types import (
 from db import db
 from assistant.editor import Editor
 from assistant.errors import BadRequestError
+from assistant.serialize import serialize_message
 
 
 load_dotenv()
@@ -56,32 +58,37 @@ async def generate_completion(
     messages: List[MessageParam],
     editor: Editor,
     max_iterations: int = 10,
-    streaming_callback: Optional[Callable[[Message], Coroutine[Any, Any, None]]] = None,
+    streaming_callback: Optional[
+        Callable[[Message | dict], Coroutine[Any, Any, None]]
+    ] = None,
 ) -> Tuple[str, float]:
     """Run the tool use loop until complete and stream the final response"""
     total_cost = 0.0
     response_text = ""
 
     # Pre-add first assistant/tool-call message to view file
-    first_assistant_message = {
-        "role": "assistant",
-        "content": [
-            {
-                "type": "text",
-                "text": "I'll help you with that. First lets take a look at the current code.",
-            },
-            {
-                "type": "tool_use",
-                "id": "1234567890",
-                "input": {"command": "view", "path": "/index.html"},
-                "name": "str_replace_editor",
-            },
-        ],
-    }
-    messages.append(first_assistant_message)  # type: ignore
-    file_content = editor.handle_editor_tool(
-        first_assistant_message["content"][1]["input"]
-    )
+    initial_input = {"command": "view", "path": "/index.html"}
+    messages.append(
+        {
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "I'll help you with that. First lets take a look at the current code.",
+                },
+                {
+                    "type": "tool_use",
+                    "id": "1234567890",
+                    "input": initial_input,
+                    "name": "str_replace_editor",
+                },
+            ],
+        }
+    )  # type: ignore
+    if streaming_callback:
+        await streaming_callback(dict(messages[-1]))
+
+    file_content = editor.handle_editor_tool(initial_input)
     messages.append(
         {
             "role": "user",
@@ -94,6 +101,8 @@ async def generate_completion(
             ],
         }
     )
+    if streaming_callback:
+        await streaming_callback(dict(messages[-1]))
 
     for _ in range(max_iterations):
         response = await client.messages.create(
@@ -141,6 +150,8 @@ async def generate_completion(
                     "content": tool_result_content,
                 }
             )
+            if streaming_callback:
+                await streaming_callback(dict(messages[-1]))
         else:
             break
     return response_text, total_cost
@@ -173,19 +184,30 @@ async def generate_assistant_message(game_id: str):
     ]
 
     total_cost: float = 0.0
+    sub_messages: List[dict[str, Any]] = []
 
-    async def streaming_callback(message: Message):
+    async def streaming_callback(message: Message | dict):
         """Call after each LLM response (not technically streaming)
 
         If result includes a tool call, the 'text' is used as a processing message.
         """
-        nonlocal total_cost
-        total_cost += get_cost(message.usage)
-        text = next(
-            (chunk.text for chunk in message.content if chunk.type == "text"), ""
-        )
-        if text:
-            await db.update_message_by_id(last_message_id, text=text, cost=total_cost)
+        nonlocal sub_messages
+        serialized_message = serialize_message(message)
+        sub_messages.append(serialized_message)
+        json_sub_messages = json.dumps(sub_messages)
+        updates: dict[str, Any] = {"messages": json_sub_messages}
+        if isinstance(message, Message):
+            nonlocal total_cost
+            total_cost += get_cost(message.usage)
+            updates["cost"] = total_cost
+            if not any(chunk.type == "tool_use" for chunk in message.content):
+                text = next(
+                    (chunk.text for chunk in message.content if chunk.type == "text"),
+                    "",
+                )
+                if text:
+                    updates["text"] = text
+        await db.update_message_by_id(last_message_id, **updates)
 
     try:
         await generate_completion(
@@ -220,11 +242,12 @@ if __name__ == "__main__":
     messages = [MessageParam(role="user", content="Make the car blue")]
     editor = Editor("driver")
 
-    async def streaming_callback(message: Message):
-        text = next(
-            (chunk.text for chunk in message.content if chunk.type == "text"), ""
-        )
-        print(text)
+    async def streaming_callback(message: Message | dict):
+        if isinstance(message, Message):
+            text = next(
+                (chunk.text for chunk in message.content if chunk.type == "text"), ""
+            )
+            print(text)
 
     asyncio.run(
         generate_completion(
