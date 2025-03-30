@@ -116,9 +116,9 @@ export const User = () => {
         <div className="info-style">
           <span>Messages Left:</span>{" "}
           <span className="info-style">
-            {user.messages_left}
+            {user.credits}
             <button onClick={() => (window.location.href = "/checkout")}>
-              Buy Messages
+              Buy Credits
             </button>
           </span>
         </div>

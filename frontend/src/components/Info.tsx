@@ -18,8 +18,8 @@ export const Info = ({ onClose }: { onClose: () => void }) => (
         <strong>Login with Google to start!</strong>
       </p>
       <p style={{ fontSize: "0.9rem", color: "#666" }}>
-        New users are given 10 free messages. After that, you can buy new
-        messages at $5 per 50 messages.
+        New users are given 100 free credits. After that, you can buy new
+        credits at $5 per 500 credits.
       </p>
     </div>
 

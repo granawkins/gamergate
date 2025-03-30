@@ -131,7 +131,7 @@ async def test_concurrent_access(temp_db_path):
             user = User(
                 id=f"user_{user_id}",
                 created_at=now,
-                messages_left=10,
+                credits=100,
                 username=f"user_{user_id}",
                 email=f"user_{user_id}@example.com",
                 avatar_id=None,
@@ -163,7 +163,7 @@ class TestUserMethods:
         user = User(
             id=user_id,
             created_at=timestamp,
-            messages_left=10,
+            credits=100,
             username="testuser",
             email="test@example.com",
             avatar_id=None,
@@ -178,7 +178,7 @@ class TestUserMethods:
         user = User(
             id=user_id,
             created_at=timestamp,
-            messages_left=10,
+            credits=100,
             username="createuser",
             email="create@example.com",
             avatar_id=None,
@@ -225,14 +225,14 @@ class TestUserMethods:
     async def test_update_user_by_id(self, test_db, test_user):
         # Update user
         await test_db.update_user_by_id(
-            test_user.id, username="updated_username", messages_left=20
+            test_user.id, username="updated_username", credits=20
         )
 
         # Verify user was updated
         updated_user = await test_db.get_user_by_id(test_user.id)
         assert updated_user is not None
         assert updated_user.username == "updated_username"
-        assert updated_user.messages_left == 20
+        assert updated_user.credits == 20
         # Other fields should remain unchanged
         assert updated_user.email == test_user.email
 
@@ -245,7 +245,7 @@ class TestGameMethods:
         user = User(
             id=user_id,
             created_at=timestamp,
-            messages_left=10,
+            credits=100,
             username="gameowner",
             email="gameowner@example.com",
             avatar_id=None,
@@ -412,7 +412,7 @@ class TestMessageMethods:
         user = User(
             id=user_id,
             created_at=timestamp,
-            messages_left=10,
+            credits=100,
             username="msguser",
             email="msguser@example.com",
             avatar_id=None,
@@ -571,7 +571,7 @@ class TestTransactionMethods:
         user = User(
             id=user_id,
             created_at=timestamp,
-            messages_left=10,
+            credits=100,
             username="txnuser",
             email="txnuser@example.com",
             avatar_id=None,
@@ -590,7 +590,7 @@ class TestTransactionMethods:
             status="complete",
             created_at=timestamp,
             updated_at=timestamp,
-            amount=50,
+            amount=500,
             description="Test transaction",
         )
         await test_db.create_transaction(transaction)
@@ -676,7 +676,7 @@ class TestPlaySessionMethods:
         user = User(
             id=user_id,
             created_at=timestamp,
-            messages_left=10,
+            credits=100,
             username="playuser",
             email="playuser@example.com",
             avatar_id=None,

@@ -29,7 +29,7 @@ export const StripeCheckout = () => {
       method: "POST",
       credentials: "include",
       body: JSON.stringify({
-        product_id: "gamergate-50-messages",
+        product_id: "gamergate-500-credits",
         quantity: 1,
       }),
     })
@@ -66,7 +66,7 @@ export const StripeReturn = () => {
         setStatus(data.status);
         setCustomerEmail(data.customer_email);
         if (user) {
-          setUser({ ...user, messages_left: data.messages_left });
+          setUser({ ...user, credits: data.credits });
         }
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps

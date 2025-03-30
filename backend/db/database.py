@@ -61,13 +61,13 @@ class Database:
         assert self._connection is not None and self._cursor is not None
         await self._connection.execute(
             """
-            INSERT INTO users (id, created_at, messages_left, username, email, avatar_id)
+            INSERT INTO users (id, created_at, credits, username, email, avatar_id)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
                 user.id,
                 user.created_at,
-                user.messages_left,
+                user.credits,
                 user.username,
                 user.email,
                 user.avatar_id,
@@ -79,7 +79,7 @@ class Database:
         """Fetch all users"""
         assert self._connection is not None and self._cursor is not None
         async with self._connection.execute(
-            "SELECT id, created_at, messages_left, username, email, avatar_id FROM users"
+            "SELECT id, created_at, credits, username, email, avatar_id FROM users"
         ) as cursor:
             rows = await cursor.fetchall()
             return [User.from_row(row) for row in rows]
@@ -88,7 +88,7 @@ class Database:
         """Fetch a user by email"""
         assert self._connection is not None and self._cursor is not None
         async with self._connection.execute(
-            "SELECT id, created_at, messages_left, username, email, avatar_id FROM users WHERE email = ?",
+            "SELECT id, created_at, credits, username, email, avatar_id FROM users WHERE email = ?",
             (email,),
         ) as cursor:
             row = await cursor.fetchone()
@@ -98,7 +98,7 @@ class Database:
         """Fetch a user by ID"""
         assert self._connection is not None and self._cursor is not None
         async with self._connection.execute(
-            "SELECT id, created_at, messages_left, username, email, avatar_id FROM users WHERE id = ?",
+            "SELECT id, created_at, credits, username, email, avatar_id FROM users WHERE id = ?",
             (user_id,),
         ) as cursor:
             row = await cursor.fetchone()

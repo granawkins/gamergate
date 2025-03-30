@@ -6,7 +6,7 @@ interface UserStats {
   username?: string;
   email?: string;
   created_at: string;
-  messages_left: number;
+  credits: number;
   total_messages: number;
   n_projects: number;
 }
@@ -82,7 +82,7 @@ export const Admin = () => {
   const updateUserMessages = async (userId: string) => {
     try {
       setUpdatingUserId(userId);
-      const response = await fetch("/api/admin/update-messages", {
+      const response = await fetch("/api/admin/update-credits", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -233,7 +233,7 @@ export const Admin = () => {
                   {formatDate(user.created_at)}
                 </td>
                 <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                  {user.messages_left}
+                  {user.credits}
                 </td>
                 <td style={{ border: "1px solid #ddd", padding: "8px" }}>
                   {user.total_messages}

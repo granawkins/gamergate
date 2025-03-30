@@ -117,7 +117,7 @@ export const Editor = () => {
         ) {
           setFrameKey((prev) => prev + 1);
 
-          // Update user data to get the latest messages_left count
+          // Update user data to get the latest credits count
           fetchUserData();
         }
       } catch (error) {
@@ -263,7 +263,7 @@ export const Editor = () => {
         error={error}
         onSendMessage={handleSendMessage}
         onUndo={handleUndo}
-        messagesLeft={user?.messages_left}
+        credits={user?.credits}
       />
     ) : (
       <GameInfoTab

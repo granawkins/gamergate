@@ -114,7 +114,7 @@ async def user_me(request: Request):
         dummy_user = User(
             id=dummy_id,
             created_at=datetime.now().isoformat(),
-            messages_left=0,
+            credits=0,
             username=None,
             email=None,
             avatar_id=None,
@@ -255,7 +255,7 @@ async def user_google_callback(request: Request):
                 email=email,
                 created_at=datetime.now().isoformat(),
                 avatar_id=avatar_id if avatar_id else None,
-                messages_left=10,
+                credits=100,
             )
             await db.create_user(new_user)
 

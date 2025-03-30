@@ -102,9 +102,10 @@ async def handle_chat(
     then run the completion in the background with a semaphore.
     """
     # Check if the user has messages left
-    if current_user.messages_left <= 0:
+    if current_user.credits <= 0:
         raise HTTPException(
-            status_code=403, detail="You have no messages left. Please try again later."
+            status_code=402,
+            detail="You don't have any credits left. Please purchase more credits to continue.",
         )
 
     # Check if the game exists

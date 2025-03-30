@@ -219,6 +219,9 @@ async def generate_assistant_message(game_id: str):
         await db.update_message_by_id(
             last_message_id, status="completed", cost=total_cost, commit_sha=commit_sha
         )
+        user = await db.get_user_by_id(game.owner_id)
+        if user:
+            await db.update_user_by_id(user.id, credits=int(user.credits - total_cost))
     except Exception as e:
         await db.update_message_by_id(
             last_message_id, text=str(e), status="error", cost=total_cost

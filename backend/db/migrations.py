@@ -173,8 +173,52 @@ migration_manager.register(
     Migration(2, "Add messages column to messages table", migration_002)
 )
 
+
+# Migration 003: Rename messages_left to credits in users table and multiply values by 10
+def migration_003(conn: sqlite3.Connection) -> None:
+    """Rename messages_left to credits in users table and multiply values by 10"""
+    # SQLite doesn't support ALTER TABLE RENAME COLUMN directly, so we need to:
+    # 1. Create a new table with the desired schema
+    # 2. Copy data from the old table to the new table
+    # 3. Drop the old table
+    # 4. Rename the new table to the original name
+
+    # Create new users table with credits instead of messages_left
+    conn.execute("""
+        CREATE TABLE users_new (
+            id TEXT PRIMARY KEY,
+            created_at TEXT NOT NULL,
+            credits INTEGER NOT NULL,
+            username TEXT UNIQUE,
+            email TEXT UNIQUE,
+            avatar_id TEXT
+        )
+    """)
+
+    # Copy data from old table to new table, multiplying messages_left by 10 to get credits
+    conn.execute("""
+        INSERT INTO users_new (id, created_at, credits, username, email, avatar_id)
+        SELECT id, created_at, messages_left * 10, username, email, avatar_id FROM users
+    """)
+
+    # Drop old table
+    conn.execute("DROP TABLE users")
+
+    # Rename new table to original name
+    conn.execute("ALTER TABLE users_new RENAME TO users")
+
+
+# Register the migration
+migration_manager.register(
+    Migration(
+        3,
+        "Rename messages_left to credits in users table and multiply values by 10",
+        migration_003,
+    )
+)
+
 # Add more migrations as needed:
-# migration_manager.register(Migration(3, "Alter table Y", migration_003))
+# migration_manager.register(Migration(4, "Alter table Y", migration_004))
 
 
 def migrate(db_path: Path):

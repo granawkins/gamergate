@@ -84,7 +84,7 @@ export const ConversationTab = ({
   error,
   onSendMessage,
   onUndo,
-  messagesLeft,
+  credits,
 }: {
   messages: MessageType[];
   isLoading: boolean;
@@ -92,7 +92,7 @@ export const ConversationTab = ({
   error?: string;
   onSendMessage: (message: string, model: string) => Promise<void>;
   onUndo?: (message: MessageType) => Promise<void>;
-  messagesLeft?: number;
+  credits?: number;
 }) => {
   const [inputText, setInputText] = useState("");
   const [selectedModel, setSelectedModel] = useState(
@@ -262,9 +262,7 @@ export const ConversationTab = ({
             </select>
           </div>
 
-          {messagesLeft !== undefined && (
-            <div>Messages left: {messagesLeft}</div>
-          )}
+          {credits !== undefined && <div>Messages left: {credits}</div>}
         </div>
       </div>
     </>

@@ -1,7 +1,7 @@
 export interface User {
   id: string;
   created_at: string;
-  messages_left: number;
+  credits: number;
   email?: string;
   username?: string;
   avatar_id?: string;
