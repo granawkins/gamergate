@@ -38,6 +38,7 @@ class Message:
     status: Literal["processing", "completed", "error"]
     commit_sha: Optional[str]
     model: Optional[str]
+    messages: Optional[str]  # JSON string complete messages (e.g. tool use)
 
     @classmethod
     def from_row(cls, row: Row) -> "Message":
@@ -51,6 +52,7 @@ class Message:
             status=row[6],
             commit_sha=row[7],
             model=row[8],
+            messages=row[9],
         )
 
 

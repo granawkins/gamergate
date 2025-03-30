@@ -296,6 +296,7 @@ async def handle_chat(
         status="completed",
         commit_sha=None,
         model=None,
+        messages=None,
     )
     await db.create_message(user_message)
 
@@ -309,6 +310,7 @@ async def handle_chat(
         status="processing",
         commit_sha=None,
         model=MODEL,
+        messages=None,
     )
     await db.create_message(assistant_message)
 

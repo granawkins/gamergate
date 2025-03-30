@@ -158,8 +158,22 @@ def migration_001(conn: sqlite3.Connection) -> None:
 # Register migrations
 migration_manager.register(Migration(1, "Initial schema setup", migration_001))
 
+
+# Migration 002: Add messages column to messages table
+def migration_002(conn: sqlite3.Connection) -> None:
+    """Add messages column to messages table"""
+    conn.execute("""
+        ALTER TABLE messages
+        ADD COLUMN messages TEXT
+    """)
+
+
+# Register the new migration
+migration_manager.register(
+    Migration(2, "Add messages column to messages table", migration_002)
+)
+
 # Add more migrations as needed:
-# migration_manager.register(Migration(2, "Add new table X", migration_002))
 # migration_manager.register(Migration(3, "Alter table Y", migration_003))
 
 

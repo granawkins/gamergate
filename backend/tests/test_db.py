@@ -450,6 +450,7 @@ class TestMessageMethods:
             status="completed",
             commit_sha=None,
             model=None,
+            messages=None,
         )
         await test_db.create_message(message)
         return message
@@ -468,6 +469,7 @@ class TestMessageMethods:
             status="completed",
             commit_sha=None,
             model=None,
+            messages="Sample messages data",
         )
         await test_db.create_message(message)
 
@@ -477,6 +479,7 @@ class TestMessageMethods:
         assert retrieved_message.id == message_id
         assert retrieved_message.text == "New message content"
         assert retrieved_message.game_id == test_game.id
+        assert retrieved_message.messages == "Sample messages data"
 
     @pytest.mark.asyncio
     async def test_get_all_messages(self, test_db, test_message):
@@ -515,6 +518,7 @@ class TestMessageMethods:
             status="error",
             cost=0.05,
             model="claude-3-opus-20240229",
+            messages="Updated messages data",
         )
 
         # Verify message was updated
@@ -524,6 +528,7 @@ class TestMessageMethods:
         assert updated_message.status == "error"
         assert updated_message.cost == 0.05
         assert updated_message.model == "claude-3-opus-20240229"
+        assert updated_message.messages == "Updated messages data"
         # Other fields should remain unchanged
         assert updated_message.game_id == test_message.game_id
         assert updated_message.role == test_message.role
@@ -542,6 +547,7 @@ class TestMessageMethods:
             status="completed",
             commit_sha=None,
             model=None,
+            messages="Messages to delete",
         )
         await test_db.create_message(message)
 

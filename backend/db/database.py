@@ -233,8 +233,8 @@ class Database:
         assert self._connection is not None and self._cursor is not None
         await self._connection.execute(
             """
-            INSERT INTO messages (id, game_id, text, role, timestamp, cost, status, commit_sha, model)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO messages (id, game_id, text, role, timestamp, cost, status, commit_sha, model, messages)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 message.id,
@@ -246,6 +246,7 @@ class Database:
                 message.status,
                 message.commit_sha,
                 message.model,
+                message.messages,
             ),
         )
         await self._connection.commit()
@@ -254,7 +255,7 @@ class Database:
         """Fetch all messages"""
         assert self._connection is not None and self._cursor is not None
         async with self._connection.execute(
-            "SELECT id, game_id, text, role, timestamp, cost, status, commit_sha, model FROM messages"
+            "SELECT id, game_id, text, role, timestamp, cost, status, commit_sha, model, messages FROM messages"
         ) as cursor:
             rows = await cursor.fetchall()
             return [Message.from_row(row) for row in rows]
@@ -263,7 +264,7 @@ class Database:
         """Fetch all messages for a game"""
         assert self._connection is not None and self._cursor is not None
         async with self._connection.execute(
-            "SELECT id, game_id, text, role, timestamp, cost, status, commit_sha, model FROM messages WHERE game_id = ?",
+            "SELECT id, game_id, text, role, timestamp, cost, status, commit_sha, model, messages FROM messages WHERE game_id = ?",
             (game_id,),
         ) as cursor:
             rows = await cursor.fetchall()
@@ -273,7 +274,7 @@ class Database:
         """Fetch a message by ID"""
         assert self._connection is not None and self._cursor is not None
         async with self._connection.execute(
-            "SELECT id, game_id, text, role, timestamp, cost, status, commit_sha, model FROM messages WHERE id = ?",
+            "SELECT id, game_id, text, role, timestamp, cost, status, commit_sha, model, messages FROM messages WHERE id = ?",
             (message_id,),
         ) as cursor:
             row = await cursor.fetchone()
