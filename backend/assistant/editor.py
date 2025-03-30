@@ -26,8 +26,7 @@ class Editor:
         self.edit_history[path].append(current_content)
         self.write_file_content(path, content)
 
-    def handle_editor_tool(self, tool_call) -> str:
-        input_params = tool_call.input
+    def handle_editor_tool(self, input_params: dict) -> str:
         command = input_params.get("command", "")
         path = input_params.get("path", "")
 

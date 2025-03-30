@@ -11,7 +11,12 @@ if __name__ == "__main__":
 from dotenv import load_dotenv
 
 import anthropic
-from anthropic.types import MessageParam, ToolTextEditor20250124Param, Message, Usage
+from anthropic.types import (
+    MessageParam,
+    ToolTextEditor20250124Param,
+    Message,
+    Usage,
+)
 
 from db import db
 from assistant.editor import Editor
@@ -61,6 +66,40 @@ async def generate_completion(
     """Run the tool use loop until complete and stream the final response"""
     total_cost = 0.0
     response_text = ""
+
+    # Pre-add first assistant/tool-call message to view file
+    first_assistant_message = {
+        "role": "assistant",
+        "content": [
+            {
+                "type": "text",
+                "text": "I'll help you with that. First lets take a look at the current code.",
+            },
+            {
+                "type": "tool_use",
+                "id": "1234567890",
+                "input": {"command": "view", "path": "/index.html"},
+                "name": "str_replace_editor",
+            },
+        ],
+    }
+    messages.append(first_assistant_message)  # type: ignore
+    file_content = editor.handle_editor_tool(
+        first_assistant_message["content"][1]["input"]
+    )
+    messages.append(
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": "1234567890",
+                    "content": file_content,
+                }
+            ],
+        }
+    )
+
     for _ in range(max_iterations):
         response = await client.messages.create(
             model=MODEL,
@@ -83,7 +122,7 @@ async def generate_completion(
                 response_text = chunk.text
             elif chunk.type == "tool_use":
                 try:
-                    content = editor.handle_editor_tool(chunk)
+                    content = editor.handle_editor_tool(chunk.input)  # type: ignore
                     tool_result_content.append(
                         {
                             "type": "tool_result",
