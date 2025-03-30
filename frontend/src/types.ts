@@ -32,4 +32,6 @@ export interface Message {
   status?: "processing" | "completed" | "error";
   commit_sha?: string;
   model?: string;
+  messages?: string; // admin only: serialized full messages
+  processing_text?: string[]; // text from tool use messages
 }
